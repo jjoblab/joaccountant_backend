@@ -1,34 +1,94 @@
-# Render deployment configuration for JOAccountant backend
-# https://render.com/docs/blueprint-spec
+# ============================================================
+# render.yaml — Infrastructure-as-Code pour Render (JOAccountant v8.2)
+# ============================================================
+# Corrige l'erreur : "found field 'postgresqlVersion' not in type"
+# → Le champ `postgresqlVersion` n'est PAS reconnu par l'API Render.
+#   Render utilise toujours la dernière version de PostgreSQL supportée
+#   (PostgreSQL 16 par défaut en 2026). Ne pas le préciser.
+#
+# Usage :
+#   1. Poussez ce fichier à la racine du repo GitHub
+#   2. Dashboard Render → New → Blueprint
+#   3. Sélectionnez le repo — Render détecte render.yaml automatiquement
+#   4. Configurez les secrets (JWT_SECRET, ENCRYPTION_KEY) dans le dashboard
+#   5. Render crée le PostgreSQL + le Web Service en un clic
+#
+# Coûts estimés (Render, 2026) :
+#   - PostgreSQL free : 90 jours gratuits, puis $7/mois (Starter)
+#   - Web Service free : 750h/mois (suffisant 24/7 pour 1 instance)
+#   - Total en free tier : $0/mois pendant 90 jours
+# ============================================================
+
+databases:
+  # ──────────────────────────────────────────────────────────────
+  # Base de données PostgreSQL (Render gère la version interne)
+  # ──────────────────────────────────────────────────────────────
+  - name: joaccountant-db
+    region: ohio           # Render Ohio (US East)
+    plan: free
+    databaseName: joaccountant   # Nom logique de la DB (Render crée <internal>-<random>)
+    # PAS de champ `postgresqlVersion` — Render refuse cette clé
+    ipAllowList:          # Restreindre l'accès (Render filtre par service lié)
+      - source: 0.0.0.0/0
+        description: Allow all (Render filtre automatiquement par service)
+
 services:
+  # ──────────────────────────────────────────────────────────────
+  # Web Service Spring Boot (Docker)
+  # ──────────────────────────────────────────────────────────────
   - type: web
     name: joaccountant-backend
-    runtime: docker
+    region: ohio
     plan: free
+    runtime: docker
     dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
+    autoDeploy: true
+    numInstances: 1
+
+    # Variables d'environnement non-secrètes
     envVars:
       - key: SPRING_PROFILES_ACTIVE
-        value: prod
+        value: render
+      - key: JAVA_OPTS
+        # Free tier = 512 MB RAM. Tuning agressif pour tenir dans le budget.
+        value: >-
+          -Xmx256m -Xms64m
+          -XX:MaxMetaspaceSize=160m
+          -XX:ReservedCodeCacheSize=48m
+          -Xss256k
+          -XX:MaxDirectMemorySize=32m
+          -XX:+UseSerialGC
+          -XX:+UseStringDeduplication
+          -XX:TieredStopAtLevel=1
+          -XX:+HeapDumpOnOutOfMemoryError
+          -XX:HeapDumpPath=/tmp/heapdump.hprof
+          -Dfile.encoding=UTF-8
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"              # À restreindre en prod : https://joaccountant.ht,https://app.joaccountant.ht
+      - key: LOG_LEVEL
+        value: INFO
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: HIKARI_MAX_POOL_SIZE
+        value: "10"             # Free tier = 512 MB RAM → 10 connexions max (au lieu de 50)
+      - key: HIKARI_MIN_IDLE
+        value: "2"
+      - key: HIKARI_LEAK_DETECTION_MS
+        value: "30000"
+
+      # Lien vers le PostgreSQL (Render injecte DATABASE_URL au format jdbc:postgresql://…)
       - key: DATABASE_URL
         fromDatabase:
           name: joaccountant-db
           property: connectionString
-      - key: DB_USERNAME
-        fromDatabase:
-          name: joaccountant-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: joaccountant-db
-          property: password
-      - key: APP_JWT_SECRET
-        generateValue: true
-      - key: CORS_ALLOWED_ORIGINS
-        value: "*"
 
-databases:
-  - name: joaccountant-db
-    databaseName: joaccountant
-    plan: free
-    postgresqlVersion: 16
+      # Secrets — à définir dans le dashboard Render (onglet "Environment")
+      # NE PAS committer ces valeurs dans le repo
+      - key: JWT_SECRET
+        sync: false             # valeur saisie manuellement dans le dashboard
+      - key: ENCRYPTION_KEY
+        sync: false             # valeur saisie manuellement dans le dashboard

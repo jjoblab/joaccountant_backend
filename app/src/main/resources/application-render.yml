@@ -1,36 +1,78 @@
-# Render profile — uses external PostgreSQL from Render
-spring:
-  profiles:
-    include: prod
-  datasource:
-    # Render provides DATABASE_URL in format: postgres://user:pass@host:port/dbname
-    # We need to convert it to JDBC format
-    url: jdbc:postgresql://${DATABASE_URL:localhost:5432/joaccountant}
-    username: ${DB_USERNAME:joaccountant}
-    password: ${DB_PASSWORD:joaccountant}
-    hikari:
-      maximum-pool-size: 5  # Free tier limit
-      minimum-idle: 1
-      connection-timeout: 30000
+# ============================================================
+# Profil Render — Adapté au free tier (512 MB RAM)
+# ============================================================
+# Activé via SPRING_PROFILES_ACTIVE=render
+#
+# Différences vs application-prod.yml :
+#   - HikariCP pool réduit (10 connexions au lieu de 50) → adapté à 512 MB RAM
+#   - Hibernate DDL auto désactivé (Flyway gère le schéma)
+#   - Logs plus verbeux pour debug initial (INFO au lieu de WARN)
+#   - Swagger UI activé en render (utile pour valider l'API déployée)
+#   - Health endpoint avec détails (Render health check a besoin de /actuator/health)
+#
+# Variables d'environnement OBLIGATOIRES :
+#   - DATABASE_URL (injecté par Render depuis le PostgreSQL lié)
+#   - JWT_SECRET (≥ 32 caractères aléatoires — à saisir dans le dashboard Render)
+#   - ENCRYPTION_KEY (32 caractères — à saisir dans le dashboard Render)
+#   - CORS_ALLOWED_ORIGINS (défaut * accepté en render, à restreindre en prod)
+# ============================================================
 
-server:
-  port: ${PORT:8080}  # Render provides PORT env var
+spring:
+  datasource:
+    # Render fournit DATABASE_URL au format postgres://user:pass@host:port/db
+    # Spring Boot le comprend directement via spring.datasource.url en override.
+    url: ${DATABASE_URL}
+    hikari:
+      # Free tier = 512 MB RAM. Pool réduit pour éviter OOM.
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
+      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      leak-detection-threshold: ${HIKARI_LEAK_DETECTION_MS:30000}
+      max-lifetime: 1800000      # 30 min
+      idle-timeout: 600000       # 10 min
+      connection-timeout: 30000  # 30 s
+      connection-test-query: "SELECT 1"
+      validation-timeout: 5000
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+        # Batch inserts/updates pour réduire le nombre de requêtes (perf free tier)
+        jdbc.batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    # Render : on démarre sur DB vide → baseline-on-migrate OK
+    baseline-on-migrate: true
+    baseline-version: 0
+    clean-disabled: false   # Permet de reset en dev (jamais en prod réel)
 
 management:
-  server:
-    port: ${PORT:8080}  # Same port for Render (no separate management port)
+  endpoint:
+    health:
+      # Render health check a besoin de détails pour diagnostiquer les échecs
+      show-details: when-authorized
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
 
-app:
-  jwt:
-    secret: ${APP_JWT_SECRET}
-  file-storage:
-    root: /tmp/joaccountant-storage  # Render free tier has ephemeral disk
-  rate-limit:
+springdoc:
+  swagger-ui:
+    enabled: true    # Activé en render pour valider l'API déployée
+  api-docs:
     enabled: true
-    redis:
-      enabled: false  # No Redis on free tier
 
 logging:
   level:
-    root: INFO
     jo.accountant: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework: WARN
+    com.zaxxer.hikari: WARN
+    org.flywaydb: INFO
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
