@@ -127,7 +127,7 @@ jobs:
           java-version: '17'
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           # queries: security-extended,security-and-quality pour plus de couverture
@@ -137,7 +137,7 @@ jobs:
         run: ./gradlew compileJava compileTestJava --no-daemon
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -168,7 +168,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy filesystem SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-fs-results.sarif
@@ -208,7 +208,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy image SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-image-results.sarif
