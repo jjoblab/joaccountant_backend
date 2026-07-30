@@ -732,7 +732,7 @@ git commit -m "first commit"
 git branch -M main
 
 # 4. Make sure the remote 'origin' is set (re‑run it if it didn’t stick earlier)
-git remote add origin https://github.com/jjoblab/joaccountant_backend.git
+git remote add origin https://github.com/jjoblab/jocountant_backend.git
 
 # 5. Push the 'main' branch and set upstream
 git push -u origin main
