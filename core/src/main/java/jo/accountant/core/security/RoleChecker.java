@@ -16,6 +16,10 @@ import jo.accountant.core.exception.ForbiddenException;
  * <p>Le JWT contient un claim {@code companies} : {@code [{companyId, role}]}.
  * Cette classe permet de vérifier qu'un utilisateur a un rôle suffisant pour une entreprise
  * donnée, sans dépendre de :auth (principe 5).
+ *
+ * <p><b>V8.3 définitive</b> : le JWT est rafraîchi côté serveur au moment de la création de
+ * company. Le claim JWT fait foi — si la company ou le rôle n'y figure pas, c'est que
+ * l'utilisateur n'y a pas accès ou avec un rôle insuffisant. Pas de fall-back DB.
  */
 @Component
 public class RoleChecker {

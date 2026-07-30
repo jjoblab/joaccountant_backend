@@ -139,11 +139,12 @@ public class CompanyController {
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CompanyResponse> create(@CurrentUser java.util.UUID userId,
-                                                  @Valid @RequestBody CreateCompanyRequest req) {
-        Company created = companyService.createCompany(userId, req.name(),
-            req.country(), req.functionalCurrency());
-        return ResponseEntity.status(HttpStatus.CREATED).body(CompanyService.toResponse(created));
+    public ResponseEntity<jo.accountant.company.dto.CreateCompanyResponse> create(
+            @CurrentUser java.util.UUID userId,
+            @Valid @RequestBody CreateCompanyRequest req) {
+        jo.accountant.company.dto.CreateCompanyResponse result =
+            companyService.createCompany(userId, req.name(), req.country(), req.functionalCurrency());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @Operation(summary = "Get a single company",

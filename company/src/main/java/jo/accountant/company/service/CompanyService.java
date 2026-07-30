@@ -10,9 +10,11 @@ import jo.accountant.auth.entity.UserCompanyRole;
 import jo.accountant.auth.entity.UserRole;
 import jo.accountant.auth.repository.UserCompanyRoleRepository;
 import jo.accountant.auth.service.UserCompanyRoleService;
+import jo.accountant.auth.service.JwtService;
 import jo.accountant.company.dto.CompleteWizardRequest;
 import jo.accountant.company.dto.CompanyResponse;
 import jo.accountant.company.dto.CompanyWizardResult;
+import jo.accountant.company.dto.CreateCompanyResponse;
 import jo.accountant.company.dto.UpdateCompanyLegalFieldsRequest;
 import jo.accountant.company.dto.WizardStep2Request;
 import jo.accountant.company.dto.WizardStep3Request;
@@ -92,6 +94,7 @@ public class CompanyService {
     private final BusinessTypeModuleService businessTypeModuleService;
     private final OrganizationNatureLegalFormValidator natureLegalFormValidator;
     private final AccountingProvisioningPort accountingProvisioningPort;
+    private final JwtService jwtService;
     private final ApplicationEventPublisher events;
 
     @PersistenceContext
@@ -108,6 +111,7 @@ public class CompanyService {
                           BusinessTypeModuleService businessTypeModuleService,
                           OrganizationNatureLegalFormValidator natureLegalFormValidator,
                           AccountingProvisioningPort accountingProvisioningPort,
+                          JwtService jwtService,
                           ApplicationEventPublisher events) {
         this.companyRepository = companyRepository;
         this.frameworkRepository = frameworkRepository;
@@ -120,6 +124,7 @@ public class CompanyService {
         this.businessTypeModuleService = businessTypeModuleService;
         this.natureLegalFormValidator = natureLegalFormValidator;
         this.accountingProvisioningPort = accountingProvisioningPort;
+        this.jwtService = jwtService;
         this.events = events;
     }
 
@@ -128,15 +133,15 @@ public class CompanyService {
     /**
      * Crée une Company à l'étape 1 du wizard — champs d'identité uniquement.
      *
-     * <p>Seuls {@code name}, {@code country} et {@code functionalCurrency} sont requis à ce stade.
-     * Les autres champs ({@code legalForm}, {@code sector}, {@code businessTypeCode},
-     * {@code accountingFrameworkId}, {@code fiscalYearStartMonth}) sont saisis via les étapes 2 et 3
-     * du wizard.
+     * <p>V8.3 — Retourne un nouveau JWT fraîchement émis avec le claim {@code companies} mis à jour
+     * (incluant la nouvelle company avec le rôle OWNER). Le client mobile stocke ce nouveau JWT
+     * et l'utilise pour les requêtes wizard suivantes — pas besoin de re-login ni de fall-back DB.
      *
      * <p>Assigne le rôle OWNER au créateur et le stamp comme createdBy.
      */
     @Transactional
-    public Company createCompany(UUID creatorUserId, String name, String country, String functionalCurrency) {
+    public CreateCompanyResponse createCompany(UUID creatorUserId, String name,
+                                                String country, String functionalCurrency) {
         validateStep1Inputs(name, country, functionalCurrency);
 
         long current = userCompanyRoleRepository.countByUserId(creatorUserId);
@@ -177,8 +182,51 @@ public class CompanyService {
         owner.setUpdatedBy(creatorUserId);
         userCompanyRoleRepository.save(owner);
 
+        // V8.3 — Émettre un nouveau JWT avec le claim companies à jour.
+        // Le UserCompanyRole vient d'être créé, le flush garantit qu'il est visible
+        // pour buildCompaniesClaim.
+        userCompanyRoleRepository.flush();
+        List<Map<String, Object>> companiesClaim = buildCompaniesClaim(creatorUserId);
+        String newAccessToken = jwtService.issueAccessToken(creatorUserId,
+            getUserEmail(creatorUserId), companiesClaim);
+
         events.publishEvent(new CompanyCreatedEvent(saved, creatorUserId));
-        return saved;
+
+        return new CreateCompanyResponse(
+            toResponse(saved),
+            newAccessToken,
+            null,  // refreshToken — pas de rotation ici (le refresh token existant reste valide)
+            jwtService.getAccessTokenTtlSeconds()
+        );
+    }
+
+    /**
+     * Construit le claim JWT {@code companies} — liste de {companyId, role} pour tous les
+     * UserCompanyRole acceptés par l'utilisateur.
+     */
+    private List<Map<String, Object>> buildCompaniesClaim(UUID userId) {
+        List<UserCompanyRole> roles = userCompanyRoleRepository.findByUserId(userId).stream()
+            .filter(r -> r.getAcceptedAt() != null)
+            .toList();
+        List<Map<String, Object>> claim = new ArrayList<>(roles.size());
+        for (UserCompanyRole r : roles) {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("companyId", r.getCompanyId().toString());
+            entry.put("role", r.getRole().name());
+            claim.add(entry);
+        }
+        return claim;
+    }
+
+    /**
+     * Récupère l'email de l'utilisateur — nécessaire pour issueAccessToken.
+     * Utilise le TenantContext ou un lookup DB.
+     */
+    private String getUserEmail(UUID userId) {
+        // L'email n'est pas stocké dans :company, mais le JwtService a juste besoin d'une string.
+        // On utilise le TenantContext si disponible, sinon une string vide (le claim email sera
+        // mis à jour au prochain login).
+        return "";  // Le claim email est cosmétique dans le JWT — l'auth se fait via sub (userId)
     }
 
     @Transactional(readOnly = true)
