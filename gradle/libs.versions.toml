@@ -33,7 +33,7 @@ junitPlatform = "1.11.0"
 junitJupiter = "5.11.0"
 
 # ----- Auth / JWT -----
-nimbusJoseJwt = "9.40"
+nimbusJoseJwt = "10.9.1"
 
 # ----- Crypto (Argon2 password hashing) -----
 # R-13 (lot-A-securite) — bump 1.78.1 → 1.79 pour corriger CVE-2024-29857 (dérive OCSP
