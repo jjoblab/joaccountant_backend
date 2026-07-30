@@ -51,7 +51,7 @@ public class Company {
      * {@code CompanyService.updateWizardStep} / {@code completeWizard}) doit pointer vers
      * cette constante plutôt que vers un littéral {@code 9} en dur.
      */
-    public static final int TOTAL_WIZARD_STEPS = 4;
+    public static final int TOTAL_WIZARD_STEPS = 9;
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)

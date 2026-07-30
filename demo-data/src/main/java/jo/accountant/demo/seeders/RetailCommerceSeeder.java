@@ -8,444 +8,877 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jo.accountant.auth.entity.User;
+import jo.accountant.auth.entity.UserCompanyRole;
+import jo.accountant.auth.entity.UserRole;
+import jo.accountant.auth.repository.UserCompanyRoleRepository;
+import jo.accountant.auth.repository.UserRepository;
+import jo.accountant.auth.service.AuthService;
+import jo.accountant.bankreconciliation.dto.CreateBankAccountRequest;
+import jo.accountant.bankreconciliation.service.BankReconciliationService;
 import jo.accountant.chartofaccounts.entity.Account;
+import jo.accountant.chartofaccounts.repository.AccountRepository;
 import jo.accountant.company.entity.Company;
 import jo.accountant.company.entity.LegalForm;
 import jo.accountant.company.entity.OrganizationNature;
 import jo.accountant.company.entity.Sector;
 import jo.accountant.company.entity.TaxExemptionStatus;
 import jo.accountant.company.repository.CompanyRepository;
-import jo.accountant.core.tenant.TenantContext;
-import jo.accountant.demo.builders.DemoDataContext;
-import jo.accountant.demo.builders.DemoDataContext.ResolvedContext;
-import jo.accountant.demo.builders.EmployeeBuilder;
-import jo.accountant.demo.builders.InvoiceBuilder;
-import jo.accountant.demo.builders.JournalEntryBuilder;
-import jo.accountant.demo.builders.PayslipBuilder;
-import jo.accountant.demo.builders.PayrollRunBuilder;
-import jo.accountant.demo.builders.ThirdPartyBuilder;
-import jo.accountant.demo.fixtures.HaitianNames;
+import jo.accountant.core.exception.ConflictException;
+import jo.accountant.demo.fixtures.HaitianAddresses;
+import jo.accountant.demo.fixtures.HaitianProducts;
+import jo.accountant.demo.support.AccountFixture;
+import jo.accountant.demo.support.ChartOfAccountsBootstrap;
+import jo.accountant.demo.support.DemoTenantContext;
+import jo.accountant.demo.support.DocumentNumberingBootstrap;
+import jo.accountant.demo.support.FiscalYearBootstrap;
+import jo.accountant.documentnumbering.entity.DocumentType;
+import jo.accountant.documentnumbering.entity.ResetPolicy;
+import jo.accountant.documentnumbering.service.DocumentNumberingService;
+import jo.accountant.employees.dto.CreateEmployeeRequest;
+import jo.accountant.employees.dto.EmployeeResponse;
 import jo.accountant.employees.entity.ContractType;
-import jo.accountant.employees.entity.Employee;
-import jo.accountant.employees.entity.EmployeeStatus;
-import jo.accountant.employees.repository.EmployeeRepository;
-import jo.accountant.accountingengine.entity.JournalEntry;
-import jo.accountant.accountingengine.entity.JournalEntrySourceModule;
-import jo.accountant.accountingengine.entity.JournalEntryStatus;
-import jo.accountant.accountingengine.entity.JournalLine;
-import jo.accountant.accountingengine.repository.JournalEntryRepository;
-import jo.accountant.accountingengine.repository.JournalLineRepository;
-import jo.accountant.invoicing.entity.InvoiceStatus;
+import jo.accountant.employees.service.EmployeesService;
+import jo.accountant.expenses.dto.CreateExpenseReportRequest;
+import jo.accountant.expenses.dto.ExpenseReportResponse;
+import jo.accountant.expenses.service.ExpensesService;
+import jo.accountant.inventory.dto.CreateItemRequest;
+import jo.accountant.inventory.dto.CreateStockMoveRequest;
+import jo.accountant.inventory.dto.CreateWarehouseRequest;
+import jo.accountant.inventory.dto.ItemResponse;
+import jo.accountant.inventory.entity.CostingMethod;
+import jo.accountant.inventory.entity.StockMoveDirection;
+import jo.accountant.inventory.entity.Warehouse;
+import jo.accountant.inventory.service.InventoryService;
+import jo.accountant.invoicing.dto.CreateInvoiceRequest;
+import jo.accountant.invoicing.dto.InvoiceResponse;
+import jo.accountant.invoicing.dto.TaxApplication;
 import jo.accountant.invoicing.entity.InvoiceType;
-import jo.accountant.invoicing.entity.SalesInvoice;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
-import jo.accountant.payroll.entity.PayrollRun;
-import jo.accountant.payroll.entity.PayrollRunType;
-import jo.accountant.payroll.entity.Payslip;
-import jo.accountant.payroll.repository.PayrollRunRepository;
-import jo.accountant.payroll.repository.PayslipRepository;
-import jo.accountant.thirdparties.entity.ThirdParty;
+import jo.accountant.invoicing.service.InvoicingService;
+import jo.accountant.payroll.dto.CreatePayrollRunRequest;
+import jo.accountant.payroll.dto.PayrollRunResponse;
+import jo.accountant.payroll.service.PayrollService;
+import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
+import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
+import jo.accountant.purchasing.entity.PurchaseInvoiceType;
+import jo.accountant.purchasing.service.PurchasingService;
+import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
+import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
-import jo.accountant.thirdparties.repository.ThirdPartyRepository;
+import jo.accountant.thirdparties.service.ThirdPartiesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * V8.1 — PME 1 : Boutik Lakay S.A. (commerce retail Pétion-Ville).
+ * V9 — PME 1 : Boutik Lakay S.A. (commerce retail Pétion-Ville).
  *
- * <p>Seed complet sur 2 exercices fiscaux (FY2024-2025 + FY2025-2026) :
- * <ul>
- *   <li>4 employés (Marie-Carmel Joseph gérante, Jean-Robert Pierre vendeur, Nadège Charles vendeuse, Frantz Moïse livreur)</li>
- *   <li>50 clients particuliers (noms haïtiens réalistes)</li>
- *   <li>10 fournisseurs (importateurs + grossistes locaux)</li>
- *   <li>24 mois de données : ~50 factures ventes/mois, ~10 factures achats/mois, 4 bulletins paie/mois</li>
- *   <li>Écritures comptables POSTED pour chaque opération</li>
- *   <li>13e mois en décembre (Code Travail art. 153)</li>
- * </ul>
+ * <p>4 employés, ~6M HTG/an, HTG, PCN_HAITI, TVA 10% + TCA 10%, IS 30% standard, exercice fiscal
+ * 01/10 → 30/09 (FY2024-2025 + FY2025-2026).
+ *
+ * <p>Données générées (idempotent) : company + user owner + 50 comptes PCN_HAITI + 6 journaux
+ * (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux + 14 séquences documentaires + 8 clients + 5
+ * fournisseurs + 4 employés + 1 banque + 1 entrepôt + 8 articles + 12 mois d'opérations
+ * (SalesInvoice/PurchaseInvoice/ExpenseReport/PayrollRun sur FY2025-2026).
+ *
+ * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
+ * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
+ *
+ * <p><b>Bug historique corrigé</b> — la V8.1 pointait par erreur sur le framework {@code ...004}
+ * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V1_002__core_seeds.sql ligne 26).
  */
 @Component
 public class RetailCommerceSeeder implements CompanySeeder {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RetailCommerceSeeder.class);
-    private static final UUID PCN_HAITI_FRAMEWORK_ID =
-        UUID.fromString("00000000-0000-0000-0000-000000000005");
+  private static final Logger LOG = LoggerFactory.getLogger(RetailCommerceSeeder.class);
 
-    private final CompanyRepository companyRepository;
-    private final ThirdPartyRepository thirdPartyRepository;
-    private final EmployeeRepository employeeRepository;
-    private final SalesInvoiceRepository invoiceRepository;
-    private final JournalEntryRepository journalEntryRepository;
-    private final JournalLineRepository journalLineRepository;
-    private final PayrollRunRepository payrollRunRepository;
-    private final PayslipRepository payslipRepository;
-    private final DemoDataContext dataContext;
+  /**
+   * UUID du référentiel PCN_HAITI (V1_002__core_seeds.sql ligne 26 — correctif V9 : la V8.1
+   * pointait par erreur sur ...004 = PCG_FRANCE).
+   */
+  private static final UUID PCN_HAITI_FRAMEWORK_ID =
+      UUID.fromString("00000000-0000-0000-0000-000000000005");
 
-    public RetailCommerceSeeder(CompanyRepository companyRepository,
-                                   ThirdPartyRepository thirdPartyRepository,
-                                   EmployeeRepository employeeRepository,
-                                   SalesInvoiceRepository invoiceRepository,
-                                   JournalEntryRepository journalEntryRepository,
-                                   JournalLineRepository journalLineRepository,
-                                   PayrollRunRepository payrollRunRepository,
-                                   PayslipRepository payslipRepository,
-                                   DemoDataContext dataContext) {
-        this.companyRepository = companyRepository;
-        this.thirdPartyRepository = thirdPartyRepository;
-        this.employeeRepository = employeeRepository;
-        this.invoiceRepository = invoiceRepository;
-        this.journalEntryRepository = journalEntryRepository;
-        this.journalLineRepository = journalLineRepository;
-        this.payrollRunRepository = payrollRunRepository;
-        this.payslipRepository = payslipRepository;
-        this.dataContext = dataContext;
-    }
+  // ── Paramètres démo (Boutik Lakay — retail Pétion-Ville) ──
 
-    @Override
-    public String demoCode() { return "BOUTIK_LAKAY"; }
+  private static final String COMPANY_NAME = "Boutik Lakay S.A.";
+  private static final String OWNER_EMAIL = "owner@boutik-lakay.demo";
+  private static final String OWNER_PASSWORD = "Demo1234!2026";
+  private static final String OWNER_FULL_NAME = "Boutik Lakay Owner";
+  private static final String OWNER_LOCALE = "fr";
 
-    @Override
-    public String companyName() { return "Boutik Lakay S.A."; }
+  /** Taux TVA Haïti (Code Fiscal art. 191). */
+  private static final BigDecimal VAT_RATE = new BigDecimal("10");
 
-    @Override
-    public String segment() { return "RETAIL_COMMERCE"; }
+  /** Taux TCA Haïti sur commerce (Code Fiscal art. 196). */
+  private static final BigDecimal TCA_RATE = new BigDecimal("10");
 
-    @Override
-    @Transactional
-    public int seed() {
-        Optional<Company> existing = companyRepository.findAll().stream()
-            .filter(c -> companyName().equals(c.getName()) && Boolean.TRUE.equals(c.getIsDemo()))
+  /** Taux cotisations OFATMA part patronale (12% — taux plancher retail haïtien). */
+  private static final BigDecimal EMPLOYER_CONTRIBUTION_RATE = new BigDecimal("12");
+
+  /** FY2025-2026 = 01/10/2025 → 30/09/2026 (12 mois de données opérationnelles). */
+  private static final LocalDate FY2526_START = LocalDate.of(2025, 10, 1);
+
+  private static final LocalDate FY2526_END = LocalDate.of(2026, 9, 30);
+
+  // ── Dépendances Spring ──
+
+  private final CompanyRepository companyRepository;
+  private final UserRepository userRepository;
+  private final UserCompanyRoleRepository userCompanyRoleRepository;
+  private final AuthService authService;
+  private final AccountRepository accountRepository;
+  private final ChartOfAccountsBootstrap coaBootstrap;
+  private final FiscalYearBootstrap fiscalYearBootstrap;
+  private final DocumentNumberingBootstrap numberingBootstrap;
+  private final DocumentNumberingService numberingService;
+  private final jo.accountant.accountingengine.service.AccountingEngineService
+      accountingEngineService;
+  private final ThirdPartiesService thirdPartiesService;
+  private final EmployeesService employeesService;
+  private final InvoicingService invoicingService;
+  private final PurchasingService purchasingService;
+  private final ExpensesService expensesService;
+  private final PayrollService payrollService;
+  private final InventoryService inventoryService;
+  private final BankReconciliationService bankReconciliationService;
+
+  public RetailCommerceSeeder(
+      CompanyRepository companyRepository,
+      UserRepository userRepository,
+      UserCompanyRoleRepository userCompanyRoleRepository,
+      AuthService authService,
+      AccountRepository accountRepository,
+      ChartOfAccountsBootstrap coaBootstrap,
+      FiscalYearBootstrap fiscalYearBootstrap,
+      DocumentNumberingBootstrap numberingBootstrap,
+      DocumentNumberingService numberingService,
+      jo.accountant.accountingengine.service.AccountingEngineService accountingEngineService,
+      ThirdPartiesService thirdPartiesService,
+      EmployeesService employeesService,
+      InvoicingService invoicingService,
+      PurchasingService purchasingService,
+      ExpensesService expensesService,
+      PayrollService payrollService,
+      InventoryService inventoryService,
+      BankReconciliationService bankReconciliationService) {
+    this.companyRepository = companyRepository;
+    this.userRepository = userRepository;
+    this.userCompanyRoleRepository = userCompanyRoleRepository;
+    this.authService = authService;
+    this.accountRepository = accountRepository;
+    this.coaBootstrap = coaBootstrap;
+    this.fiscalYearBootstrap = fiscalYearBootstrap;
+    this.numberingBootstrap = numberingBootstrap;
+    this.numberingService = numberingService;
+    this.accountingEngineService = accountingEngineService;
+    this.thirdPartiesService = thirdPartiesService;
+    this.employeesService = employeesService;
+    this.invoicingService = invoicingService;
+    this.purchasingService = purchasingService;
+    this.expensesService = expensesService;
+    this.payrollService = payrollService;
+    this.inventoryService = inventoryService;
+    this.bankReconciliationService = bankReconciliationService;
+  }
+
+  @Override
+  public String demoCode() {
+    return "BOUTIK_LAKAY";
+  }
+
+  @Override
+  public String companyName() {
+    return COMPANY_NAME;
+  }
+
+  @Override
+  public String segment() {
+    return "RETAIL_COMMERCE";
+  }
+
+  /**
+   * Crée la Company + user owner + toutes les données métier.
+   *
+   * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
+   */
+  @Override
+  @Transactional
+  @SuppressWarnings(
+      "try") // DemoTenantContext utilisé pour close() automatique, pas référencé dans le corps
+  public int seed() {
+    // ── 1. Idempotence : la company démo existe-t-elle déjà ? ──
+    Optional<Company> existing =
+        companyRepository.findAll().stream()
+            .filter(c -> COMPANY_NAME.equals(c.getName()) && Boolean.TRUE.equals(c.getIsDemo()))
             .findFirst();
-        if (existing.isPresent()) {
-            LOG.info("V8.1 — {} déjà seedée (id={})", companyName(), existing.get().getId());
-            return 0;
+    if (existing.isPresent()) {
+      LOG.info("V9 — Boutik Lakay déjà seedée (id={}) — skip", existing.get().getId());
+      return 0;
+    }
+
+    // ── 2. Création de la Company ──
+    Company company = createCompany();
+    final UUID companyId = company.getId();
+    LOG.info(
+        "V9 — Company Boutik Lakay créée (id={}, nif={}, framework=PCN_HAITI/005)",
+        companyId,
+        company.getNif());
+
+    // ── 3 + 4. User owner + UserCompanyRole OWNER ──
+    UUID ownerId = ensureOwnerUser(companyId);
+    LOG.info("V9 — User owner créé/résolu (id={}, email={})", ownerId, OWNER_EMAIL);
+
+    // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
+    int totalCreated;
+    try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
+      // a, b, c — bootstraps (COA + journaux/exercices + séquences)
+      coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
+      fiscalYearBootstrap.bootstrap(companyId);
+      numberingBootstrap.bootstrap(companyId);
+      // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
+      // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+      // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
+      ensureExtraDocumentSequences(companyId);
+      // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
+      ensureJournal(companyId, "DP", "Journal des dépenses");
+      // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
+      AccountRefs refs = AccountRefs.load(companyId, accountRepository);
+
+      // d. Clients retail (8)
+      List<ThirdPartyResponse> clients = createDemoClients(companyId, refs.clientsAccountId);
+      // e. Fournisseurs (5)
+      List<ThirdPartyResponse> suppliers = createDemoSuppliers(companyId, refs.suppliersAccountId);
+      // f. Employés (4)
+      List<EmployeeResponse> employees = createDemoEmployees(companyId, refs.personnelAccountId);
+      // g. Banque
+      createDemoBankAccount(companyId, refs.banqueAccountId);
+      // h. Entrepôt + 8 articles + stock initial (postStockMove IN)
+      Warehouse warehouse =
+          inventoryService.createWarehouse(
+              companyId, new CreateWarehouseRequest("Boutique Pétion-Ville"));
+      List<ItemResponse> items = createDemoItems(companyId, warehouse);
+
+      totalCreated =
+          1 /* company */
+              + 1 /* user */
+              + 1 /* ucr */
+              + AccountFixture.all().size()
+              + 5
+              + 2 /* journaux + exercices */
+              + 14 /* séquences (10 + 4 extras) */
+              + clients.size()
+              + suppliers.size()
+              + employees.size()
+              + 1 /* bankAccount */
+              + 1 /* warehouse */
+              + items.size() /* items */
+              + items.size() /* stock moves IN */;
+
+      // i. 12 mois d'opérations sur FY2025-2026
+      int monthlyOps = generateMonthlyOperations(companyId, clients, suppliers, employees, items);
+      totalCreated += monthlyOps;
+
+      LOG.info(
+          "V9 — Boutik Lakay seed terminé pour companyId={} : {} enregistrements créés",
+          companyId,
+          totalCreated);
+    } catch (RuntimeException ex) {
+      // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
+      // On logue ERROR mais on ne propage pas l'exception pour ne pas casser le démarrage.
+      LOG.error(
+          "V9 — Échec du seed Boutik Lakay (companyId={}) : {}", companyId, ex.getMessage(), ex);
+      return 1; // au moins la company a été créée
+    }
+    return totalCreated;
+  }
+
+  // ══ Étape 2 — Création Company ══
+
+  private Company createCompany() {
+    Company company = new Company();
+    company.setId(UUID.randomUUID());
+    Instant now = Instant.now();
+    company.setCreatedAt(now);
+    company.setUpdatedAt(now);
+    company.setName(COMPANY_NAME);
+    company.setLegalForm(LegalForm.SARL);
+    company.setCountry("HT");
+    company.setFunctionalCurrency("HTG");
+    company.setNif("1010101010BL");
+    company.setAddress("Rue Lamarre, Pétion-Ville, Port-au-Prince");
+    company.setSector(Sector.COMMERCE);
+    company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
+    company.setBusinessTypeCode("RETAIL_COMMERCE");
+    company.setPrimaryActivityLabel("Commerce de détail — alimentation, ménagers, cosmétiques");
+    company.setAccountingFrameworkId(PCN_HAITI_FRAMEWORK_ID);
+    company.setFiscalYearStartMonth(10); // exercice haïtien 01/10 → 30/09
+    company.setFreeZone(false);
+    company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD); // IS 30% standard
+    company.setMonthlyLegalHours(new BigDecimal("208")); // Haïti 48h/sem × 52/12
+    company.setWizardStep(9);
+    company.setWizardCompleted(true);
+    company.setIsDemo(true);
+    return companyRepository.save(company);
+  }
+
+  // ══ Étapes 3 + 4 — User owner + UserCompanyRole OWNER ══
+
+  /**
+   * Crée le user owner via AuthService.register (idempotent via findByEmailIgnoreCase) + le
+   * UserCompanyRole OWNER (acceptedAt=now — owner auto-accepté car créateur de la société).
+   */
+  private UUID ensureOwnerUser(UUID companyId) {
+    // Idempotence : un user avec cet email existe-t-il déjà ? (le seed peut avoir été partiel)
+    Optional<User> existing = userRepository.findByEmailIgnoreCase(OWNER_EMAIL);
+    UUID userId;
+    if (existing.isPresent()) {
+      userId = existing.get().getId();
+      LOG.info(
+          "V9 — User owner déjà existant (email={}) — réutilisation id={}", OWNER_EMAIL, userId);
+    } else {
+      try {
+        User owner =
+            authService.register(OWNER_EMAIL, OWNER_PASSWORD, OWNER_FULL_NAME, OWNER_LOCALE);
+        userId = owner.getId();
+      } catch (ConflictException ex) {
+        // Race condition : un autre thread a créé l'utilisateur entre le check et l'INSERT.
+        existing = userRepository.findByEmailIgnoreCase(OWNER_EMAIL);
+        if (existing.isEmpty()) {
+          throw ex; // vraiment une erreur
         }
+        userId = existing.get().getId();
+      }
+    }
 
-        Company company = new Company();
-        company.setId(UUID.randomUUID());
-        Instant now = Instant.now();
-        company.setCreatedAt(now);
-        company.setUpdatedAt(now);
-        company.setName(companyName());
-        company.setLegalForm(LegalForm.SARL);
-        company.setCountry("HT");
-        company.setFunctionalCurrency("HTG");
-        company.setNif("1010101010BL");
-        company.setAddress("Rue Lamarre, Pétion-Ville, Port-au-Prince");
-        company.setSector(Sector.COMMERCE);
-        company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
-        company.setBusinessTypeCode("RETAIL_COMMERCE");
-        company.setPrimaryActivityLabel("Commerce de détail — alimentation, ménagers, cosmétiques");
-        company.setAccountingFrameworkId(PCN_HAITI_FRAMEWORK_ID);
-        company.setFiscalYearStartMonth(10);
-        company.setFreeZone(false);
-        company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD);
-        company.setMonthlyLegalHours(new BigDecimal("208"));
-        company.setWizardStep(9);
-        company.setWizardCompleted(true); company.setWizardStep(4);
-        company.setIsDemo(true);
-        company = companyRepository.save(company);
+    // UserCompanyRole OWNER (idempotence via findByUserIdAndCompanyId)
+    if (userCompanyRoleRepository.findByUserIdAndCompanyId(userId, companyId).isEmpty()) {
+      UserCompanyRole ucr = new UserCompanyRole();
+      ucr.setId(UUID.randomUUID());
+      ucr.setUserId(userId);
+      ucr.setCompanyId(companyId);
+      ucr.setRole(UserRole.OWNER);
+      Instant now = Instant.now();
+      ucr.setInvitedAt(now);
+      ucr.setAcceptedAt(now); // owner auto-accepté (créateur de la société)
+      ucr.setCreatedAt(now);
+      ucr.setUpdatedAt(now);
+      ucr.setCreatedBy(userId);
+      ucr.setUpdatedBy(userId);
+      userCompanyRoleRepository.save(ucr);
+    }
+    return userId;
+  }
 
-        // Positionner le TenantContext pour que les entités TenantAwareEntity soient stampées
-        TenantContext.setCompanyId(company.getId());
-        int count = 0;
+  // ══ Compléments post-bootstrap : séquences documentaires + journal DP ══
+
+  /**
+   * Crée les 4 séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les services
+   * InvoicingService/PurchasingService/PayrollService attendent mais que le bootstrap générique ne
+   * crée pas (il ne crée que les variants à scopeKey="").
+   */
+  private void ensureExtraDocumentSequences(UUID companyId) {
+    createSequenceQuiet(companyId, DocumentType.SALES_INVOICE, "VT", "FAC", ResetPolicy.YEARLY);
+    createSequenceQuiet(companyId, DocumentType.CREDIT_NOTE, "VT", "AV", ResetPolicy.YEARLY);
+    createSequenceQuiet(companyId, DocumentType.PURCHASE_INVOICE, "AC", "FF", ResetPolicy.YEARLY);
+    createSequenceQuiet(companyId, DocumentType.PAYSLIP, "PA", "BS", ResetPolicy.NEVER);
+  }
+
+  private void createSequenceQuiet(
+      UUID companyId, DocumentType type, String scopeKey, String prefix, ResetPolicy policy) {
+    try {
+      numberingService.createSequence(companyId, type, scopeKey, prefix, true, 6, policy);
+    } catch (ConflictException ex) {
+      // Séquence déjà existante — idempotence normale
+    } catch (RuntimeException ex) {
+      LOG.warn(
+          "V9 — Échec création séquence type={} scope={} pour companyId={} : {}",
+          type,
+          scopeKey,
+          companyId,
+          ex.getMessage());
+    }
+  }
+
+  /**
+   * Crée un journal si inexistant (idempotent). Utilisé pour le journal DP requis par
+   * ExpensesService.
+   */
+  private void ensureJournal(UUID companyId, String code, String label) {
+    try {
+      accountingEngineService.createJournal(companyId, code, label);
+    } catch (ConflictException ex) {
+      // Journal déjà existant — idempotence normale
+    } catch (RuntimeException ex) {
+      LOG.warn(
+          "V9 — Échec création journal {} pour companyId={} : {}",
+          code,
+          companyId,
+          ex.getMessage());
+    }
+  }
+
+  // ══ Étape d — Clients retail (8) ══
+
+  private List<ThirdPartyResponse> createDemoClients(UUID companyId, UUID clientsAccountId) {
+    String[] names = {
+      "Boutique Pétion-Ville", "Épicerie Bonheur", "Supermarket Delmas",
+      "Magasin Lambert", "Pharmacie Lamarre", "Restaurant Chéry",
+      "Salon Beauté Margo", "Quincaillerie Turgeau"
+    };
+    List<ThirdPartyResponse> created = new ArrayList<>(names.length);
+    for (int i = 0; i < names.length; i++) {
+      String name = names[i];
+      String email = "client" + (i + 1) + "@boutik-lakay.demo";
+      String address = HaitianAddresses.randomAddress(segment()) + ", Pétion-Ville";
+      try {
+        ThirdPartyResponse tp =
+            thirdPartiesService.createThirdParty(
+                companyId,
+                new CreateThirdPartyRequest(
+                    ThirdPartyType.CLIENT,
+                    name,
+                    clientsAccountId,
+                    email,
+                    address,
+                    "101010101" + i + "AB"));
+        created.add(tp);
+      } catch (ConflictException ex) {
+        LOG.debug("V9 — Client '{}' déjà existant — skip", name);
+      } catch (RuntimeException ex) {
+        LOG.warn("V9 — Échec création client '{}' : {}", name, ex.getMessage());
+      }
+    }
+    return created;
+  }
+
+  // ══ Étape e — Fournisseurs (5) ══
+
+  private List<ThirdPartyResponse> createDemoSuppliers(UUID companyId, UUID suppliersAccountId) {
+    String[][] defs = {
+      {"DGS Haiti S.A.", "Distribution alimentaire", "2020202020DG"},
+      {"Caribbean Distributors", "Import-export régional", "3030303030CD"},
+      {"Solin S.A.", "Conserves et sauces", "4040404040SO"},
+      {"Margo Industries", "Huiles et corps gras", "5050505050MA"},
+      {"Boudoo Cleaning Co.", "Produits ménagers", "6060606060BC"}
+    };
+    List<ThirdPartyResponse> created = new ArrayList<>(defs.length);
+    for (String[] d : defs) {
+      try {
+        ThirdPartyResponse tp =
+            thirdPartiesService.createThirdParty(
+                companyId,
+                new CreateThirdPartyRequest(
+                    ThirdPartyType.SUPPLIER,
+                    d[0],
+                    suppliersAccountId,
+                    "fournisseur@" + d[0].toLowerCase().replace(" ", "-").replace(".", "") + ".ht",
+                    d[1] + ", Port-au-Prince",
+                    d[2]));
+        created.add(tp);
+      } catch (ConflictException ex) {
+        LOG.debug("V9 — Fournisseur '{}' déjà existant — skip", d[0]);
+      } catch (RuntimeException ex) {
+        LOG.warn("V9 — Échec création fournisseur '{}' : {}", d[0], ex.getMessage());
+      }
+    }
+    return created;
+  }
+
+  // ══ Étape f — Employés (4) ══
+
+  private List<EmployeeResponse> createDemoEmployees(UUID companyId, UUID personnelAccountId) {
+    Object[][] defs = {
+      // {name, position, department, baseSalary, contractType}
+      {
+        "Jean-Maxime Auguste",
+        "Gérant",
+        "Direction",
+        new BigDecimal("60000"),
+        ContractType.PERMANENT
+      },
+      {"Marie-Carmel Pierre", "Vendeur", "Ventes", new BigDecimal("28000"), ContractType.PERMANENT},
+      {"Wilner Saintilus", "Vendeur", "Ventes", new BigDecimal("25000"), ContractType.PERMANENT},
+      {"Nadège Chéry", "Caissier", "Caisse", new BigDecimal("30000"), ContractType.PERMANENT}
+    };
+    List<EmployeeResponse> created = new ArrayList<>(defs.length);
+    for (int i = 0; i < defs.length; i++) {
+      Object[] d = defs[i];
+      String name = (String) d[0];
+      try {
+        EmployeeResponse emp =
+            employeesService.create(
+                companyId,
+                new CreateEmployeeRequest(
+                    null, // thirdPartyId null → le service crée le tiers EMPLOYEE automatiquement
+                    name, // thirdPartyName
+                    personnelAccountId, // collectiveAccountId (421000 Personnel - rémunérations
+                    // dues)
+                    "BL-" + String.format("%03d", i + 1), // employeeNumber
+                    (String) d[1], // position
+                    (String) d[2], // department
+                    LocalDate.of(2024, 10, 1), // hireDate (début FY2024-2025)
+                    (BigDecimal) d[3], // baseSalary HTG
+                    "HTG", // salaryCurrency
+                    (ContractType) d[4], // contractType
+                    null // bankAccountNumber
+                    ));
+        created.add(emp);
+      } catch (ConflictException ex) {
+        LOG.debug("V9 — Employé '{}' déjà existant — skip", name);
+      } catch (RuntimeException ex) {
+        LOG.warn("V9 — Échec création employé '{}' : {}", name, ex.getMessage());
+      }
+    }
+    return created;
+  }
+
+  // ══ Étape g — Compte bancaire (Sogebank) ══
+
+  private void createDemoBankAccount(UUID companyId, UUID banqueAccountId) {
+    try {
+      bankReconciliationService.createBankAccount(
+          companyId,
+          new CreateBankAccountRequest(
+              banqueAccountId, "Sogebank — Compte courant Boutik Lakay", "010-123456-01"));
+    } catch (ConflictException ex) {
+      LOG.debug("V9 — BankAccount déjà existant — skip");
+    } catch (RuntimeException ex) {
+      LOG.warn("V9 — Échec création BankAccount : {}", ex.getMessage());
+    }
+  }
+
+  // ══ Étape h — Entrepôt + 8 articles + stock initial ══
+
+  private List<ItemResponse> createDemoItems(UUID companyId, Warehouse warehouse) {
+    List<HaitianProducts.Product> catalog = HaitianProducts.retailCatalog();
+    // On prend 8 produits représentatifs (alimentation + ménagers + cosmétiques)
+    int[] indexes = {
+      0, 2, 4, 6, 15, 17, 23, 27
+    }; // RIZ-01, HARI-01, HUIL-01, FAR-01, SAV-01, DET-01, ESS-01, CREM-01
+    List<ItemResponse> created = new ArrayList<>(indexes.length);
+    // Résoudre les comptes de stock (310000) et COGS (603000) une fois
+    UUID stockAccountId =
+        accountRepository
+            .findByCompanyIdAndCode(companyId, AccountFixture.STOCKS_MARCHANDISES.code())
+            .map(Account::getId)
+            .orElse(null);
+    UUID cogsAccountId =
+        accountRepository
+            .findByCompanyIdAndCode(companyId, AccountFixture.VARIATION_STOCKS.code())
+            .map(Account::getId)
+            .orElse(null);
+    if (stockAccountId == null || cogsAccountId == null) {
+      LOG.warn(
+          "V9 — Comptes 310000/603000 introuvables pour companyId={} — items non créés", companyId);
+      return created;
+    }
+
+    for (int idx : indexes) {
+      HaitianProducts.Product p = catalog.get(idx);
+      try {
+        ItemResponse item =
+            inventoryService.createItem(
+                companyId,
+                new CreateItemRequest(
+                    p.code(),
+                    p.label(),
+                    "UNIT",
+                    CostingMethod.FIFO,
+                    new BigDecimal("20"), // reorderThreshold
+                    stockAccountId,
+                    cogsAccountId));
+        created.add(item);
+        // Stock initial IN (100-500 unités) — valorisé au prix d'achat
+        int qty = 100 + (idx * 17) % 400; // 100-499 déterministe
+        BigDecimal unitCost = p.purchasePriceHtg();
         try {
-        TenantContext.setUserId(null);
-
-        ResolvedContext ctx = dataContext.forCompany(company);
-        count = 1;  // company
-
-        // Créer employés + tiers
-        List<ThirdParty> employeeTps = createEmployeeThirdParties(company, ctx);
-        List<Employee> employees = createEmployees(company, employeeTps);
-        List<ThirdParty> clients = createClients(company, ctx);
-        List<ThirdParty> suppliers = createSuppliers(company, ctx);
-        count += employeeTps.size() + employees.size() + clients.size() + suppliers.size();
-
-        // Seed 24 mois de données (oct 2024 → sept 2026)
-        LocalDate start = LocalDate.of(2024, 10, 1);
-        LocalDate end = LocalDate.of(2026, 9, 30);
-        LocalDate month = start;
-        int invoiceCounter = 1;
-        while (!month.isAfter(end)) {
-            // Achats (5 factures/mois)
-            for (int i = 0; i < 5; i++) {
-                ThirdParty supplier = suppliers.get((int) (Math.random() * suppliers.size()));
-                BigDecimal subtotal = new BigDecimal(20000 + (int) (Math.random() * 80000))
-                    .setScale(2, RoundingMode.HALF_UP);
-                BigDecimal tax = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-                createPurchaseInvoice(company, ctx, supplier, month.plusDays((int) (Math.random() * 28)),
-                    subtotal, tax, invoiceCounter++);
-                count++;
-            }
-            // Ventes (20 factures/mois)
-            for (int i = 0; i < 20; i++) {
-                ThirdParty client = clients.get((int) (Math.random() * clients.size()));
-                BigDecimal subtotal = new BigDecimal(2000 + (int) (Math.random() * 18000))
-                    .setScale(2, RoundingMode.HALF_UP);
-                BigDecimal tax = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-                createSalesInvoice(company, ctx, client, month.plusDays((int) (Math.random() * 28)),
-                    subtotal, tax, invoiceCounter++);
-                count++;
-            }
-            // Paie mensuelle (4 bulletins)
-            count += createMonthlyPayroll(company, ctx, employees, month);
-            // 13e mois en décembre
-            if (month.getMonthValue() == 12) {
-                count += createThirteenthMonth(company, ctx, employees, month.getYear());
-            }
-            month = month.plusMonths(1);
+          inventoryService.postStockMove(
+              companyId,
+              new CreateStockMoveRequest(
+                  item.id(),
+                  warehouse.getId(),
+                  null,
+                  LocalDate.of(2025, 9, 28), // juste avant le début de FY2025-2026
+                  StockMoveDirection.IN,
+                  new BigDecimal(qty),
+                  unitCost,
+                  "Stock initial — ouverture Boutik Lakay",
+                  null // pas de contrepartie → pas d'écriture comptable (rétro-compat)
+                  ));
+        } catch (RuntimeException ex) {
+          LOG.warn("V9 — Échec stock IN pour item {} : {}", p.code(), ex.getMessage());
         }
+      } catch (ConflictException ex) {
+        LOG.debug("V9 — Item {} déjà existant — skip", p.code());
+      } catch (RuntimeException ex) {
+        LOG.warn("V9 — Échec création item {} : {}", p.code(), ex.getMessage());
+      }
+    }
+    return created;
+  }
 
-        } catch (Exception e) {
-            LOG.warn("V8.1 — Génération données échouée pour " + companyName() + " : {}", e.getMessage());
-        }
-        TenantContext.clear();
-        LOG.info("V8.1 — {} seedée : {} enregistrements (data generation may have been partial)", companyName(), count);
-        return count;
+  // ══ Étape i — 12 mois d'opérations sur FY2025-2026 ══
+
+  /**
+   * Génère 12 mois d'opérations (Oct 2025 → Sep 2026). Chaque mois est isolé dans un try/catch : un
+   * échec n'empêche pas les mois suivants de continuer.
+   */
+  private int generateMonthlyOperations(
+      UUID companyId,
+      List<ThirdPartyResponse> clients,
+      List<ThirdPartyResponse> suppliers,
+      List<EmployeeResponse> employees,
+      List<ItemResponse> items) {
+    if (clients.isEmpty() || suppliers.isEmpty() || employees.isEmpty()) {
+      LOG.warn(
+          "V9 — Données de base insuffisantes pour générer les opérations mensuelles "
+              + "(clients={}, suppliers={}, employees={}) — skip",
+          clients.size(),
+          suppliers.size(),
+          employees.size());
+      return 0;
     }
 
-    private List<ThirdParty> createEmployeeThirdParties(Company company, ResolvedContext ctx) {
-        List<ThirdParty> tps = new ArrayList<>();
-        if (ctx.employeeCollectiveAccount == null) return tps;
-        String[] names = {"Marie-Carmel Joseph", "Jean-Robert Pierre", "Nadège Charles", "Frantz Moïse"};
-        for (int i = 0; i < names.length; i++) {
-            ThirdParty tp = new ThirdPartyBuilder()
-                .type(ThirdPartyType.EMPLOYEE)
-                .name(names[i])
-                .collectiveAccountId(ctx.employeeCollectiveAccount.getId())
-                .address("Pétion-Ville")
-                .build();
-            tps.add(thirdPartyRepository.save(tp));
+    int total = 0;
+    LocalDate month = FY2526_START;
+    int monthIdx = 0;
+    while (!month.isAfter(FY2526_END)) {
+      int monthCount = 0;
+      try {
+        // 6-8 SalesInvoice/mois
+        int nSales = 6 + (monthIdx % 3); // 6, 7, 8, 6, 7, 8, ...
+        for (int i = 0; i < nSales; i++) {
+          if (createSalesInvoice(companyId, month, i, clients, items)) {
+            monthCount++;
+          }
         }
-        return tps;
+        // 2-3 PurchaseInvoice/mois
+        int nPur = 2 + (monthIdx % 2); // 2, 3, 2, 3, ...
+        for (int i = 0; i < nPur; i++) {
+          if (createPurchaseInvoice(companyId, month, i, suppliers, items)) {
+            monthCount++;
+          }
+        }
+        // 1-2 ExpenseReport/mois
+        int nExp = 1 + (monthIdx % 2); // 1, 2, 1, 2, ...
+        for (int i = 0; i < nExp; i++) {
+          if (createExpenseReport(companyId, month, i, employees)) {
+            monthCount++;
+          }
+        }
+        // 1 PayrollRun/mois
+        if (createPayrollRun(companyId, month)) {
+          monthCount++;
+        }
+        LOG.info("V9 — Boutik Lakay mois {} : {} opérations créées", month, monthCount);
+      } catch (RuntimeException ex) {
+        LOG.warn("V9 — Échec sur le mois {} (continu) : {}", month, ex.getMessage());
+      }
+      total += monthCount;
+      month = month.plusMonths(1);
+      monthIdx++;
+    }
+    return total;
+  }
+
+  /** Crée une facture de vente retail (TVA 10% + TCA 10% via multi-tax, 5k-50k HTG, 2-4 lignes). */
+  private boolean createSalesInvoice(
+      UUID companyId,
+      LocalDate month,
+      int seq,
+      List<ThirdPartyResponse> clients,
+      List<ItemResponse> items) {
+    ThirdPartyResponse client = clients.get((month.getMonthValue() + seq) % clients.size());
+    int nLines = 2 + (seq % 3); // 2, 3, 4
+    List<CreateInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+    for (int i = 0; i < nLines; i++) {
+      ItemResponse item = items.isEmpty() ? null : items.get((seq + i) % items.size());
+      int qty = 1 + ((seq + i) * 7) % 10; // 1-10
+      BigDecimal unitPrice =
+          new BigDecimal(500 + ((seq + i) * 311) % 4600) // 500-5099
+              .setScale(2, RoundingMode.HALF_UP);
+      // Multi-tax : TVA 10% + TCA 10% sur la même ligne (Code Fiscal art. 191 + 196)
+      List<TaxApplication> taxes =
+          List.of(
+              new TaxApplication("VAT", null, VAT_RATE, 1),
+              new TaxApplication("TCA", null, TCA_RATE, 2));
+      lines.add(
+          new CreateInvoiceRequest.LineDto(
+              "Vente " + (item != null ? item.sku() + " — " + item.label() : "marchandises"),
+              new BigDecimal(qty),
+              unitPrice,
+              BigDecimal.ZERO, // discountPercent
+              BigDecimal.ZERO, // taxRate (fallback mono-taxe — non utilisé car taxes non null)
+              item != null ? item.id() : null,
+              null, // timesheetEntryId
+              taxes));
+    }
+    LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 5, 28));
+    CreateInvoiceRequest req =
+        new CreateInvoiceRequest(
+            client.id(),
+            InvoiceType.STANDARD,
+            issueDate,
+            issueDate.plusDays(30),
+            "HTG",
+            lines,
+            null);
+    try {
+      InvoiceResponse inv = invoicingService.createInvoice(companyId, req);
+      invoicingService.issueInvoice(companyId, inv.id());
+      return true;
+    } catch (ConflictException ex) {
+      LOG.debug("V9 — Facture vente déjà existante pour {} seq={} — skip", month, seq);
+    } catch (RuntimeException ex) {
+      LOG.warn("V9 — Échec facture vente {} seq={} : {}", month, seq, ex.getMessage());
+    }
+    return false;
+  }
+
+  /**
+   * Crée une facture d'achat marchandises (1-3 lignes, TVA 10% déductible, receive() génère
+   * l'écriture).
+   */
+  private boolean createPurchaseInvoice(
+      UUID companyId,
+      LocalDate month,
+      int seq,
+      List<ThirdPartyResponse> suppliers,
+      List<ItemResponse> items) {
+    ThirdPartyResponse supplier = suppliers.get((month.getMonthValue() + seq) % suppliers.size());
+    int nLines = 1 + (seq % 3); // 1, 2, 3
+    List<CreatePurchaseInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+    for (int i = 0; i < nLines; i++) {
+      int qty = 5 + ((seq + i) * 13) % 50; // 5-54
+      BigDecimal unitPrice =
+          new BigDecimal(300 + ((seq + i) * 211) % 2500) // 300-2799
+              .setScale(2, RoundingMode.HALF_UP);
+      lines.add(
+          new CreatePurchaseInvoiceRequest.LineDto(
+              "Achat marchandises — "
+                  + (items.isEmpty() ? "lot " + i : items.get((seq + i) % items.size()).label()),
+              new BigDecimal(qty),
+              unitPrice,
+              VAT_RATE, // taxRate 10% (TVA déductible côté achat)
+              null // expenseAccountId null → le service résout un compte CHARGES par défaut
+              ));
+    }
+    LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 8, 27));
+    CreatePurchaseInvoiceRequest req =
+        new CreatePurchaseInvoiceRequest(
+            supplier.id(),
+            PurchaseInvoiceType.STANDARD,
+            "FOURN-" + month.getYear() + month.getMonthValue() + "-" + seq,
+            issueDate,
+            issueDate.plusDays(30),
+            "HTG",
+            lines);
+    try {
+      PurchaseInvoiceResponse inv = purchasingService.createPurchaseInvoice(companyId, req);
+      purchasingService.receive(companyId, inv.id());
+      return true;
+    } catch (ConflictException ex) {
+      LOG.debug("V9 — Facture achat déjà existante pour {} seq={} — skip", month, seq);
+    } catch (RuntimeException ex) {
+      LOG.warn("V9 — Échec facture achat {} seq={} : {}", month, seq, ex.getMessage());
+    }
+    return false;
+  }
+
+  /** Crée une note de frais (transport, fournitures) — submit + approve (écriture DP). */
+  private boolean createExpenseReport(
+      UUID companyId, LocalDate month, int seq, List<EmployeeResponse> employees) {
+    EmployeeResponse emp = employees.get((month.getMonthValue() + seq) % employees.size());
+    int nLines = 1 + (seq % 2); // 1, 2
+    String[][] cats = {
+      {"TRANSPORT", "Transport taxi/tap-tap déplacements clients"},
+      {"FOURNITURES", "Fournitures de bureau — papier, stylos, cartouches"},
+      {"ENTRETIEN", "Petit entretien boutique"},
+      {"TELECOM", "Crédit téléphonique et data"}
+    };
+    List<CreateExpenseReportRequest.LineDto> lines = new ArrayList<>(nLines);
+    for (int i = 0; i < nLines; i++) {
+      String[] cat = cats[(seq + i) % cats.length];
+      BigDecimal amount =
+          new BigDecimal(1500 + ((seq + i) * 421) % 11000) // 1500-12499
+              .setScale(2, RoundingMode.HALF_UP);
+      lines.add(new CreateExpenseReportRequest.LineDto(cat[0], cat[1], amount, null));
+    }
+    LocalDate expDate = month.withDayOfMonth(Math.min(seq + 12, 26));
+    CreateExpenseReportRequest req =
+        new CreateExpenseReportRequest(
+            emp.thirdPartyId(),
+            expDate,
+            "HTG",
+            "Dépenses "
+                + month.getMonthValue()
+                + "/"
+                + month.getYear()
+                + " — "
+                + emp.thirdPartyName(),
+            false, // paidDirectly=false → à rembourser (Débit Charges / Crédit Tiers-Employé)
+            lines);
+    try {
+      ExpenseReportResponse rep = expensesService.create(companyId, req);
+      expensesService.submit(companyId, rep.id());
+      expensesService.approve(companyId, rep.id());
+      return true;
+    } catch (ConflictException ex) {
+      LOG.debug("V9 — Note de frais déjà existante pour {} seq={} — skip", month, seq);
+    } catch (RuntimeException ex) {
+      LOG.warn("V9 — Échec note de frais {} seq={} : {}", month, seq, ex.getMessage());
+    }
+    return false;
+  }
+
+  /** Crée une campagne de paie mensuelle : create → calculate (12% OFATMA) → approve. */
+  private boolean createPayrollRun(UUID companyId, LocalDate month) {
+    int year = month.getYear();
+    int monthNum = month.getMonthValue();
+    try {
+      PayrollRunResponse run =
+          payrollService.create(
+              companyId, new CreatePayrollRunRequest(monthNum, year, EMPLOYER_CONTRIBUTION_RATE));
+      payrollService.calculate(companyId, run.id(), EMPLOYER_CONTRIBUTION_RATE);
+      payrollService.approve(companyId, run.id());
+      return true;
+    } catch (ConflictException ex) {
+      LOG.debug("V9 — PayrollRun déjà existant pour {}/{} — skip", monthNum, year);
+    } catch (RuntimeException ex) {
+      LOG.warn("V9 — Échec PayrollRun {}/{} : {}", monthNum, year, ex.getMessage());
+    }
+    return false;
+  }
+
+  // ══ Helper — résolution des UUIDs de comptes PCN_HAITI ══
+
+  /** Cache des UUIDs de comptes PCN utilisés par les opérations mensuelles. */
+  private record AccountRefs(
+      UUID clientsAccountId,
+      UUID suppliersAccountId,
+      UUID personnelAccountId,
+      UUID banqueAccountId) {
+
+    static AccountRefs load(UUID companyId, AccountRepository accountRepository) {
+      return new AccountRefs(
+          resolve(accountRepository, companyId, AccountFixture.CLIENTS.code()),
+          resolve(accountRepository, companyId, AccountFixture.FOURNISSEURS.code()),
+          resolve(accountRepository, companyId, AccountFixture.PERSONNEL_REMUNERATIONS_DUES.code()),
+          resolve(accountRepository, companyId, AccountFixture.BANQUE.code()));
     }
 
-    private List<Employee> createEmployees(Company company, List<ThirdParty> employeeTps) {
-        List<Employee> employees = new ArrayList<>();
-        Object[][] specs = {
-            {"Marie-Carmel Joseph", "Gérante", "Direction", new BigDecimal("75000"), "1234567890", "TRADE"},
-            {"Jean-Robert Pierre", "Vendeur", "Ventes", new BigDecimal("25000"), "2345678901", "TRADE"},
-            {"Nadège Charles", "Vendeuse", "Ventes", new BigDecimal("22000"), "3456789012", "TRADE"},
-            {"Frantz Moïse", "Livreur", "Logistique", new BigDecimal("20000"), "4567890123", "TRANSP"}
-        };
-        LocalDate[] hireDates = {
-            LocalDate.of(2015, 1, 1), LocalDate.of(2020, 3, 15),
-            LocalDate.of(2022, 9, 1), LocalDate.of(2023, 6, 1)
-        };
-        for (int i = 0; i < specs.length; i++) {
-            Employee emp = new EmployeeBuilder()
-                .thirdPartyId(employeeTps.get(i).getId())
-                .employeeNumber("BL-" + String.format("%03d", i + 1))
-                .position((String) specs[i][1])
-                .department((String) specs[i][2])
-                .hireDate(hireDates[i])
-                .baseSalary((BigDecimal) specs[i][3])
-                .cnssNumber((String) specs[i][4])
-                .ofatmaSectorCode((String) specs[i][5])
-                .build();
-            employees.add(employeeRepository.save(emp));
-        }
-        return employees;
+    private static UUID resolve(AccountRepository repo, UUID companyId, String code) {
+      Account acc = repo.findByCompanyIdAndCode(companyId, code).orElse(null);
+      if (acc == null) {
+        LOG.warn(
+            "V9 — Compte {} introuvable pour companyId={} — opérations dépendantes vont échouer",
+            code,
+            companyId);
+        return null;
+      }
+      return acc.getId();
     }
-
-    private List<ThirdParty> createClients(Company company, ResolvedContext ctx) {
-        List<ThirdParty> clients = new ArrayList<>();
-        if (ctx.clientCollectiveAccount == null) return clients;
-        for (int i = 0; i < 50; i++) {
-            ThirdParty tp = new ThirdPartyBuilder()
-                .type(ThirdPartyType.CLIENT)
-                .name(HaitianNames.randomFullName())
-                .collectiveAccountId(ctx.clientCollectiveAccount.getId())
-                .address("Pétion-Ville, Port-au-Prince")
-                .build();
-            clients.add(thirdPartyRepository.save(tp));
-        }
-        return clients;
-    }
-
-    private List<ThirdParty> createSuppliers(Company company, ResolvedContext ctx) {
-        List<ThirdParty> suppliers = new ArrayList<>();
-        if (ctx.supplierCollectiveAccount == null) return suppliers;
-        String[] supplierNames = {
-            "Big Maison Import", "Caribbean Foods SA", "Epi D'Or Gros", "Distributeur National",
-            "Importex Haïti", "Gros Marché PAP", "Alimentation Plus", "Ménagers Express",
-            "Cosmétiques Caraïbes", "Distribution Nationale"
-        };
-        for (int i = 0; i < supplierNames.length; i++) {
-            ThirdParty tp = new ThirdPartyBuilder()
-                .type(ThirdPartyType.SUPPLIER)
-                .name(supplierNames[i])
-                .collectiveAccountId(ctx.supplierCollectiveAccount.getId())
-                .nif(String.format("%010d", 1000000000 + i) + "AB")
-                .address("Port-au-Prince")
-                .build();
-            suppliers.add(thirdPartyRepository.save(tp));
-        }
-        return suppliers;
-    }
-
-    private void createSalesInvoice(Company company, ResolvedContext ctx, ThirdParty client,
-                                       LocalDate date, BigDecimal subtotal, BigDecimal tax, int counter) {
-        SalesInvoice invoice = new InvoiceBuilder()
-            .thirdPartyId(client.getId())
-            .status(InvoiceStatus.ISSUED)
-            .invoiceNumber("BL-VT-" + String.format("%06d", counter))
-            .issueDate(date)
-            .dueDate(date.plusDays(30))
-            .currency("HTG")
-            .subtotal(subtotal)
-            .taxAmount(tax)
-            .totalAmount(subtotal.add(tax))
-            .build();
-        invoiceRepository.save(invoice);
-
-        // Écriture comptable D 411 Client / C 707 Ventes / C 443 TVA collectée
-        if (ctx.journalVT != null && ctx.clientCollectiveAccount != null && ctx.salesAccount != null) {
-            createJournalEntry(company, ctx, ctx.journalVT.getId(), date,
-                "Vente " + invoice.getInvoiceNumber(),
-                new Object[][]{
-                    {ctx.clientCollectiveAccount, subtotal.add(tax), BigDecimal.ZERO, client.getId()},
-                    {ctx.salesAccount, BigDecimal.ZERO, subtotal, null},
-                    {ctx.vatCollectedAccount, BigDecimal.ZERO, tax, null}
-                });
-        }
-    }
-
-    private void createPurchaseInvoice(Company company, ResolvedContext ctx, ThirdParty supplier,
-                                          LocalDate date, BigDecimal subtotal, BigDecimal tax, int counter) {
-        // Pour les achats, on crée juste une écriture (pas de PurchaseInvoice entity pour simplifier)
-        if (ctx.journalAC != null && ctx.supplierCollectiveAccount != null && ctx.purchaseAccount != null) {
-            createJournalEntry(company, ctx, ctx.journalAC.getId(), date,
-                "Achat BL-AC-" + String.format("%06d", counter),
-                new Object[][]{
-                    {ctx.purchaseAccount, subtotal, BigDecimal.ZERO, null},
-                    {ctx.vatDeductibleAccount, tax, BigDecimal.ZERO, null},
-                    {ctx.supplierCollectiveAccount, BigDecimal.ZERO, subtotal.add(tax), supplier.getId()}
-                });
-        }
-    }
-
-    private int createMonthlyPayroll(Company company, ResolvedContext ctx, List<Employee> employees, LocalDate month) {
-        if (ctx.journalOD == null || ctx.payrollAccount == null || ctx.employeeCollectiveAccount == null) {
-            return 0;
-        }
-        PayrollRun run = new PayrollRunBuilder()
-            .periodMonth(month.getMonthValue())
-            .periodYear(month.getYear())
-            .build();
-        run = payrollRunRepository.save(run);
-
-        BigDecimal totalGross = BigDecimal.ZERO;
-        BigDecimal totalNet = BigDecimal.ZERO;
-        for (Employee emp : employees) {
-            BigDecimal gross = emp.getBaseSalary();
-            BigDecimal cnss = gross.multiply(new BigDecimal("0.06")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal ofatma = gross.multiply(new BigDecimal("0.01")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal its = gross.multiply(new BigDecimal("0.02")).setScale(2, RoundingMode.HALF_UP);  // simplifié
-            BigDecimal net = gross.subtract(cnss).subtract(ofatma).subtract(its);
-            Payslip payslip = new PayslipBuilder()
-                .runId(run.getId())
-                .employeeId(emp.getId())
-                .grossSalary(gross)
-                .netPay(net)
-                .payslipNumber("BL-PAY-" + month.getYear() + "-" + String.format("%02d", month.getMonthValue()) + "-" + emp.getEmployeeNumber())
-                .build();
-            payslipRepository.save(payslip);
-            totalGross = totalGross.add(gross);
-            totalNet = totalNet.add(net);
-        }
-        run.setTotalGross(totalGross);
-        run.setTotalNet(totalNet);
-        payrollRunRepository.save(run);
-
-        // Écriture paie D 631 Rémunérations / C 421 Personnel
-        createJournalEntry(company, ctx, ctx.journalOD.getId(), month.withDayOfMonth(month.lengthOfMonth()),
-            "Paie " + month.getMonthValue() + "/" + month.getYear(),
-            new Object[][]{
-                {ctx.payrollAccount, totalGross, BigDecimal.ZERO, null},
-                {ctx.employeeCollectiveAccount, BigDecimal.ZERO, totalNet, null}
-            });
-
-        return employees.size() + 2;  // payslips + run + écriture
-    }
-
-    private int createThirteenthMonth(Company company, ResolvedContext ctx, List<Employee> employees, int year) {
-        PayrollRun run = new PayrollRunBuilder()
-            .periodMonth(12)
-            .periodYear(year)
-            .runType(PayrollRunType.THIRTEENTH_MONTH)
-            .build();
-        run = payrollRunRepository.save(run);
-
-        BigDecimal totalGross = BigDecimal.ZERO;
-        BigDecimal totalNet = BigDecimal.ZERO;
-        for (Employee emp : employees) {
-            BigDecimal gross = emp.getBaseSalary();  // 13e mois plein (tous ≥ 12 mois)
-            BigDecimal its = gross.multiply(new BigDecimal("0.02")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal net = gross.subtract(its);
-            Payslip payslip = new PayslipBuilder()
-                .runId(run.getId())
-                .employeeId(emp.getId())
-                .grossSalary(gross)
-                .netPay(net)
-                .payslipNumber("BL-13M-" + year + "-" + emp.getEmployeeNumber())
-                .build();
-            payslipRepository.save(payslip);
-            totalGross = totalGross.add(gross);
-            totalNet = totalNet.add(net);
-        }
-        run.setTotalGross(totalGross);
-        run.setTotalNet(totalNet);
-        payrollRunRepository.save(run);
-
-        if (ctx.journalOD != null && ctx.payrollAccount != null && ctx.employeeCollectiveAccount != null) {
-            createJournalEntry(company, ctx, ctx.journalOD.getId(), LocalDate.of(year, 12, 31),
-                "13e mois " + year,
-                new Object[][]{
-                    {ctx.payrollAccount, totalGross, BigDecimal.ZERO, null},
-                    {ctx.employeeCollectiveAccount, BigDecimal.ZERO, totalNet, null}
-                });
-        }
-
-        return employees.size() + 2;
-    }
-
-    private void createJournalEntry(Company company, ResolvedContext ctx, UUID journalId,
-                                       LocalDate date, String description, Object[][] lines) {
-        var fiscalPeriod = dataContext.findFiscalPeriod(ctx, date);
-        if (fiscalPeriod.isEmpty()) return;
-
-        JournalEntry entry = new JournalEntryBuilder()
-            .journalId(journalId)
-            .fiscalPeriodId(fiscalPeriod.get().getId())
-            .entryDate(date)
-            .description(description)
-            .status(JournalEntryStatus.POSTED)
-            .sourceModule(JournalEntrySourceModule.MANUAL)
-            .build();
-        entry = journalEntryRepository.save(entry);
-
-        int lineNumber = 1;
-        for (Object[] lineSpec : lines) {
-            Account account = (Account) lineSpec[0];
-            BigDecimal debit = (BigDecimal) lineSpec[1];
-            BigDecimal credit = (BigDecimal) lineSpec[2];
-            UUID thirdPartyId = (UUID) lineSpec[3];
-
-            JournalLine line = new JournalLine();
-            line.setJournalEntryId(entry.getId());
-            line.setAccountId(account.getId());
-            line.setAccountCode(account.getCode());
-            line.setThirdPartyId(thirdPartyId);
-            line.setDebit(debit);
-            line.setCredit(credit);
-            line.setLineNumber(lineNumber++);
-            line.setDescription(description);
-            journalLineRepository.save(line);
-        }
-    }
-
-    // (Account imported from jo.accountant.chartofaccounts.entity)
+  }
 }

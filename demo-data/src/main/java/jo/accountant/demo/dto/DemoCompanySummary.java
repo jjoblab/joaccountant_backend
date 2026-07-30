@@ -4,9 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * V8.1 — Résumé d'une entreprise démo pour l'endpoint GET /api/v1/demos.
- */
+/** V8.1 — Résumé d'une entreprise démo pour l'endpoint GET /api/v1/demos. */
 public record DemoCompanySummary(
     String demoCode,
     String name,
@@ -18,5 +16,4 @@ public record DemoCompanySummary(
     List<String> fiscalYears,
     List<String> modules,
     List<String> highlights,
-    UUID companyId
-) {}
+    UUID companyId) {}

@@ -55,7 +55,7 @@ services:
     # Variables d'environnement non-secrètes
     envVars:
       - key: SPRING_PROFILES_ACTIVE
-        value: render
+        value: "render,demo"
       - key: JAVA_OPTS
         # Free tier = 512 MB RAM. Tuning agressif pour tenir dans le budget.
         # NOTE : -XX:+UseStringDeduplication retiré (incompatible avec UseSerialGC)
@@ -101,4 +101,9 @@ services:
       - key: JWT_SECRET
         sync: false             # valeur saisie manuellement dans le dashboard
       - key: ENCRYPTION_KEY
+        sync: false             # valeur saisie manuellement dans le dashboard
+      # FIX v8.2 : APP_MFA_ENCRYPTION_KEY — clé de chiffrement des secrets TOTP MFA
+      # MfaService.@PostConstruct validateEncryptionKey() fait fail-fast si cette clé
+      # n'est pas positionnée en profil non-dev/test (render est considéré comme prod).
+      - key: APP_MFA_ENCRYPTION_KEY
         sync: false             # valeur saisie manuellement dans le dashboard

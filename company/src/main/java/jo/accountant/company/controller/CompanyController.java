@@ -141,23 +141,8 @@ public class CompanyController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CompanyResponse> create(@CurrentUser java.util.UUID userId,
                                                   @Valid @RequestBody CreateCompanyRequest req) {
-        // V8.2 — createCompany accepte maintenant les champs d'identité complets
         Company created = companyService.createCompany(userId, req.name(),
             req.country(), req.functionalCurrency());
-        // V8.2 — Appliquer les champs additionnels (organizationNature, legalForm, champs légaux)
-        if (req.organizationNature() != null) {
-            created.setOrganizationNature(req.organizationNature());
-        }
-        if (req.legalForm() != null) {
-            created.setLegalForm(req.legalForm());
-        }
-        if (req.siret() != null) created.setSiret(req.siret());
-        if (req.vatNumber() != null) created.setVatNumber(req.vatNumber());
-        if (req.nif() != null) created.setNif(req.nif());
-        if (req.address() != null) created.setAddress(req.address());
-        if (req.organizationNature() != null || req.legalForm() != null) {
-            created = companyService.saveCompany(created);
-        }
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(created));
     }
 

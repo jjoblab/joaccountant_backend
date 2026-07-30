@@ -111,14 +111,14 @@ public class CompanyService {
         company.setName(name.trim());
         company.setCountry(country.toUpperCase());
         company.setFunctionalCurrency(functionalCurrency.toUpperCase());
-        // V8.2 — Defaults refondus : wizardStep=1 (pas 9), pas de businessTypeCode factice
+        // Defaults provisoires — seront écrasés par les étapes correspondantes du wizard.
         company.setLegalForm(LegalForm.OTHER);
         company.setSector(Sector.AUTRE);
         company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
-        company.setBusinessTypeCode(null);  // V8.2 — null au lieu de "CUSTOM" (pas encore choisi)
+        company.setBusinessTypeCode("CUSTOM");
         company.setPrimaryActivityLabel("");
-        company.setAccountingFrameworkId(null);
-        company.setFiscalYearStartMonth(1);
+        company.setAccountingFrameworkId(null);  // positionné à l'étape 6
+        company.setFiscalYearStartMonth(1);       // positionné à l'étape 6
         company.setWizardStep(1);
         company.setWizardCompleted(false);
         company.setCreatedAt(Instant.now());
@@ -143,14 +143,6 @@ public class CompanyService {
 
         events.publishEvent(new CompanyCreatedEvent(saved, creatorUserId));
         return saved;
-    }
-
-    /**
-     * V8.2 — Sauvegarde directe d'une Company (pour les mises à jour partielles post-création).
-     */
-    @Transactional
-    public Company saveCompany(Company company) {
-        return companyRepository.save(company);
     }
 
     @Transactional(readOnly = true)
@@ -529,20 +521,5 @@ public class CompanyService {
         catch (IllegalArgumentException e) {
             throw new ValidationException(invalidErrorCode, "Not a UUID: " + key + "=" + raw);
         }
-    }
-
-    /**
-     * V8.2 — Convertit une Company en CompanyResponse (exposé pour WizardOrchestrationService).
-     */
-    public jo.accountant.company.dto.CompanyResponse toResponse(Company c) {
-        return new jo.accountant.company.dto.CompanyResponse(
-            c.getId(), c.getName(), c.getLegalForm(), c.getCountry(), c.getFunctionalCurrency(),
-            c.getSector(), c.getOrganizationNature(), c.getBusinessTypeCode(),
-            c.getPrimaryActivityLabel(), c.getExtraAttributes(),
-            c.getAccountingFrameworkId(), c.getFiscalYearStartMonth(),
-            c.getWizardStep(), c.isWizardCompleted(),
-            c.getSiret(), c.getVatNumber(), c.getNif(), c.getAddress(),
-            c.getCreatedAt(), c.getUpdatedAt()
-        );
     }
 }

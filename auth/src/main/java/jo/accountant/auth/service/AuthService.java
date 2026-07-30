@@ -381,13 +381,4 @@ public class AuthService {
 
     public record LoginResult(String accessToken, String refreshToken, UUID userId, String email,
                               String fullName, List<Map<String, Object>> companies) {}
-
-    // V8.2 — Wrappers publics pour DemoAuthService
-    public List<Map<String, Object>> buildCompaniesClaimPublic(UUID userId) {
-        return buildCompaniesClaim(userId);
-    }
-
-    public String issueRefreshTokenPublic(UUID userId) {
-        return issueRefreshToken(userId);
-    }
 }

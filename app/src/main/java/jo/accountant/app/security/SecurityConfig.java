@@ -76,7 +76,6 @@ public class SecurityConfig {
                     "/api/v1/auth/logout",
                     "/api/v1/auth/forgot-password",
                     "/api/v1/auth/reset-password",
-                    "/api/v1/auth/demo-login",
                     // MFA — setup/verify/check/recovery-code doivent rester accessibles sans Bearer
                     // car l'utilisateur peut être dans l'entre-deux du flow 2-step (challenge token
                     // en query param, validé par MfaService). Status/disable exigent un vrai Bearer.
@@ -89,7 +88,6 @@ public class SecurityConfig {
                     "/.well-known/jwks.json").permitAll()
                 .requestMatchers(
                     "/swagger-ui/**",
-                    "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/swagger-resources/**",
                     "/webjars/**",
@@ -100,6 +98,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/demos",
                     "/api/v1/demos/**").permitAll()
+                // V9 — Login démo en un clic (POST /api/v1/demos/login/{demoCode}).
+                // Public pour permettre la connexion sans saisir email/password — le user obtient
+                // un vrai JWT utilisable sur tous les endpoints protégés.
+                // ⚠️ À DÉSACTIVER en production réelle (supprimer ce bloc + DemoLoginController).
+                .requestMatchers(HttpMethod.POST,
+                    "/api/v1/demos/login/**").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(jwtDecoder)))
             .addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class)

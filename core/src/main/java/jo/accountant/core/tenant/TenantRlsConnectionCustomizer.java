@@ -188,10 +188,9 @@ public class TenantRlsConnectionCustomizer extends AbstractDataSource {
                 }
                 return;
             }
-            // V8.2 fix: SET LOCAL doesn't support prepared statement parameters in PostgreSQL.
-            // Use Statement with string interpolation (safe — UUID.toString() is validated).
-            try (java.sql.Statement stmt = delegate.createStatement()) {
-                stmt.executeUpdate("SET LOCAL app.current_tenant = '" + tenantId.toString() + "'");
+            try (PreparedStatement ps = delegate.prepareStatement("SET LOCAL app.current_tenant = ?")) {
+                ps.setString(1, tenantId.toString());
+                ps.executeUpdate();
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("RLS : SET LOCAL app.current_tenant = {} appliqué à la transaction courante", tenantId);
                 }

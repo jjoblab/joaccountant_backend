@@ -144,11 +144,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
-    use-root-path: true
   api-docs:
     path: /v3/api-docs
-  webjars:
-    prefix: /webjars
 
 app:
   jwt:

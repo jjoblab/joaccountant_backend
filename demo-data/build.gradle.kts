@@ -4,6 +4,7 @@
 // Endpoints publics GET /api/v1/demos/** (lecture seule, sans auth) pour prospection commerciale.
 dependencies {
     implementation(project(":core"))
+    implementation(project(":auth"))
     implementation(project(":company"))
     implementation(project(":chart-of-accounts"))
     implementation(project(":accounting-engine"))
@@ -21,8 +22,14 @@ dependencies {
     implementation(project(":expenses"))
     implementation(project(":reporting"))
     implementation(project(":audit-trail"))
-    implementation(project(":auth"))
     implementation(project(":document-numbering"))
+    // V9 (4-retail) — BankReconciliationService + CreateBankAccountRequest pour créer
+    // le compte bancaire Sogebank du retail démo (Boutik Lakay).
+    implementation(project(":bank-reconciliation"))
+    // V9 (5-zf) — FixedAssetsService + CreateAssetRequest + DepreciationMethod pour créer
+    // les immobilisations de Caribbean Textiles (bâtiment CODEVI, machines à coudre,
+    // véhicules, ordinateurs — usine textile zone franche).
+    implementation(project(":fixed-assets"))
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")

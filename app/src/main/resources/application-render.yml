@@ -100,12 +100,16 @@ logging:
     com.zaxxer.hikari: INFO
 
 # ─── JWT & Encryption ─────────────────────────────────────────────
-# Variables alignées avec render.yaml (JWT_SECRET, ENCRYPTION_KEY)
+# Variables alignées avec render.yaml (JWT_SECRET, ENCRYPTION_KEY, APP_MFA_ENCRYPTION_KEY)
 app:
   jwt:
     secret: ${JWT_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  # FIX v8.2 : MFA — MfaService.@PostConstruct validateEncryptionKey() fait fail-fast
+  # si APP_MFA_ENCRYPTION_KEY n'est pas positionnée en profil non-dev/test.
+  mfa:
+    encryption-key: ${APP_MFA_ENCRYPTION_KEY}
   # FIX v8.2 : storage root doit être writable par l'user non-root joaccountant
   # /app appartient à root → on utilise /tmp/uploads (créé par Dockerfile avec joaccountant ownership)
   storage:
