@@ -9,6 +9,7 @@ build/
 *.iml
 .vscode/
 .eclipse/
+.acside
 
 # OS
 .DS_Store

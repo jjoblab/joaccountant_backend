@@ -1,12 +1,11 @@
 # ============================================================
 # Dockerfile multi-stage pour JOAccountant Backend v8.2 — Render
 # ============================================================
-# Corrige l'erreur de build :
-#   "/libs.versions.toml": not found
-#
-# Cause : la ligne `COPY libs.versions.toml ./` cherchait le fichier à la
-# racine du repo, mais Gradle le place dans `gradle/libs.versions.toml`.
-# La ligne `COPY gradle/ ./gradle/` le copie déjà au bon endroit.
+# Corrections v8.2 (par rapport à la version précédente) :
+#   1. JVM : retiré `-XX:+UseStringDeduplication` (incompatible avec UseSerialGC)
+#   2. Ajouté docker-entrypoint.sh pour convertir DATABASE_URL (postgres://)
+#      vers JDBC URL (jdbc:postgresql://) avant de lancer Java
+#   3. JAVA_OPTS passé en ARG pour permettre override au build
 #
 # Java 17 (aligné sur build.gradle.kts : JavaVersion.VERSION_17)
 # Multi-stage : build JDK → runtime JRE (image finale ~300 MB)
@@ -26,8 +25,6 @@ COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN chmod +x gradlew
 
 # Copie des build.gradle.kts des subprojects (pour cache Gradle)
-# On les copie AVANT le source pour que le layer de résolution des
-# dépendances soit mis en cache tant que les build.gradle.kts ne changent pas.
 COPY core/build.gradle.kts ./core/build.gradle.kts
 COPY audit-trail/build.gradle.kts ./audit-trail/build.gradle.kts
 COPY auth/build.gradle.kts ./auth/build.gradle.kts
@@ -106,15 +103,21 @@ RUN mkdir -p /var/lib/joaccountant/storage /tmp/uploads && \
 WORKDIR /app
 COPY --from=build /workspace/app/build/libs/*.jar /app/app.jar
 
+# ─── Entry point : convertit DATABASE_URL (postgres://) → JDBC URL ───
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chown joaccountant:joaccountant /app/docker-entrypoint.sh
+
 USER joaccountant
 
-EXPOSE 8080
+EXPOSE 8080 10000
 
 # JVM args optimisés pour Render free tier (512 MB RAM)
-# -Xmx256m : heap max 256 MB ( laisse ~256 MB pour metaspace + threads + off-heap)
+# -Xmx256m : heap max 256 MB (laisse ~256 MB pour metaspace + threads + off-heap)
 # -XX:+UseSerialGC : GC single-thread plus économe mémoire que G1 (pertinent sur 1 vCPU)
 # -XX:TieredStopAtLevel=1 : C1 only — JIT plus rapide, moins de mémoire compilateur
-# -XX:+UseStringDeduplication : déduplique les String (économie ~10% heap sur workloads string-heavy)
-ENV JAVA_OPTS="-Xmx256m -Xms64m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:MaxDirectMemorySize=32m -XX:+UseSerialGC -XX:+UseStringDeduplication -XX:TieredStopAtLevel=1 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof -Dfile.encoding=UTF-8"
+# NOTE : -XX:+UseStringDeduplication retiré (incompatible avec SerialGC — warning au démarrage)
+ENV JAVA_OPTS="-Xmx256m -Xms64m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:MaxDirectMemorySize=32m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof -Dfile.encoding=UTF-8"
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+# L'entry point convertit DATABASE_URL puis exec java
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

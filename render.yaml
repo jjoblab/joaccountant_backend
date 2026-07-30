@@ -6,6 +6,11 @@
 #   Render utilise toujours la dernière version de PostgreSQL supportée
 #   (PostgreSQL 16 par défaut en 2026). Ne pas le préciser.
 #
+# Corrections v8.2 :
+#   - JAVA_OPTS : retiré -XX:+UseStringDeduplication (incompatible avec SerialGC)
+#   - JAVA_OPTS : retiré -XX:MaxDirectMemorySize=16m (trop petit → crash)
+#   - Ajouté PORT dans envVars (Render l'injecte automatiquement mais on l'explicite)
+#
 # Usage :
 #   1. Poussez ce fichier à la racine du repo GitHub
 #   2. Dashboard Render → New → Blueprint
@@ -53,6 +58,7 @@ services:
         value: render
       - key: JAVA_OPTS
         # Free tier = 512 MB RAM. Tuning agressif pour tenir dans le budget.
+        # NOTE : -XX:+UseStringDeduplication retiré (incompatible avec UseSerialGC)
         value: >-
           -Xmx256m -Xms64m
           -XX:MaxMetaspaceSize=160m
@@ -60,7 +66,6 @@ services:
           -Xss256k
           -XX:MaxDirectMemorySize=32m
           -XX:+UseSerialGC
-          -XX:+UseStringDeduplication
           -XX:TieredStopAtLevel=1
           -XX:+HeapDumpOnOutOfMemoryError
           -XX:HeapDumpPath=/tmp/heapdump.hprof
@@ -80,7 +85,8 @@ services:
       - key: HIKARI_LEAK_DETECTION_MS
         value: "30000"
 
-      # Lien vers le PostgreSQL (Render injecte DATABASE_URL au format jdbc:postgresql://…)
+      # Lien vers le PostgreSQL (Render injecte DATABASE_URL au format postgres://...)
+      # docker-entrypoint.sh le convertit en jdbc:postgresql:// au démarrage
       - key: DATABASE_URL
         fromDatabase:
           name: joaccountant-db

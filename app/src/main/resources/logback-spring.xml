@@ -2,11 +2,14 @@
 <!--
   logback-spring.xml — Configuration de logging (audit v4.7 §9.3 Finding #3).
 
-  Deux profils :
+  Trois profils :
     - dev (défaut) : pattern lisible humain avec MDC (correlationId/userId/companyId) + couleurs console.
+    - render        : idem que dev — pattern console lisible (Render capture stdout).
+                      AJOUT v8.2 : corrige "No appenders present in context [default]" qui survenait
+                      car SPRING_PROFILES_ACTIVE=render ne matchait aucun profil logback.
     - prod          : JSON structuré via LogstashEncoder pour ingestion ELK/Loki/Datadog/Splunk.
 
-  Le pattern en dev utilise :
+  Le pattern en dev/render utilise :
     - cid  = correlationId (généré par TenantContextFilter ou passé via X-Correlation-Id header)
     - uid  = userId (set par TenantContext après auth)
     - tid  = companyId (tenant id — renommé depuis 'cid' pour éviter collision, audit v4.7 §9)
@@ -21,9 +24,9 @@
 <configuration>
 
     <!-- ─────────────────────────────────────────────────────────────────────── -->
-    <!-- Profil DEV (par défaut) — pattern console lisible avec MDC + couleurs.    -->
+    <!-- Profil DEV / TEST / DEFAULT / RENDER — pattern console lisible + MDC + couleurs. -->
     <!-- ─────────────────────────────────────────────────────────────────────── -->
-    <springProfile name="dev | test | default">
+    <springProfile name="dev | test | default | render">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%5p) [%thread] %cyan(%-40.40logger{39}) [%X{correlationId:-}] [%X{userId:-}] [%X{companyId:-}] %msg%n%rEx{full,sun.reflect.,java.lang.reflect.,org.springframework.,org.hibernate.}</pattern>

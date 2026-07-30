@@ -3,25 +3,57 @@
 # ============================================================
 # Activé via SPRING_PROFILES_ACTIVE=render
 #
-# Différences vs application-prod.yml :
-#   - HikariCP pool réduit (10 connexions au lieu de 50) → adapté à 512 MB RAM
-#   - Hibernate DDL auto désactivé (Flyway gère le schéma)
-#   - Logs plus verbeux pour debug initial (INFO au lieu de WARN)
-#   - Swagger UI activé en render (utile pour valider l'API déployée)
-#   - Health endpoint avec détails (Render health check a besoin de /actuator/health)
+# Corrections v8.2 (par rapport à la version précédente) :
+#   1. server.port → ${PORT:8080} pour écouter sur le port injecté par Render
+#      (Render attend que l'app écoute sur $PORT — défaut 10000 — pas 8080)
+#   2. management.server.port → désactivé (utilise le port principal)
+#      Render ne forward qu'un seul port vers l'extérieur ; un port management
+#      séparé (8081) serait inaccessible depuis le load balancer Render.
+#   3. spring.datasource.url → ${SPRING_DATASOURCE_URL} (renseigné par docker-entrypoint.sh
+#      qui convertit DATABASE_URL de Render en format JDBC)
+#   4. app.jwt.secret → ${JWT_SECRET} (au lieu de ${APP_JWT_SECRET}) pour matcher
+#      le nom de variable défini dans render.yaml
 #
 # Variables d'environnement OBLIGATOIRES :
-#   - DATABASE_URL (injecté par Render depuis le PostgreSQL lié)
+#   - DATABASE_URL (injecté par Render depuis le PostgreSQL lié — format postgres://)
 #   - JWT_SECRET (≥ 32 caractères aléatoires — à saisir dans le dashboard Render)
 #   - ENCRYPTION_KEY (32 caractères — à saisir dans le dashboard Render)
+#   - PORT (injecté automatiquement par Render — défaut 10000)
 #   - CORS_ALLOWED_ORIGINS (défaut * accepté en render, à restreindre en prod)
 # ============================================================
 
+# ─── Port & serveur ───────────────────────────────────────────────
+# Render injecte PORT (défaut 10000) — l'app DOIT écouter dessus.
+# Sans cela, Render affiche "No open ports detected" et restart en boucle.
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: NATIVE  # Render est derrière un reverse proxy HTTPS
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+
+# ─── Management sur le MÊME port que l'app ───────────────────────
+# En render, on désactive le port management séparé (Render ne forward qu'un port).
+# Les endpoints /actuator/* restent accessibles sur le port principal.
+management:
+  server:
+    port:  # vide = même port que server.port (désactive le port management séparé)
+  endpoint:
+    health:
+      show-details: always  # Render health check a besoin de détails pour diagnostiquer
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
 spring:
+  # ─── Datasource (URL fournie par docker-entrypoint.sh qui convertit DATABASE_URL) ───
   datasource:
-    # Render fournit DATABASE_URL au format postgres://user:pass@host:port/db
-    # Spring Boot le comprend directement via spring.datasource.url en override.
-    url: ${DATABASE_URL}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:}}
     hikari:
       # Free tier = 512 MB RAM. Pool réduit pour éviter OOM.
       maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
@@ -48,16 +80,6 @@ spring:
     baseline-version: 0
     clean-disabled: false   # Permet de reset en dev (jamais en prod réel)
 
-management:
-  endpoint:
-    health:
-      # Render health check a besoin de détails pour diagnostiquer les échecs
-      show-details: when-authorized
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-
 springdoc:
   swagger-ui:
     enabled: true    # Activé en render pour valider l'API déployée
@@ -69,10 +91,14 @@ logging:
     jo.accountant: INFO
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
-    org.springframework: WARN
-    com.zaxxer.hikari: WARN
+    org.springframework: INFO
     org.flywaydb: INFO
+    com.zaxxer.hikari: INFO
 
+# ─── JWT & Encryption ─────────────────────────────────────────────
+# Variables alignées avec render.yaml (JWT_SECRET, ENCRYPTION_KEY)
 app:
+  jwt:
+    secret: ${JWT_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
