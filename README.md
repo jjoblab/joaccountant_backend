@@ -718,21 +718,3 @@ README module ; récapitulatif :
   mise en production sur entreprise avec plusieurs exercices d'historique.
 - **i18n des messages d'erreur** — les messages `ProblemDetail.detail` sont en français
   hardcoded. À templater si une locale autre que fr est supportée.
-# jocountant_backend
-
-
-
-# 1. Stage the file (now that ownership is fixed)
-git add README.md
-
-# 2. Create the first commit – this will also create the default branch 'master'
-git commit -m "first commit"
-
-# 3. Rename the branch to 'main' (now that it exists)
-git branch -M main
-
-# 4. Make sure the remote 'origin' is set (re‑run it if it didn’t stick earlier)
-git remote add origin https://github.com/jjoblab/jocountant_backend.git
-
-# 5. Push the 'main' branch and set upstream
-git push -u origin main

@@ -48,7 +48,7 @@ public class ProfessionalServicesSeeder extends AbstractCompanySeeder {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProfessionalServicesSeeder.class);
     private static final UUID PCN_HAITI_FRAMEWORK_ID =
-        UUID.fromString("00000000-0000-0000-0000-000000000004");
+        UUID.fromString("00000000-0000-0000-0000-000000000005");
 
     private final CompanyRepository companyRepository;
     private final ThirdPartyRepository thirdPartyRepository;

@@ -5,6 +5,7 @@ import jo.accountant.company.entity.Company;
 import jo.accountant.company.repository.CompanyRepository;
 import jo.accountant.demo.seeders.CompanySeeder;
 import jo.accountant.demo.seeders.DemoUserSeeder;
+import jo.accountant.demo.seeders.DemoInfrastructureSeeder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -30,13 +31,16 @@ public class DemoDataSeeder {
     private final List<CompanySeeder> seeders;
     private final CompanyRepository companyRepository;
     private final DemoUserSeeder demoUserSeeder;
+    private final DemoInfrastructureSeeder infrastructureSeeder;
 
     public DemoDataSeeder(List<CompanySeeder> seeders,
                            CompanyRepository companyRepository,
-                           DemoUserSeeder demoUserSeeder) {
+                           DemoUserSeeder demoUserSeeder,
+                           DemoInfrastructureSeeder infrastructureSeeder) {
         this.seeders = seeders;
         this.companyRepository = companyRepository;
         this.demoUserSeeder = demoUserSeeder;
+        this.infrastructureSeeder = infrastructureSeeder;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -78,6 +82,13 @@ public class DemoDataSeeder {
 
         LOG.info("═══════════════════════════════════════════════════════════");
         LOG.info("  V8.1 Module Démos — Seed terminé ({} enregistrements au total)", totalRecords);
+        // V8.2 — Créer l'infrastructure comptable (plan comptable, journaux, exercice fiscal)
+        try {
+            infrastructureSeeder.seedInfrastructureForAllDemoCompanies();
+        } catch (Exception e) {
+            LOG.error("V8.2 — Infrastructure seed échoué : {}", e.getMessage(), e);
+        }
+
         LOG.info("  Endpoints publics : /api/v1/demos/**");
         LOG.info("═══════════════════════════════════════════════════════════");
     }

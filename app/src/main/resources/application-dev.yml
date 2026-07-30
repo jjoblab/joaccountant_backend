@@ -20,6 +20,9 @@ spring:
       initialize-schema: never
     job:
       enabled: false
+  web:
+    resources:
+      static-locations: classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/
 
 server:
   port: 8080
@@ -38,3 +41,17 @@ logging:
   level:
     jo.accountant: DEBUG
     org.springframework.security: INFO
+
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  webjars:
+    prefix: /webjars
+
+# Merge into the spring: block above — these are spring.web.resources
+# (moved here to avoid duplicate spring: key)

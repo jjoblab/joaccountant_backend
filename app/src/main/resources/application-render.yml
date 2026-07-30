@@ -1,0 +1,36 @@
+# Render profile — uses external PostgreSQL from Render
+spring:
+  profiles:
+    include: prod
+  datasource:
+    # Render provides DATABASE_URL in format: postgres://user:pass@host:port/dbname
+    # We need to convert it to JDBC format
+    url: jdbc:postgresql://${DATABASE_URL:localhost:5432/joaccountant}
+    username: ${DB_USERNAME:joaccountant}
+    password: ${DB_PASSWORD:joaccountant}
+    hikari:
+      maximum-pool-size: 5  # Free tier limit
+      minimum-idle: 1
+      connection-timeout: 30000
+
+server:
+  port: ${PORT:8080}  # Render provides PORT env var
+
+management:
+  server:
+    port: ${PORT:8080}  # Same port for Render (no separate management port)
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+  file-storage:
+    root: /tmp/joaccountant-storage  # Render free tier has ephemeral disk
+  rate-limit:
+    enabled: true
+    redis:
+      enabled: false  # No Redis on free tier
+
+logging:
+  level:
+    root: INFO
+    jo.accountant: INFO

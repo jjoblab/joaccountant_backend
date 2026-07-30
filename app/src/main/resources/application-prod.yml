@@ -1,149 +1,63 @@
-# Profil production — Audit v4.7 §9.2
-#
-# Ce fichier est activé via SPRING_PROFILES_ACTIVE=prod. Il durcit la configuration pour
-# un déploiement multi-tenant SaaS :
-#   - Secrets obligatoires (pas de défaut faible)
-#   - Swagger UI désactivé
-#   - Health endpoints moins verbeux
-#   - Pool Hikari dimensionné pour production
-#   - Logs plus concis
-#
-# Variables d'environnement OBLIGATOIRES en production :
-#   - APP_JWT_SECRET (≥ 32 caractères aléatoires)
-#   - DB_PASSWORD
-#   - DB_URL
-#   - DB_USERNAME
-#   - CORS_ALLOWED_ORIGINS (liste explicite, jamais * en prod)
-#   - APP_STORAGE_ROOT (chemin volume persistent, OU configurer S3)
-#
-# Variables d'environnement RECOMMANDÉES (observabilité — Finding #5 audit batch B) :
-#   - OTEL_EXPORTER_OTLP_ENDPOINT (ex: http://otel-collector:4317 — gRPC, ou
-#     http://otel-collector:4318 — HTTP/protobuf). Sans cette variable, les traces
-#     sont dropped (pas d'erreur mais aucune visibilité).
-#   - OTEL_TRACES_SAMPLER_ARG (défaut 0.1 = 10% des traces envoyées. Pour 100% en
-#     staging : 1.0. Pour la prod avec fort trafic : 0.05 ou moins — sinon ingestion
-#     coûteuse côté Tempo/Jaeger/Datadog).
-#   - OTEL_SERVICE_NAME (défaut "joaccountant" — ne pas changer sauf si plusieurs
-#     services tournent dans le même cluster).
-#   - OTEL_EXPORTER_OTLP_PROTOCOL (grpc | http/protobuf). gRPC par défaut (plus
-#     performant, moins de overhead HTTP). HTTP/protobuf utile si le collector est
-#     derrière un LB qui ne supporte pas gRPC.
-#
-# === Configuration de l'OpenTelemetry Collector (Finding #5 — audit batch B) =====
-#
-# En production, l'app envoie ses traces à un **collector OTLP** (sidecar K8s ou
-# daemon centralisé), qui les préprocesse (batching, attributs, sampling tail-based)
-# puis les exporte vers un backend (Tempo, Jaeger, Zipkin, Datadog, Honeycomb, …).
-#
-# Schéma de déploiement recommandé (Agent → Gateway → Backend) :
-#
-#     ┌─────────────┐   OTLP/gRPC    ┌──────────────────┐   OTLP/HTTP   ┌──────────┐
-#     │ joaccountant├───────────────►│ otel-collector   ├──────────────►│  Tempo   │
-#     │   (pod app) │   :4317        │ (sidecar/agent)  │   :4318       │  Jaeger  │
-#     └─────────────┘                └────────┬─────────┘               └──────────┘
-#                                            │
-#                                            │ OTLP/HTTP
-#                                            ▼
-#                                     ┌──────────────────┐
-#                                     │ otel-collector   │
-#                                     │  (gateway)       │
-#                                     └──────────────────┘
-#
-# Étapes :
-#   1. Déployer un collector OTLP. Un example de config "test local" (OTLP receiver +
-#      logging exporter) est fourni dans `deploy/otel-collector-config.yaml`. Pour la
-#      prod, remplacer l'exporter `logging` par `otlp` (Tempo) ou `jaeger` ou
-#      `datadog` selon le backend choisi.
-#   2. Positionner OTEL_EXPORTER_OTLP_ENDPOINT vers l'URL du collector (4317 pour
-#      gRPC, 4318 pour HTTP/protobuf). Dans K8s, le sidecar est sur localhost:4317.
-#   3. Le collector batche, enrichit (resource attributes), et forward au backend.
-#   4. Vérifier que les traces arrivent en requêtant une endpoint et en regardant
-#      le span dans Tempo/Jaeger. Si rien n'arrive :
-#        - Vérifier les logs du collector (niveau DEBUG).
-#        - Vérifier que l'endpoint est joignable (curl/telnet sur 4317).
-#        - Vérifier que OTEL_EXPORTER_OTLP_ENDPOINT est bien défini (sinon les traces
-#          sont dropped silencieusement — pas d'erreur).
-#
-# Config de référence (à mettre dans ConfigMap K8s ou docker-compose) :
-#   OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-#   OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-#   OTEL_TRACES_SAMPLER_ARG=0.1
-#   OTEL_SERVICE_NAME=joaccountant
-# ===============================================================================
-
+# Production profile — external PostgreSQL (Render, Heroku, etc.)
 spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
+    hibernate:
+      ddl-auto: none
     properties:
       hibernate:
-        format_sql: false
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
   flyway:
-    # En prod, ne jamais baseline-on-migrate (sécurité : échoue si la DB a un schéma non Flyway)
-    baseline-on-migrate: false
-  # R-19 (lot-C-perf-devops) — Sizing HikariCP pour 1000+ users.
-  # Le défaut (application.yml) = maximum-pool-size=30, sizing 50 users.
-  # Pour 1000+ users : 30 connexions × 10 replicas = 300 connexions simultanées vers
-  # PostgreSQL > max_connections=100 (défaut PG). On monte le pool à 50 (au lieu de 30) :
-  # 50 × 6 replicas = 300 connexions. Pour rester sous max_connections=100 de PostgreSQL,
-  # il FAUT soit (a) limiter à 2 replicas (100/50=2), soit (b) activer PgBouncer en mode
-  # transaction pooling (1 connexion PG = N connexions app, ratio 1:20 typique), soit
-  # (c) augmenter max_connections PG à 300+ (paramètre postgresql.conf).
-  #
-  # Recommandation prod 1000+ users :
-  #   - maximum-pool-size = 50 (par replica)
-  #   - replicas = 6 max (50 × 6 = 300 connexions)
-  #   - max_connections PostgreSQL >= 350 (marge 50 pour connexions admin/migration)
-  #   - OU PgBouncer transaction pooling : pool_app=50 × 6 replicas = 300 connexions app
-  #     → 15 connexions PG réelles (ratio 20:1) → max_connections PG = 50 suffit largement
-  #
-  # Sizing theory (HikariCP wiki) :
-  #   pool_size = (peak_qps × avg_query_time_ms) / 1000 × safety_factor
-  #   Pour 1000 users × 2 qps/user × 10ms/query = 20000 qps × 10ms = 200 conn/sec/thread
-  #   Avec 4 vCPU : 4 threads parallèles → 50 conn/thread suffisent.
-  #
-  # L'over-provisioning (pool=200) est contre-productif : compétition sur le LOCK_MUTEX
-  # PostgreSQL, cache buffer churn, context-switching. Mieux vaut un pool petit + queue.
-  datasource:
-    hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:50}
-      # Minimum idle connections : garder 10 connexions chaudes pour éviter le coût de
-      # connexion à froid sur un burst de trafic.
-      minimum-idle: ${HIKARI_MIN_IDLE:10}
-      leak-detection-threshold: ${HIKARI_LEAK_DETECTION_MS:60000}
-      max-lifetime: 1800000   # 30 min — inférieur au wait_timeout PG (8h par défaut)
-      idle-timeout: 600000    # 10 min
-      connection-timeout: 30000  # 30 s — timeout de demande de connexion du pool
-      # Validation de la connexion au moment du checkout (cheap SELECT 1).
-      # Évite de servir une connexion stale tombée entre-temps (ex: kill du backend PG).
-      connection-test-query: "SELECT 1"
-      validation-timeout: 5000  # 5 s
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${PORT:8080}
 
 management:
-  endpoint:
-    health:
-      show-details: never  # En prod, ne pas exposer les détails de santé (info sensible)
+  server:
+    port: ${SERVER_PORT:8080}
   endpoints:
     web:
       exposure:
-        # Audit v4.7 §9.3 Finding #3 — prometheus maintenant exposé en prod.
-        # Le endpoint /actuator/prometheus est scrapé par Prometheus/Grafana pour les métriques
-        # JVM, HikariCP, HTTP server. Configurer le scrape interval à 15-30s dans Prometheus.
-        include: health,info,metrics,prometheus
+        include: health,info,metrics
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    access-token-ttl-seconds: 900
+    refresh-token-ttl-seconds: 2592000
+  rate-limit:
+    enabled: true
+    redis:
+      enabled: false
+  file-storage:
+    root: ${APP_FILE_STORAGE_ROOT:/tmp/joaccountant-storage}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
 springdoc:
   swagger-ui:
-    enabled: false  # Désactiver Swagger UI en production
+    path: /swagger-ui.html
+    enabled: true
   api-docs:
-    enabled: false
+    path: /v3/api-docs
 
 logging:
   level:
+    root: INFO
     jo.accountant: INFO
     org.hibernate.SQL: WARN
-    org.hibernate.orm.jdbc.bind: WARN
-    org.springframework: WARN
-    com.zaxxer.hikari: WARN
-
-# Audit v4.7 §6.3 — En prod, CORS doit être explicite. Refus de démarrer si * est utilisé.
-app:
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
