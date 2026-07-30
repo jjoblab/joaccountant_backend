@@ -56,7 +56,14 @@ if [ -z "$ENCRYPTION_KEY" ]; then
   exit 1
 fi
 
-echo "🔧 [entrypoint] JWT_SECRET et ENCRYPTION_KEY présents ✅"
+# FIX v8.2 : APP_MFA_ENCRYPTION_KEY — MfaService fait fail-fast si absent en profil non-dev/test
+if [ -z "$APP_MFA_ENCRYPTION_KEY" ]; then
+  echo "❌ [entrypoint] APP_MFA_ENCRYPTION_KEY non défini — définissez-le dans le dashboard Render (onglet Environment)"
+  echo "    Générer avec : openssl rand -base64 48"
+  exit 1
+fi
+
+echo "🔧 [entrypoint] JWT_SECRET, ENCRYPTION_KEY et APP_MFA_ENCRYPTION_KEY présents ✅"
 echo "🔧 [entrypoint] SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-non défini}"
 echo "🔧 [entrypoint] PORT=${PORT:-non défini (Render doit l'injecter)}"
 echo "🔧 [entrypoint] Démarrage de l'application Java..."
