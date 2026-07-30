@@ -52,7 +52,7 @@ awssdk = "2.27.21"
 caffeine = "3.1.8"
 
 # ----- Observability -----
-logstashLogbackEncoder = "7.4"
+logstashLogbackEncoder = "9.0"
 
 # ----- Distributed scheduling (ShedLock) -----
 shedlock = "5.10.0"
