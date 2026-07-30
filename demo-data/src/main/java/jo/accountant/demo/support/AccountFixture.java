@@ -149,7 +149,7 @@ public record AccountFixture(
           "Personnel - rémunérations dues",
           ReportingClass.PASSIF,
           NormalBalance.CREDIT,
-          false);
+          true);  // V8.3 — collective=true car utilisé comme collectiveAccountId pour les employés
 
   public static final AccountFixture PRETS_CREANCES_PERSONNEL =
       new AccountFixture(

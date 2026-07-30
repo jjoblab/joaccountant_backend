@@ -52,9 +52,12 @@ public class DevLauncher {
         System.setProperty("spring.datasource.password", "postgres");
         System.setProperty("spring.main.allow-bean-definition-overriding", "true");
 
-        // 3. Démarre Spring Boot avec le profil dev
+        // 3. Démarre Spring Boot avec les profils dev + demo
+        // V8.3 — le profil "demo" active DemoDataSeeder qui charge 4 entreprises fictives
+        // haïtiennes au démarrage. Cela permet de tester l'app mobile immédiatement sans
+        // avoir à créer manuellement une entreprise. Les démos sont idempotentes (is_demo=true).
         SpringApplication app = new SpringApplication(JoAccountantDevApp.class);
-        app.setAdditionalProfiles("dev");
+        app.setAdditionalProfiles("dev", "demo");
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[DevLauncher] Shutting down embedded PostgreSQL...");

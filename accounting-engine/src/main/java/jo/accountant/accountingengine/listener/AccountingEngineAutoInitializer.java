@@ -109,7 +109,10 @@ public class AccountingEngineAutoInitializer {
             CreateFiscalYearRequest req = new CreateFiscalYearRequest(startDate, endDate, label);
             FiscalYear fy = accountingEngineService.createFiscalYear(company.getId(), req);
             LOG.info("Auto-init exercice fiscal : id={} pour company {}", fy.getId(), company.getId());
-        } catch (ConflictException ex) {
+        } catch (ConflictException | org.springframework.dao.DataIntegrityViolationException ex) {
+            // V8.3 — l'exercice fiscal a déjà été créé par l'activation atomique dans completeWizard.
+            // Le listener @TransactionalEventListener(AFTER_COMMIT) se déclenche APRÈS la transaction
+            // qui a déjà tout créé. C'est idempotent — on catch silencieusement.
             LOG.debug("Auto-init exercice fiscal : déjà existant pour company {} (idempotent)",
                 company.getId());
         }
