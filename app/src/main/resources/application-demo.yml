@@ -1,0 +1,27 @@
+# V8.1 — Profil démo pour le module Démos.
+# Active le seed automatique des 4 entreprises fictives au démarrage.
+# Usage : ./gradlew :app:devRun --args='--spring.profiles.active=demo'
+
+app:
+  demo:
+    enabled: true
+    fiscal-years:
+      - start: 2024-10-01
+        end: 2025-09-30
+        label: "FY2024-2025"
+      - start: 2025-10-01
+        end: 2026-09-30
+        label: "FY2025-2026"
+    companies:
+      - code: BOUTIK_LAKAY
+        enabled: true
+      - code: MOISE_ASSOCIES
+        enabled: true
+      - code: ESPWA_POU_AYITI
+        enabled: true
+      - code: CARIBBEAN_TEXTILES
+        enabled: true
+
+logging:
+  level:
+    jo.accountant.demo: INFO

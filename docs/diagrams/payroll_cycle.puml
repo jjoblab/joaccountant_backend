@@ -1,0 +1,57 @@
+@startuml payroll_cycle
+!theme plain
+title Cycle de paie mensuel (PayrollRun via Spring Batch)
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #F5F2EC
+  BorderColor #0F2A4D
+  FontColor #1A1A1A
+}
+
+start
+
+:HR/Compta déclenche\nPayrollRun (mois M);
+
+:BatchController.start\n/payroll-runs/{id}/start;
+
+:Spring Batch payrollJob\n(chunk size = 50);
+
+partition :JpaPagingItemReader<Employee>\n(companyId, active=true);
+fork
+  :Pour chaque chunk de 50 employés;
+  :PayrollCalculator.calculate();
+  note right
+    R-20 (lot-B) :
+    - monthlyLegalHours configurable
+      (208h HT, 173.33h FR)
+    - overtimeHours25/50/100
+    - ContributionRule HT_GENERAL
+      (CNSS 6%, OFATMA, AST progressif)
+  end note
+  
+  :Générer Payslip;
+  :Écriture comptable\n(63xx Charges personnel\n421 Personnel-rémunérations dues\n431 CNSS\n432 OFATMA\n442 État-RS);
+  
+  :DocumentGenerationService\n.generatePayslipPdf();
+fork again
+  :Listener PayrollRunTotalsListener\n(recalcule totaux fin de step);
+end fork
+
+:Marquer PayrollRun\nCOMPLETED;
+
+:Event PayrollRunCompletedEvent\npublié (async @Async);
+
+:Notification aux employés\n(payslip disponible);
+
+stop
+
+note right
+  R-29 (lot-C) :
+  @Async utilise
+  ThreadPoolTaskExecutor
+  "audit-async-executor"
+  (core=10, max=50, queue=100)
+end note
+
+@enduml

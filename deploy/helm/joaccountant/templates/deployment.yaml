@@ -1,0 +1,149 @@
+{{/*
+=====================================================================
+JOAccountant Backend — Deployment
+Finding #22 (Helm chart)
+=====================================================================
+Stateless Spring Boot app sur port 8080 (API) + 8081 (actuator).
+Secrets DB_PASSWORD + APP_JWT_SECRET injectés via Secret dédié
+(chart-managed ou existingSecret externe).
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "joaccountant.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "joaccountant.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "joaccountant.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Force rolling restart when the ConfigMap changes (rollout-on-config-change).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "joaccountant.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (include "joaccountant.fullname" .) }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: joaccountant
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http-api
+              containerPort: 8080
+              protocol: TCP
+            - name: http-mgmt
+              containerPort: 8081
+              protocol: TCP
+          env:
+            # ─── ConfigMap (vars non-sensibles) ──────────────────────
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "joaccountant.fullname" $ }}-config
+                  key: {{ $k }}
+            {{- end }}
+            # ─── Secrets (DB_PASSWORD + APP_JWT_SECRET) ───────────────
+            - name: DB_PASSWORD
+              {{- if .Values.secrets.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.keys.dbPassword }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "joaccountant.fullname" . }}-secret
+                  key: DB_PASSWORD
+              {{- end }}
+            - name: APP_JWT_SECRET
+              {{- if .Values.secrets.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.keys.jwtSecret }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "joaccountant.fullname" . }}-secret
+                  key: APP_JWT_SECRET
+              {{- end }}
+          # JAVA_OPTS doit être résolu à l'exec (le ENTRYPOINT Dockerfile fait `java $JAVA_OPTS`).
+          # On surcharge via la ConfigMap — donc rien à ajouter ici.
+          startupProbe:
+            {{- if .Values.probes.startup.enabled }}
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: {{ .Values.probes.startup.port | default 8081 }}
+            initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            {{- end }}
+          livenessProbe:
+            {{- if .Values.probes.liveness.enabled }}
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: {{ .Values.probes.liveness.port | default 8081 }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.probes.readiness.enabled }}
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: {{ .Values.probes.readiness.port | default 8081 }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: storage
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ include "joaccountant.fullname" . }}-storage
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

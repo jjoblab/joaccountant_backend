@@ -1,0 +1,39 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "joaccountant"
+
+include(":core")
+include(":audit-trail")
+include(":auth")
+include(":company")
+include(":document-numbering")
+include(":chart-of-accounts")
+include(":approval-workflow")
+include(":analytics")
+include(":accounting-engine")
+include(":financial-statements")
+include(":third-parties")
+include(":fixed-assets")
+include(":inventory")
+include(":time-billing")
+include(":document-generation")
+include(":invoicing")
+include(":bank-reconciliation")
+include(":funds-grants")
+include(":notifications")
+include(":tax")
+include(":reporting")
+include(":purchasing")
+include(":purchase-orders")
+include(":expenses")
+include(":employees")
+include(":payroll")
+include(":fx-operations")
+include(":test-support")
+include(":demo-data")  // V8.1 — Module Démos (4 entreprises fictives haïtiennes, 2 exercices fiscaux)
+include(":app")

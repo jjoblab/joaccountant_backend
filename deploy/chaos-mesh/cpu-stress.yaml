@@ -1,0 +1,26 @@
+---
+# R-38 (lot-F-ops-docs) — StressChaos : CPU burn sur 1 pod
+# Valide que le HPA scale-up déclenche (CPU > 70% pendant > 60s)
+# et que les autres pods absorbent la charge.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress
+  namespace: joaccountant
+  labels:
+    app.kubernetes.io/name: joaccountant
+    chaos-mesh.org/experiment: cpu-stress
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - joaccountant
+    labelSelectors:
+      app.kubernetes.io/name: joaccountant
+  stressors:
+    cpu:
+      workers: 2
+      load: 90
+  duration: "60s"
+  scheduler:
+    cron: "@once"

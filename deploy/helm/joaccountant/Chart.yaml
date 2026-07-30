@@ -1,0 +1,36 @@
+apiVersion: v2
+name: joaccountant
+description: |
+  Helm chart for JOAccountant Backend — Spring Boot multi-tenant accounting SaaS
+  (Phase v4.8). Cœur comptable (moteur comptable, écritures, balance, grand livre),
+  facturation, rapprochement bancaire, immobilisations, paie, conformité fiscale.
+
+  Ce chart déploie :
+    - 1 Deployment (Stateless app, replicas pilotés par HPA)
+    - 1 Service (ClusterIP, port 8080 — API + Swagger UI)
+    - 1 HPA (autoscaling CPU 70%, 2→10 replicas)
+    - 1 Secret (DB_PASSWORD + APP_JWT_SECRET, fournis au déploiement)
+    - 1 ConfigMap (DB_URL, DB_USERNAME, configuration non-sensible)
+
+  Dépendances externes (non incluses dans ce chart) :
+    - PostgreSQL 14+ (chart Bitnami recommandé : bitnami/postgresql)
+    - Optionnel : S3/MinIO pour le storage backend
+    - Optionnel : OTLP collector (Tempo/Jaeger) pour tracing distribué
+
+type: application
+version: 1.0.0
+appVersion: "4.8.0"
+
+keywords:
+  - accounting
+  - syscohada
+  - ifrs
+  - spring-boot
+  - multi-tenant
+  - saas
+
+maintainers:
+  - name: JOAccountant Team
+    email: dev@joaccountant.com
+
+icon: https://raw.githubusercontent.com/spring-projects/spring-boot/main/spring-boot-project/src/main/resources/logo.png

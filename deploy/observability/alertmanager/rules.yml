@@ -1,0 +1,98 @@
+# ===================================================================
+# Alertmanager rules — JOAccountant Backend
+# Audit §9.4 (Lot E — observabilité)
+# ===================================================================
+# À charger dans Alertmanager via `alertmanager.rules` ou ConfigMap.
+
+groups:
+  - name: joaccountant.rules
+    interval: 30s
+    rules:
+      # ─── Disponibilité ─────────────────────────────────────────
+      - alert: JoAccountantPodsDown
+        expr: up{job="joaccountant"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: joaccountant
+        annotations:
+          summary: "JOAccountant pod down"
+          description: "Pod {{ $labels.instance }} est DOWN depuis plus de 2 minutes."
+
+      # ─── Latence ───────────────────────────────────────────────
+      - alert: JoAccountantHighLatencyP99
+        expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job="joaccountant"}[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: joaccountant
+        annotations:
+          summary: "Latence P99 > 2s"
+          description: "La latence P99 est supérieure à 2s depuis 5 minutes. SLO P99 < 1s non respecté."
+
+      # ─── Taux d'erreur 5xx ─────────────────────────────────────
+      - alert: JoAccountantHighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="joaccountant", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="joaccountant"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: joaccountant
+        annotations:
+          summary: "Taux d'erreur 5xx > 1%"
+          description: "Le taux d'erreurs 5xx dépasse 1% depuis 5 minutes. SLO < 0.1% non respecté."
+
+      # ─── Pool HikariCP ─────────────────────────────────────────
+      - alert: JoAccountantHikariPoolSaturated
+        expr: hikaricp_connections_pending{job="joaccountant"} > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: joaccountant
+        annotations:
+          summary: "HikariCP pool saturé"
+          description: "Des connexions sont en attente (pending > 0) depuis 2 minutes. Considérer augmenter maximum-pool-size ou ajouter PgBouncer."
+
+      - alert: JoAccountantHikariLeak
+        expr: hikaricp_connections_leak{job="joaccountant"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: joaccountant
+        annotations:
+          summary: "Fuite de connexion HikariCP détectée"
+          description: "{{ $value }} connexion(s) fuitées. Leak detection threshold (60s) dépassé."
+
+      # ─── Audit trail ───────────────────────────────────────────
+      - alert: JoAccountantAuditPersistenceFailed
+        expr: increase(audit_persistence_failed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: joaccountant
+        annotations:
+          summary: "Échec de persistance d'audit"
+          description: "{{ $value }} événement(s) d'audit n'ont pas pu être persistés dans les 5 dernières minutes. Risque forensique."
+
+      # ─── JVM ───────────────────────────────────────────────────
+      - alert: JoAccountantJvmHeapHigh
+        expr: jvm_memory_used_bytes{job="joaccountant", area="heap"} / jvm_memory_max_bytes{job="joaccountant", area="heap"} > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: joaccountant
+        annotations:
+          summary: "JVM Heap > 85%"
+          description: "Utilisation heap > 85% depuis 10 minutes. Risque d'OOM."
+
+      # ─── DB ────────────────────────────────────────────────────
+      - alert: JoAccountantDbConnectionsHigh
+        expr: hikaricp_connections_active{job="joaccountant"} / hikaricp_connections_max{job="joaccountant"} > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: joaccountant
+        annotations:
+          summary: "Connexions DB > 80% du pool"
+          description: "Le pool HikariCP est utilisé à > 80% depuis 5 minutes."

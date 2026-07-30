@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  logback-spring.xml — Configuration de logging (audit v4.7 §9.3 Finding #3).
+
+  Deux profils :
+    - dev (défaut) : pattern lisible humain avec MDC (correlationId/userId/companyId) + couleurs console.
+    - prod          : JSON structuré via LogstashEncoder pour ingestion ELK/Loki/Datadog/Splunk.
+
+  Le pattern en dev utilise :
+    - cid  = correlationId (généré par TenantContextFilter ou passé via X-Correlation-Id header)
+    - uid  = userId (set par TenantContext après auth)
+    - tid  = companyId (tenant id — renommé depuis 'cid' pour éviter collision, audit v4.7 §9)
+
+  En prod, le JSON contient tous les champs MDC + level, logger, thread, timestamp ISO-8601,
+  stack_trace (en cas d'erreur). Compatible avec les pipelines standards de logging.
+
+  Fichiers de log : NON configurés ici — en conteneur, on log sur stdout uniquement (le runtime
+  K8s/Docker capture stdout et l'envoie au système de logging centralisé). Pour un déploiement
+  bare-metal, ajouter un <appender name="FILE"> RollingFileAppender.
+-->
+<configuration>
+
+    <!-- ─────────────────────────────────────────────────────────────────────── -->
+    <!-- Profil DEV (par défaut) — pattern console lisible avec MDC + couleurs.    -->
+    <!-- ─────────────────────────────────────────────────────────────────────── -->
+    <springProfile name="dev | test | default">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%5p) [%thread] %cyan(%-40.40logger{39}) [%X{correlationId:-}] [%X{userId:-}] [%X{companyId:-}] %msg%n%rEx{full,sun.reflect.,java.lang.reflect.,org.springframework.,org.hibernate.}</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <!-- Audit v4.7 §9.3 — réduire le bruit des libs en dev -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+        <logger name="org.springframework" level="INFO"/>
+        <logger name="com.zaxxer.hikari" level="INFO"/>
+        <logger name="jo.accountant" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ─────────────────────────────────────────────────────────────────────── -->
+    <!-- Profil PROD — JSON structuré via LogstashEncoder pour ingestion ELK/Loki. -->
+    <!-- ─────────────────────────────────────────────────────────────────────── -->
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Champs standards : @timestamp, @version, message, logger_name, thread_name,
+                     level, level_value, stack_trace (si exception) -->
+                <!-- Inclure les champs MDC (correlationId, userId, companyId) -->
+                <includeMdcKeyName>correlationId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>companyId</includeMdcKeyName>
+                <!-- Nom de l'application — permet de filtrer dans ELK -->
+                <customFields>{"app":"joaccountant","env":"prod"}</customFields>
+                <!-- Timestamp ISO-8601 avec timezone -->
+                <timeZone>UTC</timeZone>
+                <!-- Inclure le caller info (classe + ligne) — utile pour forensique en prod,
+                     désactivé en dev pour économiser le calcul -->
+                <includeCallerData>false</includeCallerData>
+                <!-- Limiter la profondeur des stack traces -->
+                <stackTraceAsString>true</stackTraceAsString>
+                <!-- Tronquer les stack traces trop longues (> 8KB) pour éviter de surcharger ELK -->
+                <shortenedLoggerNameLength>40</shortenedLoggerNameLength>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+
+        <!-- Audit v4.7 §9.3 — en prod, réduire le bruit des libs -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
+        <logger name="org.apache.tomcat" level="WARN"/>
+        <logger name="org.eclipse.jetty" level="WARN"/>
+        <logger name="jo.accountant" level="INFO"/>
+    </springProfile>
+
+</configuration>

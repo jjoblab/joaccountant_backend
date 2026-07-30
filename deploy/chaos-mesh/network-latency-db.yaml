@@ -1,0 +1,35 @@
+---
+# R-38 (lot-F-ops-docs) — NetworkChaos : latence 200ms vers PostgreSQL
+# Valide que l'application dégrade gracieusement (HikariCP timeout, retries,
+# circuit breaker Caffeine cache) sous latence DB.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-latency-db
+  namespace: joaccountant
+  labels:
+    app.kubernetes.io/name: joaccountant
+    chaos-mesh.org/experiment: network-latency-db
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - joaccountant
+    labelSelectors:
+      app.kubernetes.io/name: joaccountant
+  delay:
+    latency: "200ms"
+    jitter: "50ms"
+    correlation: "100"
+  direction: to
+  target:
+    selector:
+      namespaces:
+        - joaccountant
+      labelSelectors:
+        app.kubernetes.io/name: postgresql
+    mode: all
+  duration: "60s"
+  scheduler:
+    cron: "@once"

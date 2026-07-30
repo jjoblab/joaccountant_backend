@@ -1,0 +1,65 @@
+@startuml multi_tenant_defense
+!theme plain
+title Défense multi-tenant en profondeur (3 niveaux)
+
+skinparam backgroundColor #FFFFFF
+skinparam component {
+  BackgroundColor #F5F2EC
+  BorderColor #0F2A4D
+  FontColor #1A1A1A
+}
+
+actor "Utilisateur" as user
+rectangle "Spring Boot Application" {
+  rectangle "Niveau 1 — HTTP Filter" as n1 #LightBlue {
+    component "TenantClaimFilter" as tcf
+    note right of tcf
+      Extrait companyId du path
+      /api/v1/companies/{id}/...
+      Valide claim JWT "companies"
+      404 si non autorisé
+      (anti-énumération)
+    end note
+  }
+  
+  rectangle "Niveau 2 — JPA Listeners" as n2 #LightGreen {
+    component "TenantAwareEntityListener" as tael
+    component "TenantDefenseInDepthListener" as tdil
+    note right of tdil
+      @PrePersist / @PreUpdate
+      Valide entity.companyId
+      == TenantContext.companyId
+      (INSERT/UPDATE cross-tenant bloqué)
+    end note
+  }
+  
+  rectangle "Niveau 3 — PostgreSQL RLS" as n3 #LightYellow {
+    component "RLS Policy" as rls
+    component "TenantRlsConnectionCustomizer" as trcc
+    note right of trcc
+      R-03 (lot-A) :
+      SET LOCAL app.current_tenant = ?
+      au début de chaque transaction
+      (SELECT cross-tenant bloqué au niveau DB)
+    end note
+  }
+}
+
+database "PostgreSQL\n(journal_entry, sales_invoice,\npurchase_invoice, third_party,\nexpense_report, journal_line)" as db
+
+user --> tcf
+tcf --> tael : persist
+tael --> tdil : @PreUpdate
+tdil --> trcc : connection
+trcc --> rls : SET LOCAL
+rls --> db : policy tenant_isolation
+
+note bottom of db
+  RLS (V51) :
+  USING (company_id = 
+    current_setting('app.current_tenant', true)::uuid)
+  FORCE ROW LEVEL SECURITY
+  Fail-closed si GUC absente
+end note
+
+@enduml

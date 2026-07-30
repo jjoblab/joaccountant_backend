@@ -1,0 +1,26 @@
+---
+# R-38 (lot-F-ops-docs) — DNSChaos : simuler erreur DNS pour joaccountant
+# Valide que le cache Caffeine (accounts, journals, taxRules) continue à
+# fonctionner même si la résolution DNS échoue temporairement.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: DNSChaos
+metadata:
+  name: dns-error
+  namespace: joaccountant
+  labels:
+    app.kubernetes.io/name: joaccountant
+    chaos-mesh.org/experiment: dns-error
+spec:
+  action: error
+  mode: all
+  selector:
+    namespaces:
+      - joaccountant
+    labelSelectors:
+      app.kubernetes.io/name: joaccountant
+  domainNames:
+    - postgresql.joaccountant.svc.cluster.local
+    - redis.joaccountant.svc.cluster.local
+  duration: "30s"
+  scheduler:
+    cron: "@once"

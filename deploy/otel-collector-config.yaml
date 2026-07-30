@@ -1,0 +1,148 @@
+# =============================================================================
+# OpenTelemetry Collector — Configuration de test local (Finding #5 — audit batch B)
+# =============================================================================
+#
+# Ce fichier est une configuration **minimale** pour démarrer un OpenTelemetry
+# Collector en local et vérifier que les traces envoyées par l'app Spring Boot
+# (via micrometer-tracing-bridge-otel + opentelemetry-exporter-otlp) sont bien
+# reçues et décodées.
+#
+# Pipeline :
+#   OTLP receiver (gRPC :4317 + HTTP :4318) → batch processor → logging exporter
+#
+# L'exporter `logging` écrit chaque trace dans la sortie standard du collector —
+# pratique pour vérifier en local que tout fonctionne sans installer Tempo/Jaeger.
+# Pour la prod, remplacer l'exporter `logging` par `otlp` (Tempo), `jaeger`,
+# `zipkin`, ou `datadog` selon le backend choisi (voir application-prod.yml).
+#
+# -----------------------------------------------------------------------------
+# Démarrage rapide (Docker) :
+#
+#   docker run --rm -p 4317:4317 -p 4318:4318 \
+#     -v $(pwd)/deploy/otel-collector-config.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector-contrib:latest \
+#     --config /etc/otelcol/config.yaml
+#
+# -----------------------------------------------------------------------------
+# Démarrage rapide (docker-compose) — à ajouter dans docker-compose.yml :
+#
+#   services:
+#     otel-collector:
+#       image: otel/opentelemetry-collector-contrib:latest
+#       command: ["--config=/etc/otelcol/config.yaml"]
+#       volumes:
+#         - ./deploy/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+#       ports:
+#         - "4317:4317"   # OTLP gRPC
+#         - "4318:4318"   # OTLP HTTP
+#         - "8888:8888"   # Métriques internes du collector
+#
+# -----------------------------------------------------------------------------
+# Côté application (dev local) :
+#
+#   export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+#   export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+#   export OTEL_TRACES_SAMPLER_ARG=1.0   # 100% sampling en dev pour tout voir
+#   ./gradlew :app:devRun
+#
+# Puis requêter n'importe quel endpoint : la trace doit apparaître dans les logs
+# du collector (stdout). Chercher "SpanID" / "TraceID" dans la sortie.
+#
+# -----------------------------------------------------------------------------
+# Notes :
+#   - L'image `otel/opentelemetry-collector-contrib` inclut tous les exporters
+#     (Tempo, Jaeger, Datadog, …). Pour une image plus légère en prod, utiliser
+#     `otel/opentelemetry-collector` (distribution "core" sans exporters tierces).
+#   - En prod, positionner `OTEL_EXPORTER_OTLP_ENDPOINT` vers le collector
+#     (sidecar K8s : http://localhost:4317, ou gateway : http://otel-collector:4317).
+#   - Le processor `batch` est OBLIGATOIRE en prod (sinon 1 requête HTTP par span =
+#     mort du réseau). Taille max 8192 spans ou 2s, whichever comes first.
+#   - Le `memory_limiter` protège le collector contre un pic de traces qui ferait
+#     OOM. Tuner selon la RAM allouée au pod collector (typiquement 256-512 Mi).
+# =============================================================================
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # OTLP/gRPC — endpoint par défaut du collector. L'app Spring Boot envoie
+        # ses traces ici (OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317).
+        endpoint: 0.0.0.0:4317
+      http:
+        # OTLP/HTTP — alternative à gRPC, utile si le collector est derrière un
+        # LB qui ne supporte pas HTTP/2 (gRPC = HTTP/2 obligatoire).
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Memory limiter — protège le collector contre un pic de traces qui ferait OOM.
+  # À tuner selon la RAM du pod collector (256-512 Mi typique).
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  # Batch — OBLIGATOIRE en prod. Groupe les spans en lots avant envoi au backend
+  # (1 requête HTTP par lot au lieu de 1 par span). Taille max 8192 spans ou 2s,
+  # whichever comes first.
+  batch:
+    timeout: 2s
+    send_batch_size: 8192
+    send_batch_max_size: 0  # 0 = pas de limite stricte (prio au timeout)
+
+  # Resource — attributs ajoutés à chaque trace pour filtrage dans le backend
+  # (environnement, version, datacenter). Complète les attributs déjà envoyés par
+  # l'app via `otel.resource.attributes` (voir application.yml).
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${env:DEPLOYMENT_ENV:-dev}
+        action: upsert
+      - key: host.name
+        from_attribute: host.name
+        action: upsert
+
+exporters:
+  # Logging exporter — écrit chaque trace dans stdout. PRATIQUE POUR TEST LOCAL,
+  # À NE PAS UTILISER EN PROD (verbose, pas de requêtage, perte des traces au
+  # restart du collector). Pour la prod, utiliser `otlp` (Tempo), `jaeger`,
+  # `zipkin`, ou `datadog`.
+  #
+  # Niveau de log : `basic` (défaut) = SpanID + TraceID + nom du span.
+  # Pour voir les attributs : `info`. Pour tout voir : `debug`.
+  debug:
+    verbosity: basic
+    sampling_initial: 2
+    sampling_thereafter: 1
+
+  # Exemple d'exporter OTLP pour Tempo (à décommenter en prod) :
+  # otlp:
+  #   endpoint: tempo:4317
+  #   tls:
+  #     insecure: true   # false si TLS actif côté Tempo
+
+  # Exemple d'exporter Datadog (à décommenter si backend = Datadog APM) :
+  # datadog:
+  #   api:
+  #     key: ${env:DD_API_KEY}
+  #   service:
+  #     name: joaccountant
+
+extensions:
+  # Health check — expose /health pour les probes K8s du collector.
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [debug]
+  # Métriques internes du collector (consommation RAM, nb de spans reçus, etc.).
+  # Exposées sur :8888/metrics au format Prometheus — scraper par Prometheus/Grafana.
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888

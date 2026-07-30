@@ -1,0 +1,27 @@
+{{/*
+=====================================================================
+JOAccountant Backend — PersistentVolumeClaim (storage pour APP_STORAGE_ROOT)
+Finding #22 (Helm chart)
+=====================================================================
+Volume persisté pour le file-storage backend (PDFs générés, e-invoices Factur-X,
+exports). En prod, privilégier APP_STORAGE_BACKEND=s3 (MinIO/S3) pour scaling
+horizontal — ce PVC est principalement utile en dev/staging.
+*/}}
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "joaccountant.fullname" . }}-storage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "joaccountant.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}

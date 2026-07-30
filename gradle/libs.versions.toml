@@ -1,0 +1,156 @@
+# =============================================================================
+# Gradle Version Catalog (Finding #18 — audit batch C)
+# =============================================================================
+# Centralise les versions des dépendances principales du monorepo :app/:core/...
+# Avant : chaque build.gradle.kts dupliquait les versions en dur, ce qui rendait
+# les montées de version (ex: Spring Boot 3.5.0 → 3.5.1) fastidieuses et risquées
+# (oubli dans un module = désalignement de version transitive).
+#
+# Usage dans les build.gradle.kts :
+#   implementation(libs.spring.boot.starter.web)
+#   testImplementation(libs.zonky.embedded.postgres)
+#
+# Pour ajouter une dépendance : éditer ce fichier, puis exécuter
+#   ./gradlew build --refresh-dependencies
+# Gradle régénère automatiquement les accesseurs type-safe (Kotlin DSL).
+# =============================================================================
+
+[versions]
+# ----- Spring -----
+springBoot = "3.5.0"
+springDependencyManagement = "1.1.6"
+
+# ----- Build tooling (plugins) -----
+spotless = "6.25.0"
+jacoco = "0.8.11"
+spotbugs = "6.0.18"
+
+# ----- Testing -----
+zonkyEmbeddedPostgres = "2.0.7"
+archunit = "1.3.0"
+junitBom = "5.10.2"
+junitPlatform = "1.11.0"
+junitJupiter = "5.11.0"
+
+# ----- Auth / JWT -----
+nimbusJoseJwt = "9.40"
+
+# ----- Crypto (Argon2 password hashing) -----
+# R-13 (lot-A-securite) — bump 1.78.1 → 1.79 pour corriger CVE-2024-29857 (dérive OCSP
+# OutOfMemory) et CVE-2024-30171 (timing attack sur RSA decryption en mode EDT).
+# Voir https://www.bouncycastle.org/releasenotes.html pour la note de version 1.79.
+bouncyCastle = "1.79"
+
+# ----- API documentation (OpenAPI) -----
+swaggerAnnotations = "2.2.29"
+springdocOpenapi = "2.8.6"
+
+# ----- AWS SDK (S3 / MinIO file storage) -----
+awssdk = "2.27.21"
+
+# ----- Cache (Caffeine) -----
+caffeine = "3.1.8"
+
+# ----- Observability -----
+logstashLogbackEncoder = "7.4"
+
+# ----- Distributed scheduling (ShedLock) -----
+shedlock = "5.10.0"
+
+# ----- Rate limiting (Bucket4j) -----
+bucket4j = "8.10.1"
+
+# ----- R-14 (lot-C-perf-devops) — Bucket4j Redis (rate-limiting distribué) -----
+bucket4j-redis = "8.10.1"
+
+[libraries]
+# ----- Spring Boot starters (versions via BOM, mais on expose les coordonnées) -----
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-cache = { module = "org.springframework.boot:spring-boot-starter-cache" }
+spring-boot-starter-batch = { module = "org.springframework.boot:spring-boot-starter-batch" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-security-test = { module = "org.springframework.security:spring-security-test" }
+spring-security-oauth2-resource-server = { module = "org.springframework.security:spring-security-oauth2-resource-server" }
+spring-security-oauth2-jose = { module = "org.springframework.security:spring-security-oauth2-jose" }
+spring-data-commons = { module = "org.springframework.data:spring-data-commons" }
+
+# ----- Micrometer (Observability) -----
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
+opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp" }
+
+# ----- JPA / DB -----
+hibernate-core = { module = "org.hibernate.orm:hibernate-core" }
+flyway-core = { module = "org.flywaydb:flyway-core" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+postgresql = { module = "org.postgresql:postgresql" }
+
+# ----- Jakarta -----
+jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api" }
+
+# ----- JUnit (forced versions pour alignement Spring Boot 3.5.x) -----
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junitBom" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitJupiter" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiter" }
+junit-platform-engine = { module = "org.junit.platform:junit-platform-engine", version.ref = "junitPlatform" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+junit-platform-commons = { module = "org.junit.platform:junit-platform-commons", version.ref = "junitPlatform" }
+
+# ----- Testing -----
+zonky-embedded-postgres = { module = "io.zonky.test:embedded-postgres", version.ref = "zonkyEmbeddedPostgres" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+# ----- Auth / JWT -----
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseJwt" }
+
+# ----- Crypto (Argon2 password hashing, §3.4) -----
+bouncy-castle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncyCastle" }
+
+# ----- API documentation (OpenAPI) -----
+swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swaggerAnnotations" }
+springdoc-openapi-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdocOpenapi" }
+
+# ----- AWS SDK (S3 / MinIO file storage — §9) -----
+aws-s3 = { module = "software.amazon.awssdk:s3", version.ref = "awssdk" }
+aws-auth = { module = "software.amazon.awssdk:auth", version.ref = "awssdk" }
+aws-regions = { module = "software.amazon.awssdk:regions", version.ref = "awssdk" }
+
+# ----- Cache (Caffeine) -----
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+
+# ----- Observability -----
+logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashLogbackEncoder" }
+
+# ----- Distributed scheduling (ShedLock) -----
+shedlock-spring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }
+shedlock-provider-jdbc-template = { module = "net.javacrumbs.shedlock:shedlock-provider-jdbc-template", version.ref = "shedlock" }
+
+# ----- Rate limiting (Bucket4j) -----
+bucket4j-core = { module = "com.bucket4j:bucket4j-core", version.ref = "bucket4j" }
+
+# R-14 (lot-C-perf-devops) — Bucket4j Redis pour rate-limiting distribué multi-instances
+bucket4j-redis = { module = "com.bucket4j:bucket4j-redis", version.ref = "bucket4j.redis" }
+
+# R-14 (lot-C-perf-devops) — Spring Data Redis (Lettuce fourni par défaut via le starter)
+spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+
+# ----- Document generation (OGNL + OpenHTMLtoPDF — module :document-generation) -----
+# Note : ces entrées étaient historiquement sous [plugins] par erreur (syntaxe `module =`
+# réservée aux [libraries]). Déplacées sous [libraries] pour cohérence.
+ognl = { module = "ognl:ognl", version = "3.2.21" }
+openhtmltopdf-core = { module = "com.openhtmltopdf:openhtmltopdf-core", version = "1.0.10" }
+openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version = "1.0.10" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs" }
+# Plugin PMD : fourni par Gradle nativement (pas de version à déclarer dans le catalog).
+# On le référence ici pour la documentation, mais `apply false` est fait avec `id("pmd")`
+# dans le root build.gradle.kts (plugin Gradle core, version = version de Gradle).

@@ -1,0 +1,213 @@
+# ===================================================================
+# JOAccountant Backend — Helm values
+# Chart v1.0.0 — Finding #22 (Helm chart)
+# ===================================================================
+# Override via `helm install --values my-values.yaml` or `-f` per-env files.
+# Secrets (DB_PASSWORD, APP_JWT_SECRET) MUST be provided via:
+#   --set secrets.dbPassword=... --set secrets.jwtSecret=...
+# or via an externally-provided secret (see secrets.existingSecret).
+
+# ─── Image ──────────────────────────────────────────────────────────
+image:
+  # Build context = repo root (see Dockerfile). Tag = chart appVersion by default.
+  repository: ghcr.io/joaccountant/joaccountant-backend
+  tag: "4.8.0"
+  pullPolicy: IfNotPresent
+  # Optional: pull secrets for private registries
+  pullSecrets: []
+  # - name: ghcr-pull-secret
+
+# ─── Replicas ───────────────────────────────────────────────────────
+# Note: replicas est piloté par le HPA — cette valeur est le floor (min replicas).
+replicaCount: 2
+
+# ─── Resources ──────────────────────────────────────────────────────
+# Audit v4.7 §7.2 — sizing pour soutenir 50 users concurrents avec HikariCP pool=30.
+# Le HPA scalerait jusqu'à 10 replicas avant saturation.
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+
+# ─── Probes ─────────────────────────────────────────────────────────
+# Actuator sur le port 8081 (séparé du trafic API sur 8080 — voir application.yml §3.10).
+probes:
+  liveness:
+    enabled: true
+    path: /actuator/health/liveness
+    port: 8081
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 5
+  readiness:
+    enabled: true
+    path: /actuator/health/readiness
+    port: 8081
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+  startup:
+    enabled: true
+    path: /actuator/health
+    port: 8081
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 30   # 5 min max pour démarrer Spring Boot + Flyway
+
+# ─── Service ────────────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 8080               # API + Swagger UI
+  managementPort: 8081     # Actuator / Prometheus scrape (pas exposé en ClusterIP)
+  annotations: {}
+
+# ─── HPA (Horizontal Pod Autoscaler) ────────────────────────────────
+# Finding #22 — autoscaling CPU 70%, 2→10 replicas.
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  # targetMemoryUtilizationPercentage: 80  # Optionnel — non activé par défaut
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min — évite le thrashing
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+
+# ─── Environment variables ──────────────────────────────────────────
+# Variables non-sensibles injectées via ConfigMap. Les secrets sont gérés à part
+# (voir ci-dessous `secrets`).
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  # DB
+  DB_URL: jdbc:postgresql://joaccountant-postgresql:5432/joaccountant
+  DB_USERNAME: joaccountant
+  HIKARI_MAX_POOL_SIZE: "30"
+  HIKARI_LEAK_DETECTION_MS: "60000"
+  # CORS — overrides via --set env.CORS_ALLOWED_ORIGINS=https://app.joaccountant.com
+  CORS_ALLOWED_ORIGINS: "*"
+  # Storage
+  APP_STORAGE_ROOT: /var/lib/joaccountant/storage
+  APP_STORAGE_BACKEND: fs
+  # Observabilité — OTEL exporter OTLP (vide = traces dropped, pas d'erreur)
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_SERVICE_NAME: joaccountant
+  OTEL_TRACES_SAMPLER_ARG: "0.1"
+  # Tomcat / reverse-proxy
+  FORWARD_HEADERS_STRATEGY: FRAMEWORK
+  TRUSTED_PROXIES: ""
+  # JVM
+  JAVA_OPTS: >-
+    -XX:MaxRAMPercentage=75
+    -XX:+UseG1GC
+    -XX:MaxGCPauseMillis=200
+    -XX:+HeapDumpOnOutOfMemoryError
+    -XX:HeapDumpPath=/tmp/heapdump.hprof
+    -Dfile.encoding=UTF-8
+
+# ─── Secrets ────────────────────────────────────────────────────────
+# Deux options :
+#  (A) Générer le secret via `secrets.dbPassword` / `secrets.jwtSecret` (chart-managed).
+#  (B) Réutiliser un secret existant via `secrets.existingSecret` (recommended for prod —
+#      External Secrets Operator, Vault, etc.).
+secrets:
+  existingSecret: ""       # ex: "joaccountant-secrets" — si non vide, désactive (A)
+  dbPassword: ""           # OBLIGATOIRE si existingSecret est vide
+  jwtSecret: ""            # OBLIGATOIRE si existingSecret est vide (min 256 bits — voir JwtService)
+  # Clés attendues dans le secret existant (override si différentes) :
+  keys:
+    dbPassword: DB_PASSWORD
+    jwtSecret: APP_JWT_SECRET
+
+# ─── Persistence (storage volume pour APP_STORAGE_ROOT) ─────────────
+persistence:
+  enabled: true
+  storageClass: ""         # vide = default StorageClass du cluster
+  accessMode: ReadWriteOnce
+  size: 20Gi
+  mountPath: /var/lib/joaccountant/storage
+
+# ─── Pod scheduling ─────────────────────────────────────────────────
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# Exemple anti-affinity pour spread les replicas sur différents nodes :
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 100
+#         podAffinityTerm:
+#           labelSelector:
+#             matchLabels:
+#               app.kubernetes.io/name: joaccountant
+#           topologyKey: kubernetes.io/hostname
+
+# ─── Pod security context ───────────────────────────────────────────
+# L'image Dockerfile crée un user non-root `joaccountant` (UID auto-allocated).
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: false   # false car /tmp est utilisé pour heapdumps
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+# ─── Service account ────────────────────────────────────────────────
+serviceAccount:
+  create: false
+  name: ""
+
+# ─── Revision history limit ─────────────────────────────────────────
+revisionHistoryLimit: 10
+
+# ─── Strategy ───────────────────────────────────────────────────────
+# Rolling update avec surge=1 + unavailable=0 → zero-downtime (audit v4.7 §9 Finding #5).
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# ─── Pod annotations (Prometheus scrape, etc.) ──────────────────────
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: /actuator/prometheus
+
+# ─── NetworkPolicy (Lot E — durcissement K8s) ───────────────────────
+networkPolicy:
+  enabled: true
+
+# ─── PodDisruptionBudget (Lot E — durcissement K8s) ─────────────────
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1  # alternative à minAvailable
+
+# ─── ServiceMonitor Prometheus Operator (Lot E — remplace podAnnotations) ─
+serviceMonitor:
+  enabled: true
+  namespace: "monitoring"
+  interval: "30s"
+  scrapeTimeout: "10s"
+  additionalLabels: {}
+  relabelings: []

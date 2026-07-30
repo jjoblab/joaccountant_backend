@@ -1,0 +1,49 @@
+@startuml journal_entry_lifecycle
+!theme plain
+title Cycle de vie d'une écriture comptable (JournalEntry)
+
+skinparam backgroundColor #FFFFFF
+skinparam state {
+  BackgroundColor #F5F2EC
+  BorderColor #0F2A4D
+  FontColor #1A1A1A
+  ArrowColor #0F2A4D
+}
+
+[*] --> DRAFT : create()\n(entryDate, journalId, fiscalPeriodId)
+
+DRAFT --> PENDING_APPROVAL : post() avec ApprovalRule\n(montant > seuil)
+DRAFT --> POSTED : post() sans règle\n(montant ≤ seuil)
+
+PENDING_APPROVAL --> POSTED : approval.approve()\n(approver ≠ requester)
+PENDING_APPROVAL --> DRAFT : approval.reject()
+
+POSTED --> VOIDED : voidEntry(reason)\n(contre-passation)
+POSTED --> [*] : archivage\n(> 10 ans, Code Fiscal Haïti)
+
+VOIDED --> [*] : archivage
+
+note right of DRAFT
+  Invariants :
+  - Pas de reference
+  - Lignes modifiables
+  - Équilibre non requis
+end note
+
+note right of POSTED
+  Invariants (R-34) :
+  - reference attribuée
+  - Équilibre débit=crédit
+  - Immuable (trigger DB)
+  - Correction uniquement par voidEntry()
+end note
+
+note right of VOIDED
+  Invariants :
+  - reversalOfEntryId pointe vers
+    l'écriture de contre-passation
+  - voidReason obligatoire
+  - Numéro conservé (sans trou)
+end note
+
+@enduml

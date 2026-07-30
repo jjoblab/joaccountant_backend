@@ -1,0 +1,53 @@
+@startuml approval_workflow
+!theme plain
+title Workflow d'approbation (quatre yeux — maker/checker)
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #F5F2EC
+  BorderColor #0F2A4D
+  FontColor #1A1A1A
+}
+
+start
+
+:Maker crée une\nécriture/facture (montant > seuil);
+
+:ApprovalRequest créée\n(status=PENDING);
+
+:Filtrer approbateurs éligibles\n(role >= ACCOUNTANT\nAND userId ≠ requestedBy);
+
+if (Approbateur trouvé ?) then (oui)
+  :Notification envoyée\naux approbateurs;
+  
+  fork
+    :Approbateur A.approve();
+    :status=APPROVED\n(approvedBy=A);
+  fork again
+    :Approbateur B.reject();
+    :status=REJECTED;
+  end fork
+  
+  if (status == APPROVED ?) then (oui)
+    :Transition vers POSTED\n(JournalEntry.post());
+    :reference attribuée\n(DocumentNumbering);
+    :Event ApprovalDecidedEvent\npublié;
+  else (rejet)
+    :Transition vers DRAFT;
+    :Notification au maker;
+  endif
+else (non — fallback)
+  :Aucun approbateur éligible;
+  :Auto-approval\n(audit forensique);
+end if
+
+stop
+
+note right
+  R-34 (lot-F1) :
+  JournalEntry.post() valide
+  l'équilibre débit=crédit
+  avant la transition.
+end note
+
+@enduml

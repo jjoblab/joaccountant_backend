@@ -1,0 +1,218 @@
+spring:
+  application:
+    name: joaccountant
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/joaccountant}
+    username: ${DB_USERNAME:joaccountant}
+    password: ${DB_PASSWORD:joaccountant}
+    hikari:
+      # Audit v4.7 §7.2 Finding #2 — Pool Hikari=10 incompatible avec Virtual Threads (starvation
+      # systémique au-delà de 50 users). Passé à 30 en défaut + leak detection 60s.
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:30}
+      leak-detection-threshold: ${HIKARI_LEAK_DETECTION_MS:60000}
+      max-lifetime: 1800000   # 30 min
+      idle-timeout: 600000    # 10 min
+      connection-timeout: 30000  # 30 s
+  # R-14 (lot-C-perf-devops) — Spring Data Redis pour RateLimitFilter distribué.
+  # Utilisé uniquement si app.rate-limit.redis.enabled=true. Sinon, fallback in-memory
+  # (Bucket4jRateLimitStore) — pas de connexion Redis tentée au démarrage.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+  jpa:
+    hibernate:
+      ddl-auto: none  # Flyway is the only source of schema changes (§3.2)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc.time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    placeholder-replacement: false
+  # Spring Batch — le schéma BATCH_* est créé par la migration Flyway V52__spring_batch_schema.sql.
+  # On désactive l'auto-init (pour ne pas double-créer avec Flyway) et l'auto-run des Jobs au
+  # démarrage (les Jobs sont lancés manuellement via BatchController ou par cron).
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+  # Audit v4.7 §7.2 — spring.threads.virtual.enabled=true est no-op en Java 17 (virtual threads
+  # stables en Java 21). Conservé pour forward-compat : sera actif dès migration Java 17 → 21.
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s  # Audit v4.7 §9 — graceful shutdown
+
+server:
+  port: 8080
+  shutdown: graceful  # Audit v4.7 §9 Finding #5 — évite la perte de saisie utilisateur en déploiement
+  # Audit v4.7 §6.2 — RateLimitFilter s'appuie sur Tomcat pour extraire l'IP réelle du client
+  # de manière sécurisée (validation trusted-proxies). Sans cette config, X-Forwarded-For est
+  # ignoré et RateLimitFilter voit l'IP du reverse proxy (toutes les requêtes ont la même IP).
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:FRAMEWORK}
+  tomcat:
+    remoteip:
+      # En prod, positionner explicitement la liste des proxies de confiance (séparés par virgule)
+      # Ex : 10.0.0.0/8,192.168.0.0/16
+      trusted-proxies: ${TRUSTED_PROXIES:}
+
+management:
+  server:
+    port: 8081  # §3.10: separate management port
+  endpoints:
+    web:
+      exposure:
+        # Audit v4.7 §9.3 Finding #3 — ajout de 'prometheus' maintenant que micrometer-registry-prometheus
+        # est dans le classpath. Permet le scrape par Prometheus/Grafana sur /actuator/prometheus.
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true  # Audit v4.7 §9 Finding #5 — liveness + readiness probes pour K8s
+    # Audit v4.7 §9.3 — exposition Prometheus. Les métriques exposées incluent :
+    #   - JVM (heap, threads, GC, classloader) via micrometer-core
+    #   - HikariCP (connections actives/idles, wait time, leaks) via micrometer-core
+    #   - HTTP server (requêtes, latence par endpoint) via Spring Boot Actuator
+    #   - Process (CPU, mémoire) via micrometer-core
+    # Pour ajouter des métriques business, injecter MeterRegistry dans les services et utiliser
+    # counter.increment() / timer.record() — voir AccountingMetrics et PayrollMetrics.
+    prometheus:
+      enabled: true
+  metrics:
+    distribution:
+      # Audit v4.7 §9.3 — percentiles HTTP pour diagnostic latence P99 (audit §7.2).
+      # Sans histogramme, on n'a que max/mean — insuffisant pour SLO P99 < 1s.
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+    tags:
+      # Tag commun à toutes les métriques — permet de filtrer par application dans Grafana.
+      application: ${spring.application.name}
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    # R-14 (lot-C-perf-devops) — Redis health indicator : activé uniquement si Redis est utilisé
+    # pour le rate-limiting distribué. Sinon, le ping Redis ferait échouer le health check au
+    # démarrage (LettuceConnectionFactory est lazy mais le HealthIndicator fait un PING explicite).
+    redis:
+      enabled: ${RATE_LIMIT_REDIS_ENABLED:false}
+
+# Audit v4.7 §9.3 Finding #3 (suite) — OpenTelemetry tracing distribué.
+# Configuration de l'export OTLP vers un collector Tempo/Jaeger/Zipkin/Datadog APM.
+# En l'absence d'OTEL_EXPORTER_OTLP_ENDPOINT, les traces sont dropped (pas d'erreur).
+#
+# Finding #5 (audit batch B) — un example de config collector "test local" est fourni
+# dans `deploy/otel-collector-config.yaml` (OTLP receiver + logging exporter). Pour
+# la prod, voir le bloc de commentaires en tête de `application-prod.yml` qui détaille
+# le déploiement Agent → Gateway → Backend (Tempo/Jaeger/Datadog) et les variables
+# d'environnement à positionner.
+otel:
+  exporter:
+    otlp:
+      # Ex : http://tempo:4317 (gRPC) ou http://otel-collector:4318 (HTTP)
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:}
+      # Protocole : grpc (défaut, plus performant) ou http/protobuf
+      protocol: ${OTEL_EXPORTER_OTLP_PROTOCOL:grpc}
+  service:
+    # Nom du service dans les traces — permet de filtrer dans Tempo/Jaeger
+    name: ${OTEL_SERVICE_NAME:joaccountant}
+  resource:
+    # Attributs additionnels (environnement, version) — ajoutés à chaque span
+    attributes:
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:default}
+      service.version: ${APP_VERSION:2.1.0}
+  traces:
+    sampler:
+      # ParentBased(TraceIdRatioBased) : échantillonnage à 10% pour éviter le bruit en prod.
+      # Pour 100% en staging, positionner OTEL_TRACES_SAMPLER_ARG=1.0
+      parentbased.ratio: ${OTEL_TRACES_SAMPLER_ARG:0.1}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    use-root-path: true
+  api-docs:
+    path: /v3/api-docs
+  webjars:
+    prefix: /webjars
+
+app:
+  jwt:
+    # Audit v4.7 §6.1 Finding #1 — défaut conservé pour dev local uniquement. JwtService.@PostConstruct
+    # lève IllegalStateException si ce défaut est utilisé en profil non-dev/test.
+    secret: ${APP_JWT_SECRET:dev-only-secret-please-override-in-production-at-least-256-bits-long-string-1234567890}
+    access-token-ttl-seconds: 900    # 15 minutes (§3.4)
+  # R-14 (lot-C-perf-devops) — Rate-limiting distribué via Redis.
+  # Désactivé par défaut pour backward-compat (les déploiements existants n'ont pas Redis).
+  # Pour activer en prod multi-instances : RATE_LIMIT_REDIS_ENABLED=true + REDIS_HOST/PORT.
+  rate-limit:
+    redis:
+      enabled: ${RATE_LIMIT_REDIS_ENABLED:false}
+  subscription:
+    max-companies-per-user: 3        # §12 default
+  storage:
+    fs:
+      # Audit v4.7 §9 — défaut changé de ./build/storage (wipe on gradlew clean) vers ./storage.
+      # En production, positionner APP_STORAGE_ROOT vers un volume persistent ou utiliser S3.
+      root: ${APP_STORAGE_ROOT:./storage}
+    # Audit v4.7 §9 Finding #4 — backend S3/MinIO pour scaling horizontal.
+    # Backend actif : 'fs' (défaut) ou 's3' (production). Voir S3FileStorageAdapter.
+    backend: ${APP_STORAGE_BACKEND:fs}
+    s3:
+      bucket: ${AWS_S3_BUCKET:joaccountant-prod-storage}
+      region: ${AWS_S3_REGION:eu-west-3}
+      endpoint-override: ${AWS_S3_ENDPOINT:}   # MinIO local : http://localhost:9000
+      path-style-access: ${AWS_S3_PATH_STYLE:false}
+  cors:
+    # Audit v4.7 §6.3 — CORS restrictif configurable. Défaut * pour dev. En prod, positionner
+    # explicitement la liste : https://app.joaccountant.com,https://admin.joaccountant.com
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  # R-35 (lot-F3-security) — Have I Been Pwned (HIBP) integration for PasswordValidator.
+  # Désactivé par défaut pour backward-compat et pour permettre les env sans accès Internet
+  # (on-premise air-gapped). Pour activer : HIBP_ENABLED=true.
+  # Vérifie les mots de passe contre 600M+ de hashes de leaks via protocole k-anonymity.
+  # Résilient : si HIBP est indisponible, la blacklist locale (50 mots) reste active.
+  password:
+    min-length: ${APP_PASSWORD_MIN_LENGTH:12}
+    hibp:
+      enabled: ${HIBP_ENABLED:false}
+      api-url: ${HIBP_API_URL:https://api.pwnedpasswords.com/range/}
+      timeout-ms: ${HIBP_TIMEOUT_MS:2000}
+  # R-36 (lot-F3-security) — Signature électronique conforme Décret 12 février 2002 (Haïti)
+  # et arrêté DGI 4 octobre 2017. Framework extensible avec :
+  #   - NoOpElectronicSignatureService (default) : retourne le document non signé (dev/test).
+  #   - XAdESSignatureService (squelette, désactivé par défaut) : pour intégration future
+  #     avec une autorité de certification qualifiée (eIDAS) ou haïtienne.
+  # Pour activer XAdES : XADES_ENABLED=true + XADES_KEYSTORE_PATH + XADES_KEYSTORE_PASSWORD.
+  # Voir docs/ELECTRONIC_SIGNATURE.md pour le cadre légal et les étapes d'intégration.
+  signature:
+    xades:
+      enabled: ${XADES_ENABLED:false}
+      keystore-path: ${XADES_KEYSTORE_PATH:}
+      keystore-password: ${XADES_KEYSTORE_PASSWORD:}
+      keystore-type: ${XADES_KEYSTORE_TYPE:PKCS12}
+      tsa-url: ${XADES_TSA_URL:}
+
+logging:
+  # Audit v4.7 §9.3 — le pattern de log est désormais géré par logback-spring.xml :
+  #   - profil dev/test  : pattern console lisible avec MDC [cid uid tid]
+  #   - profil prod      : JSON structuré via LogstashEncoder pour ingestion ELK/Loki
+  # La config ci-dessous ne garde que les niveaux de log par logger.
+  level:
+    jo.accountant: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

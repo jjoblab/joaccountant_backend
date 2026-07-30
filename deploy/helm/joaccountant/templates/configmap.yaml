@@ -1,0 +1,19 @@
+{{/*
+=====================================================================
+JOAccountant Backend — ConfigMap (env vars non-sensibles)
+Finding #22 (Helm chart)
+=====================================================================
+Toutes les variables de .Values.env sont injectées comme paires key=value.
+Les secrets (DB_PASSWORD, APP_JWT_SECRET) ne JAMAIS figurer ici — voir secret.yaml.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "joaccountant.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "joaccountant.labels" . | nindent 4 }}
+data:
+  {{- range $k, $v := .Values.env }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}

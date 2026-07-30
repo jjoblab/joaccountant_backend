@@ -1,0 +1,361 @@
+package jo.accountant.company.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
+import jo.accountant.company.dto.CompanyResponse;
+import jo.accountant.company.dto.CreateCompanyRequest;
+import jo.accountant.company.dto.UpdateCompanyLegalFieldsRequest;
+import jo.accountant.company.entity.Company;
+import jo.accountant.company.service.CompanyModuleService;
+import jo.accountant.company.service.CompanyService;
+import jo.accountant.core.security.CurrentUser;
+import jo.accountant.core.security.RoleChecker;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Endpoints Company (§13 Phase 1 — restructurés 2026-07-24).
+ *
+ * <p>§3.8 : les paths utilisent {@code /api/v1/companies/*} (PAS scopés par companyId dans l'URL
+ * car la société est la ressource créée/listée).
+ *
+ * <p>Restructuration : {@code POST /companies} ne porte plus que les champs d'identité
+ * (name, country, functionalCurrency). Le reste est saisi via les étapes du wizard (étapes
+ * 2, 3, 6 et 7 principalement).
+ */
+@RestController
+@RequestMapping("/api/v1/companies")
+@Tag(name = "Company", description = "Company identity, wizard, business-type activation")
+public class CompanyController {
+
+    private final CompanyService companyService;
+    private final CompanyModuleService companyModuleService;
+    private final RoleChecker roleChecker;
+
+    public CompanyController(CompanyService companyService,
+                            CompanyModuleService companyModuleService,
+                            RoleChecker roleChecker) {
+        this.companyService = companyService;
+        this.companyModuleService = companyModuleService;
+        this.roleChecker = roleChecker;
+    }
+
+    @Operation(summary = "List companies accessible to the current user",
+        description = "Retourne toutes les sociétés auxquelles l'utilisateur courant a accès (via UserCompanyRole), " +
+                      "avec leur étape de wizard et champs légaux (siret/vatNumber/nif/address, V42).")
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = CompanyResponse.class),
+            examples = @ExampleObject(name = "2 sociétés (1 FR + 1 HT)", value = """
+                [
+                  {
+                    "id": "0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd",
+                    "name": "Boulangerie du Marché",
+                    "legalForm": "SARL",
+                    "country": "FR",
+                    "functionalCurrency": "EUR",
+                    "sector": "COMMERCE",
+                    "organizationNature": "FOR_PROFIT",
+                    "businessTypeCode": "RETAIL_COMMERCE",
+                    "primaryActivityLabel": "Commerce de détail alimentaire",
+                    "extraAttributes": {},
+                    "accountingFrameworkId": null,
+                    "fiscalYearStartMonth": 1,
+                    "wizardStep": 9,
+                    "wizardCompleted": true,
+                    "siret": "12345678900012",
+                    "vatNumber": "FR12345678901",
+                    "nif": null,
+                    "address": "12 rue du Marché, 75001 Paris",
+                    "createdAt": "2026-01-15T09:00:00Z",
+                    "updatedAt": "2026-02-20T14:30:00Z"
+                  },
+                  {
+                    "id": "0192a8d6-2d3e-4f5a-6b7c-8d9e0fa1bcde",
+                    "name": "Boutique Pétion-Ville",
+                    "legalForm": "SARL",
+                    "country": "HT",
+                    "functionalCurrency": "HTG",
+                    "sector": "COMMERCE",
+                    "organizationNature": "FOR_PROFIT",
+                    "businessTypeCode": "RETAIL_COMMERCE",
+                    "primaryActivityLabel": "Commerce de détail",
+                    "extraAttributes": {},
+                    "accountingFrameworkId": null,
+                    "fiscalYearStartMonth": 1,
+                    "wizardStep": 9,
+                    "wizardCompleted": true,
+                    "siret": null,
+                    "vatNumber": null,
+                    "nif": "HT-2018-12345",
+                    "address": "Rue Lamarre 25, Pétion-Ville, Haïti",
+                    "createdAt": "2026-03-01T08:00:00Z",
+                    "updatedAt": "2026-03-15T11:00:00Z"
+                  }
+                ]
+                """)))
+    @GetMapping
+    public List<CompanyResponse> list(@CurrentUser java.util.UUID userId) {
+        return companyService.listCompaniesForUser(userId).stream()
+            .map(CompanyController::toResponse)
+            .toList();
+    }
+
+    @Operation(summary = "Create a new company (wizard step 1 — identity only)",
+        description = "Restructuration 2026-07-24 : seuls name, country, functionalCurrency sont " +
+                      "acceptés à ce stade. legalForm, sector, accountingFrameworkId et " +
+                      "fiscalYearStartMonth doivent être saisis via les étapes 2, 3 et 6 du wizard. " +
+                      "§12 : limited to 3 companies per user by default (configurable). " +
+                      "Creator is auto-assigned OWNER role.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Company created",
+            content = @Content(schema = @Schema(implementation = CompanyResponse.class),
+                examples = @ExampleObject(value = """
+                    {"id":"0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd","name":"Boutique Pétion-Ville","legalForm":"OTHER","country":"HT","functionalCurrency":"HTG","sector":"AUTRE","organizationNature":"FOR_PROFIT","businessTypeCode":"CUSTOM","primaryActivityLabel":"","accountingFrameworkId":null,"fiscalYearStartMonth":1,"wizardStep":1,"wizardCompleted":false}
+                    """))),
+        @ApiResponse(responseCode = "409", description = "Max companies reached",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class),
+                examples = @ExampleObject(value = """
+                    {"type":"https://joaccountant.dev/errors/max_companies_reached","title":"Conflict","status":409,"detail":"You have reached the maximum number of companies (3). Current count: 3. Consider upgrading your subscription to create more.","code":"MAX_COMPANIES_REACHED"}
+                    """))),
+        @ApiResponse(responseCode = "422", description = "Invalid input",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CompanyResponse> create(@CurrentUser java.util.UUID userId,
+                                                  @Valid @RequestBody CreateCompanyRequest req) {
+        // V8.2 — createCompany accepte maintenant les champs d'identité complets
+        Company created = companyService.createCompany(userId, req.name(),
+            req.country(), req.functionalCurrency());
+        // V8.2 — Appliquer les champs additionnels (organizationNature, legalForm, champs légaux)
+        if (req.organizationNature() != null) {
+            created.setOrganizationNature(req.organizationNature());
+        }
+        if (req.legalForm() != null) {
+            created.setLegalForm(req.legalForm());
+        }
+        if (req.siret() != null) created.setSiret(req.siret());
+        if (req.vatNumber() != null) created.setVatNumber(req.vatNumber());
+        if (req.nif() != null) created.setNif(req.nif());
+        if (req.address() != null) created.setAddress(req.address());
+        if (req.organizationNature() != null || req.legalForm() != null) {
+            created = companyService.saveCompany(created);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(created));
+    }
+
+    @Operation(summary = "Get a single company",
+        description = "Retourne une société avec tous ses champs (y compris les champs légaux V42).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = CompanyResponse.class),
+                examples = @ExampleObject(name = "Société française complète", value = """
+                    {
+                      "id": "0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd",
+                      "name": "Boulangerie du Marché",
+                      "legalForm": "SARL",
+                      "country": "FR",
+                      "functionalCurrency": "EUR",
+                      "sector": "COMMERCE",
+                      "organizationNature": "FOR_PROFIT",
+                      "businessTypeCode": "RETAIL_COMMERCE",
+                      "primaryActivityLabel": "Commerce de détail alimentaire",
+                      "extraAttributes": {},
+                      "accountingFrameworkId": null,
+                      "fiscalYearStartMonth": 1,
+                      "wizardStep": 9,
+                      "wizardCompleted": true,
+                      "siret": "12345678900012",
+                      "vatNumber": "FR12345678901",
+                      "nif": null,
+                      "address": "12 rue du Marché, 75001 Paris",
+                      "createdAt": "2026-01-15T09:00:00Z",
+                      "updatedAt": "2026-02-20T14:30:00Z"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "404", description = "Not found OR belongs to another user (§3.9)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class),
+                examples = @ExampleObject(value = """
+                    {
+                      "type": "https://joaccountant.ht/errors/company-not-found",
+                      "title": "Société introuvable",
+                      "status": 404,
+                      "detail": "Aucune société avec l'id 0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd accessible à cet utilisateur.",
+                      "properties": {"code": "COMPANY_NOT_FOUND"}
+                    }
+                    """)))
+    })
+    @GetMapping("/{companyId}")
+    public CompanyResponse get(@CurrentUser java.util.UUID userId,
+                               @PathVariable java.util.UUID companyId) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        return toResponse(companyService.getCompanyForUser(companyId, userId));
+    }
+
+    @Operation(summary = "Update the legal fields of a company (Phase D — Audit v4.7 §4.2)",
+        description = "Mise à jour partielle des champs légaux (siret, vatNumber, nif, address) " +
+                      "persistés par la migration V42. Ces champs restent éditables après " +
+                      "wizardCompleted=true car ils relèvent de la conformité réglementaire " +
+                      "(mentions légales factures CGI art. 289 + Factur-X). " +
+                      "Sémantique : seuls les champs non-nuls sont écrasés ; une chaîne blank " +
+                      "efface le champ. Un événement LEGAL_FIELDS_UPDATED est publié pour " +
+                      "audit-trail (oldValue/newValue au format JSON, PII masquée).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Legal fields updated",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = CompanyResponse.class),
+                examples = @ExampleObject(name = "Société FR avec SIRET + VAT + address", value = """
+                    {
+                      "id": "0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd",
+                      "name": "Boulangerie du Marché",
+                      "legalForm": "SARL",
+                      "country": "FR",
+                      "functionalCurrency": "EUR",
+                      "sector": "COMMERCE",
+                      "organizationNature": "FOR_PROFIT",
+                      "businessTypeCode": "RETAIL_COMMERCE",
+                      "primaryActivityLabel": "Commerce de détail alimentaire",
+                      "extraAttributes": {},
+                      "accountingFrameworkId": null,
+                      "fiscalYearStartMonth": 1,
+                      "wizardStep": 9,
+                      "wizardCompleted": true,
+                      "siret": "12345678900012",
+                      "vatNumber": "FR12345678901",
+                      "nif": null,
+                      "address": "12 rue du Marché, 75001 Paris",
+                      "createdAt": "2026-01-15T09:00:00Z",
+                      "updatedAt": "2026-07-28T16:45:00Z"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "404", description = "Company not found OR belongs to another user (§3.9)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(responseCode = "422", description = "Invalid input (pattern mismatch)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class),
+                examples = @ExampleObject(value = """
+                    {
+                      "type": "https://joaccountant.ht/errors/validation",
+                      "title": "Validation échouée",
+                      "status": 422,
+                      "detail": "Le SIRET doit contenir exactement 14 chiffres.",
+                      "properties": {"code": "VALIDATION_ERROR", "field": "siret"}
+                    }
+                    """)))
+    })
+    @PatchMapping("/{companyId}/legal")
+    public CompanyResponse updateLegalFields(@CurrentUser java.util.UUID userId,
+                                             @PathVariable java.util.UUID companyId,
+                                             @Valid @RequestBody UpdateCompanyLegalFieldsRequest req) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return toResponse(companyService.updateLegalFields(companyId, userId, req));
+    }
+
+    @Operation(summary = "Update a wizard step",
+        description = "Restructuration 2026-07-24 : chaque étape (1-9) a désormais un payload " +
+                      "spécifique et une sémantique métier réelle. Étape 1 ré-éditable, " +
+                      "étapes 2-9 en ordre, tout verrouillé après wizardCompleted=true.")
+    @PatchMapping("/{companyId}/wizard/{step}")
+    public CompanyResponse updateWizardStep(@CurrentUser java.util.UUID userId,
+                                            @PathVariable java.util.UUID companyId,
+                                            @PathVariable int step,
+                                            @RequestBody(required = false) Map<String, Object> payload) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return toResponse(companyService.updateWizardStep(companyId, userId, step, payload == null ? Map.of() : payload));
+    }
+
+    @Operation(summary = "Complete the wizard",
+        description = "Activates always-on modules + BusinessType → modules sectoriels. " +
+                      "Pour le type métier CUSTOM, active également la sélection manuelle " +
+                      "de l'étape 8 (extraAttributes[\"customModules\"]). " +
+                      "organizationNature, legalForm, sector, businessTypeCode et " +
+                      "extraAttributes deviennent immuables après ceci.")
+    @PostMapping("/{companyId}/wizard/complete")
+    public CompanyResponse completeWizard(@CurrentUser java.util.UUID userId,
+                                          @PathVariable java.util.UUID companyId) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return toResponse(companyService.completeWizard(companyId, userId));
+    }
+
+    @Operation(summary = "List activated modules for this company")
+    @GetMapping("/{companyId}/modules")
+    public List<jo.accountant.company.entity.CompanyModule> listModules(
+        @CurrentUser java.util.UUID userId,
+        @PathVariable java.util.UUID companyId) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        return companyModuleService.listForCompany(companyId);
+    }
+
+    @Operation(summary = "Activate a module for this company",
+        description = "Restructuration 2026-07-24 (suite — feature toggle) : permet à un " +
+                      "administrateur d'activer manuellement un module sectoriel non inclus " +
+                      "par défaut dans le mapping BusinessType → modules. Ex. un cabinet " +
+                      "comptable qui diversifie dans le retail peut activer INVENTORY sans " +
+                      "recréer une société. Les modules always-on peuvent être réactivés " +
+                      "ici (cas d'une mauvaise désactivation).")
+    @PostMapping("/{companyId}/modules/{moduleCode}/activate")
+    public jo.accountant.company.entity.CompanyModule activateModule(
+        @CurrentUser java.util.UUID userId,
+        @PathVariable java.util.UUID companyId,
+        @PathVariable String moduleCode) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return companyModuleService.enable(companyId, parseModuleCode(moduleCode));
+    }
+
+    @Operation(summary = "Deactivate a module for this company",
+        description = "Restructuration 2026-07-24 (suite — feature toggle) : permet à un " +
+                      "administrateur de désactiver un module sectoriel non utilisé. " +
+                      "Refuse la désactivation d'un module always-on (409 " +
+                      "MODULE_CANNOT_BE_DISABLED) — ces modules sont nécessaires au " +
+                      "fonctionnement transverse du système. Les endpoints du module " +
+                      "désactivé retourneront 403 MODULE_NOT_ENABLED.")
+    @PostMapping("/{companyId}/modules/{moduleCode}/deactivate")
+    public jo.accountant.company.entity.CompanyModule deactivateModule(
+        @CurrentUser java.util.UUID userId,
+        @PathVariable java.util.UUID companyId,
+        @PathVariable String moduleCode) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return companyModuleService.disable(companyId, parseModuleCode(moduleCode));
+    }
+
+    /** Parse la valeur du path param {@code moduleCode} en {@link ModuleCode}. */
+    private static jo.accountant.company.entity.ModuleCode parseModuleCode(String raw) {
+        try {
+            return jo.accountant.company.entity.ModuleCode.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new jo.accountant.core.exception.ValidationException("MODULE_CODE_INVALID",
+                "Code de module invalide : " + raw + ". Valeurs attendues : "
+                + java.util.Arrays.toString(jo.accountant.company.entity.ModuleCode.values()));
+        }
+    }
+
+    static CompanyResponse toResponse(Company c) {
+        return new CompanyResponse(
+            c.getId(), c.getName(), c.getLegalForm(), c.getCountry(), c.getFunctionalCurrency(),
+            c.getSector(), c.getOrganizationNature(), c.getBusinessTypeCode(),
+            c.getPrimaryActivityLabel(), c.getExtraAttributes(),
+            c.getAccountingFrameworkId(), c.getFiscalYearStartMonth(),
+            c.getWizardStep(), c.isWizardCompleted(),
+            // Audit v4.7 §4.2 — champs légaux pour Factur-X + mentions légales
+            c.getSiret(), c.getVatNumber(), c.getNif(), c.getAddress(),
+            c.getCreatedAt(), c.getUpdatedAt()
+        );
+    }
+}

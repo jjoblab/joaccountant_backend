@@ -1,0 +1,40 @@
+# Profil `dev` — utilise le PostgreSQL embarqué (Zonky) démarré par DevLauncher.
+# Les propriétés spring.datasource.* sont positionnées par DevLauncher en System properties.
+# Ce profil active surtout le logging DEBUG + le stockage local.
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    placeholder-replacement: false
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: dev-only-secret-please-override-in-production-at-least-256-bits-long-string-1234567890
+    access-token-ttl-seconds: 900
+  subscription:
+    max-companies-per-user: 3
+  storage:
+    fs:
+      root: ./build/storage-dev
+
+logging:
+  level:
+    jo.accountant: DEBUG
+    org.springframework.security: INFO

@@ -1,0 +1,147 @@
+# ===================================================================
+# JOAccountant Backend — Profil Spring `staging`
+# Audit §10.6 (Lot E — profil staging pour tests de charge)
+# ===================================================================
+# Utilisation : --spring.profiles.active=staging
+# But : environnement prod-like (config durcie) sans impacter la prod.
+# Idéal pour tests de charge Gatling et validation des dashboards Grafana.
+
+spring:
+  # ─── Base de données : PostgreSQL staging (séparé de la prod) ───
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://staging-postgres:5432/joaccountant_staging}
+    username: ${DB_USERNAME:joaccountant}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+
+  # ─── Redis : obligatoire en staging (test du rate limit distribué) ──
+  data:
+    redis:
+      host: ${REDIS_HOST:staging-redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+        generate_statistics: false
+        format_sql: false
+
+  threads:
+    virtual:
+      enabled: true  # no-op en Java 17, actif en Java 21
+
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+
+  # ─── Désactiver Swagger UI en staging (comme en prod) ──────────
+  doc:
+    swagger-ui:
+      enabled: false
+
+# ─── Server ─────────────────────────────────────────────────────────
+server:
+  port: 8080
+  shutdown: graceful
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  http2:
+    enabled: true
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+
+# ─── Management (Actuator sur port séparé) ──────────────────────────
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: joaccountant
+      env: staging
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+
+# ─── Sécurité (durcie comme en prod) ────────────────────────────────
+app:
+  jwt:
+    algorithm: RS256  # RS256 obligatoire en staging
+    secret: ${APP_JWT_SECRET}  # Fail-fast si absent
+    rsa:
+      private-key-path: ${APP_JWT_RSA_PRIVATE_KEY_PATH}
+      public-key-path: ${APP_JWT_RSA_PUBLIC_KEY_PATH}
+    access-token-ttl: 15m
+    refresh-token-ttl: 14d
+
+  mfa:
+    encryption-key: ${APP_MFA_ENCRYPTION_KEY}  # Fail-fast si absent (lot-A R-02)
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}  # Pas de wildcard en staging
+
+  rate-limit:
+    redis:
+      enabled: true  # Rate limit distribué obligatoire en staging
+
+  storage:
+    backend: s3
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${S3_REGION}
+      access-key: ${S3_ACCESS_KEY}
+      secret-key: ${S3_SECRET_KEY}
+
+# ─── Observabilité ──────────────────────────────────────────────────
+otel:
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}  # Tracing actif en staging
+      protocol: grpc
+  traces:
+    sampler:
+      parent_based:
+        ratio: 0.5  # 50% sampling en staging (vs 10% prod)
+
+# ─── Logging ────────────────────────────────────────────────────────
+logging:
+  level:
+    root: WARN
+    jo.accountant: INFO
+    org.hibernate.SQL: WARN
+    org.springframework: WARN
+    org.hibernate.stat: WARN
+
+# ─── ShedLock ───────────────────────────────────────────────────────
+shedlock:
+  lock-at-most-for: PT5M
+  lock-provider: jdbc

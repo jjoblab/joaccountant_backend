@@ -1,0 +1,29 @@
+# .dockerignore — excludes from Docker build context
+# Reduces build time + avoids cache invalidation on irrelevant changes
+
+build/
+.gradle/
+.git/
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Storage and logs (created at runtime)
+storage/
+logs/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Project extras
+*.md
+!README.md
+seed_*.py
+download/
+scripts/
+
+# Already extracted
+extracted/

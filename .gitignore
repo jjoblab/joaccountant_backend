@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.eclipse/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Embedded postgres binaries (downloaded by tests)
+/.embedded-pg/

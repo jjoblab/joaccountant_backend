@@ -1,0 +1,31 @@
+---
+# R-38 (lot-F-ops-docs) — NetworkChaos : partition réseau entre app et Redis
+# Valide que le RateLimitFilter bascule sur le fallback in-memory (Bucket4j)
+# et que le cache Caffeine local continue à fonctionner.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-partition-redis
+  namespace: joaccountant
+  labels:
+    app.kubernetes.io/name: joaccountant
+    chaos-mesh.org/experiment: network-partition-redis
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - joaccountant
+    labelSelectors:
+      app.kubernetes.io/name: joaccountant
+  direction: both
+  target:
+    selector:
+      namespaces:
+        - joaccountant
+      labelSelectors:
+        app.kubernetes.io/name: redis
+    mode: all
+  duration: "30s"
+  scheduler:
+    cron: "@once"

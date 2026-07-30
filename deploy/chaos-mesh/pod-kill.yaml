@@ -1,0 +1,23 @@
+---
+# R-38 (lot-F-ops-docs) — PodChaos : tuer 1 pod joaccountant
+# Valide que le HPA recrée le pod et que l'application reste disponible
+# (PDB minAvailable=1 doit garantir qu'au moins 1 pod reste UP).
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-kill
+  namespace: joaccountant
+  labels:
+    app.kubernetes.io/name: joaccountant
+    chaos-mesh.org/experiment: pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - joaccountant
+    labelSelectors:
+      app.kubernetes.io/name: joaccountant
+  duration: "30s"
+  scheduler:
+    cron: "@once"

@@ -1,0 +1,246 @@
+# CI pour JOAccountant Backend v4.7
+# Audit v4.7 §9.4 — Quick win : CI minimale pour exécuter tests + ArchUnit sur chaque PR
+# R-12 (lot-C-perf-devops) — Ajout des scans sécurité (SAST/SCA/Image/SBOM)
+#
+# S'exécute sur : push vers main, pull requests vers main, tags v*
+# Jobs :
+#   1. build-and-test     — compile + tests + ArchUnit + bootJar
+#   2. build-docker       — build de l'image Docker (PR only)
+#   3. security-sast      — CodeQL Analysis (SAST Java)
+#   4. security-sca       — Trivy filesystem scan (fail on CRITICAL)
+#   5. security-image     — Trivy image scan (sur l'image buildée par build-docker)
+#   6. security-supply-chain — Syft SBOM (CycloneDX) uploadé en artifact
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  # CodeQL a besoin de security-events pour uploader les alerts
+  security-events: write
+
+jobs:
+  build-and-test:
+    name: Build & Test (JDK 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Compile + lint (check)
+        run: ./gradlew check --no-daemon --continue
+
+      - name: Run tests (including ArchUnit)
+        run: ./gradlew test --no-daemon
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          retention-days: 14
+
+      - name: Build JAR
+        run: ./gradlew :app:bootJar --no-daemon -x test
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: joaccountant-jar
+          path: app/build/libs/*.jar
+          retention-days: 7
+
+  build-docker:
+    name: Build Docker image (no push)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    # Permet au job security-image de référencer cette image via needs
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: joaccountant:ci-${{ github.sha }}
+          load: true  # charge l'image dans le docker local pour le scan Trivy suivant
+      - name: Export image tag
+        run: echo "image-tag=joaccountant:ci-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  # =========================================================================
+  # R-12 (lot-C-perf-devops) — Jobs de sécurité
+  # =========================================================================
+
+  security-sast:
+    name: Security SAST (CodeQL)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['java']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # queries: security-extended,security-and-quality pour plus de couverture
+          queries: security-extended
+
+      - name: Compile Java (sans tests, pour que CodeQL ait du bytecode à analyser)
+        run: ./gradlew compileJava compileTestJava --no-daemon
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  security-sca:
+    name: Security SCA (Trivy filesystem)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          # fail-severity: CRITICAL — échec du job si une vulnérabilité CRITICAL est trouvée
+          # dans les dépendances déclarées (build.gradle.kts, gradle.lockfile, Dockerfile, etc.)
+          severity: CRITICAL,HIGH
+          fail-severity: CRITICAL
+          format: sarif
+          output: trivy-fs-results.sarif
+          ignore-unfixed: true
+
+      - name: Upload Trivy filesystem SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs-results.sarif
+          category: trivy-filesystem
+
+      - name: Upload Trivy filesystem report (artifact)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs-report
+          path: trivy-fs-results.sarif
+          retention-days: 14
+
+  security-image:
+    name: Security Image (Trivy Docker)
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy image scan on built Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ${{ needs.build-docker.outputs.image-tag }}
+          severity: CRITICAL,HIGH
+          fail-severity: CRITICAL
+          format: sarif
+          output: trivy-image-results.sarif
+          ignore-unfixed: true
+
+      - name: Upload Trivy image SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image-results.sarif
+          category: trivy-image
+
+      - name: Upload Trivy image report (artifact)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-report
+          path: trivy-image-results.sarif
+          retention-days: 14
+
+  security-supply-chain:
+    name: Supply Chain (Syft SBOM)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM (CycloneDX) with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          # Scan le filesystem (gradle, Dockerfile) et génère un SBOM CycloneDX
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          # artifact=true → upload automatique en artifact GitHub
+          artifact: true
+          # annotate-image=false — on n'a pas d'image à annoter ici
+          annotate-image: false
