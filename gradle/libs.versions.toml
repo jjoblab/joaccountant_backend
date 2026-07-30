@@ -55,7 +55,7 @@ caffeine = "3.1.8"
 logstashLogbackEncoder = "7.4"
 
 # ----- Distributed scheduling (ShedLock) -----
-shedlock = "5.10.0"
+shedlock = "7.7.0"
 
 # ----- Rate limiting (Bucket4j) -----
 bucket4j = "8.10.1"
