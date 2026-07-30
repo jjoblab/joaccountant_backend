@@ -399,7 +399,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     company.setFreeZone(true); // V8-1 — ZF Code Fiscal art. 195
     company.setTaxExemptionStatus(TaxExemptionStatus.FREE_ZONE); // IS 15% zone franche
     company.setMonthlyLegalHours(new BigDecimal("208")); // Haïti 48h/sem × 52/12
-    company.setWizardStep(9);
+    company.setWizardStep(jo.accountant.company.entity.Company.TOTAL_WIZARD_STEPS);
     company.setWizardCompleted(true);
     company.setIsDemo(true);
     return companyRepository.save(company);

@@ -124,6 +124,7 @@ public class ChartOfAccountsService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "accounts", allEntries = true)
     public InitializeResult initialize(UUID companyId, UUID accountingFrameworkId,
                                        InitializeRequest.AccountNumberingTemplateDto templateDto,
                                        String businessTypeCode) {

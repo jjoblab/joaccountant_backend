@@ -29,7 +29,7 @@ public class CompanyBuilder {
         company.setFiscalYearStartMonth(10);
         company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD);
         company.setMonthlyLegalHours(new BigDecimal("208"));
-        company.setWizardStep(9);
+        company.setWizardStep(jo.accountant.company.entity.Company.TOTAL_WIZARD_STEPS);
         company.setWizardCompleted(true);
         company.setIsDemo(true);
         company.setFreeZone(false);

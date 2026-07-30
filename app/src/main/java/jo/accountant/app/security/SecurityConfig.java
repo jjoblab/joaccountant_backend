@@ -59,6 +59,26 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // Audit v4.7 §6.3 — Headers de sécurité (HSTS, X-Frame-Options, CSP, Referrer-Policy)
+            //
+            // ⚠️ FIX Phase 1 (audit Z.ai 2026-07-31) — CSP default-src 'none' bloquait Swagger UI.
+            // La directive `default-src 'none'` est la CSP la plus restrictive possible : elle
+            // impose que TOUTES les directives fallback (script-src, style-src, img-src, font-src,
+            // connect-src, frame-src, etc.) soient à 'none' sauf si redéfinies explicitement.
+            // Or Swagger UI charge dynamiquement :
+            //   - /webjars/swagger-ui/swagger-ui-bundle.js  → bloqué par script-src 'none'
+            //   - /webjars/swagger-ui/swagger-ui.css        → bloqué par style-src 'none'
+            //   - fetch('/v3/api-docs/swagger-config')      → bloqué par connect-src 'none'
+            //   - inline scripts injectés par springdoc     → bloqués (pas de 'unsafe-inline')
+            // Résultat : HTML 200 OK mais page blanche.
+            //
+            // Solution : CSP permissive pour Swagger UI tout en préservant les autres restrictions.
+            //   - 'self' autorise les webjars servis depuis la même origine
+            //   - 'unsafe-inline' est nécessaire pour script-src et style-src car springdoc
+            //     injecte du JS inline dans /swagger-ui/index.html (configuration dynamique)
+            //   - img-src 'self' data: permet les favicons et schémas inline des exemples
+            //   - connect-src 'self' autorise les fetch XHR vers /v3/api-docs et /swagger-config
+            //   - default-src 'none' reste comme safety net pour les autres directives (frame, object, etc.)
+            //   - frame-ancestors 'none' remplace X-Frame-Options pour la protection clickjacking
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
                 .contentTypeOptions(ct -> {})  // X-Content-Type-Options: nosniff (activé par défaut, explicite)
@@ -66,7 +86,14 @@ public class SecurityConfig {
                     .includeSubDomains(true)
                     .maxAgeInSeconds(31536000))  // 1 an
                 .referrerPolicy(rp -> rp.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'")))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'none'; " +
+                    "img-src 'self' data:; " +
+                    "font-src 'self' data:; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "script-src 'self' 'unsafe-inline'; " +
+                    "connect-src 'self'; " +
+                    "frame-ancestors 'none'")))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/auth/register",

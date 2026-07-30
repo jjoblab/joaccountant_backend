@@ -45,13 +45,29 @@ import org.hibernate.type.SqlTypes;
 public class Company {
 
     /**
-     * Nombre total d'étapes du wizard (§4.3 — centralisation du magic number {@code 9}).
+     * Nombre total d'étapes du wizard V8.2 (refonte 4 étapes avec activation atomique).
+     *
+     * <p>Le wizard V8.2 fusionne les 9 étapes historiques en 4 étapes :
+     * <ol>
+     *   <li><b>Identité</b> — name + country + functionalCurrency (création via POST /companies)</li>
+     *   <li><b>Activité</b> — businessTypeCode + primaryActivityLabel + sector + extraAttributes
+     *       (PATCH /wizard/2 avec {@code WizardStep2Request})</li>
+     *   <li><b>Comptabilité</b> — accountingFrameworkId + fiscalYearStart + vatMode + numberingPrefixes
+     *       (PATCH /wizard/3 avec {@code WizardStep3Request})</li>
+     *   <li><b>Activation atomique</b> — modules + plan comptable + exercice + journaux + séquences + TVA
+     *       (POST /wizard/complete avec {@code CompleteWizardRequest} → {@code CompanyWizardResult})</li>
+     * </ol>
      *
      * <p>Toute référence au nombre d'étapes (validation de {@code WizardStepRequest},
      * {@code CompanyService.updateWizardStep} / {@code completeWizard}) doit pointer vers
-     * cette constante plutôt que vers un littéral {@code 9} en dur.
+     * cette constante plutôt que vers un littéral {@code 4} en dur.
+     *
+     * <p><b>Historique</b> : V84__wizard_refonte_4_steps.sql a déjà clampé wizard_step à 4 en base
+     * (UPDATE companies SET wizard_step = LEAST(wizard_step, 4)). Cette constante Java s'aligne
+     * enfin sur la sémantique DB — corrigeant le bug 409 WIZARD_STEP_INCOMPLETE qui bloquait
+     * completeWizard quand wizard_step valait 4 mais TOTAL_WIZARD_STEPS valait encore 9.
      */
-    public static final int TOTAL_WIZARD_STEPS = 9;
+    public static final int TOTAL_WIZARD_STEPS = 4;
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)

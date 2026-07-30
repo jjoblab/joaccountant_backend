@@ -1,6 +1,7 @@
 package jo.accountant.company.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,12 @@ import jo.accountant.auth.entity.UserCompanyRole;
 import jo.accountant.auth.entity.UserRole;
 import jo.accountant.auth.repository.UserCompanyRoleRepository;
 import jo.accountant.auth.service.UserCompanyRoleService;
+import jo.accountant.company.dto.CompleteWizardRequest;
+import jo.accountant.company.dto.CompanyResponse;
+import jo.accountant.company.dto.CompanyWizardResult;
+import jo.accountant.company.dto.UpdateCompanyLegalFieldsRequest;
+import jo.accountant.company.dto.WizardStep2Request;
+import jo.accountant.company.dto.WizardStep3Request;
 import jo.accountant.company.entity.BusinessType;
 import jo.accountant.company.entity.BusinessTypeRequiredField;
 import jo.accountant.company.entity.Company;
@@ -16,12 +23,12 @@ import jo.accountant.company.entity.LegalForm;
 import jo.accountant.company.entity.ModuleCode;
 import jo.accountant.company.entity.OrganizationNature;
 import jo.accountant.company.entity.Sector;
-import jo.accountant.company.dto.UpdateCompanyLegalFieldsRequest;
 import jo.accountant.company.event.CompanyCreatedEvent;
 import jo.accountant.company.event.CompanyLegalFieldsUpdatedEvent;
 import jo.accountant.company.event.CompanyWizardCompletedEvent;
 import jo.accountant.company.mapping.BusinessTypeModuleService;
 import jo.accountant.company.mapping.OrganizationNatureLegalFormValidator;
+import jo.accountant.company.port.AccountingProvisioningPort;
 import jo.accountant.company.repository.BusinessTypeRequiredFieldRepository;
 import jo.accountant.company.repository.BusinessTypeRepository;
 import jo.accountant.company.repository.CompanyRepository;
@@ -36,20 +43,40 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 /**
- * Cycle de vie de Company : création (wizard step 1), mises à jour des étapes du wizard,
- * complétion du wizard (avec activation des modules sectoriels), listing.
+ * Cycle de vie de Company : création (wizard step 1), mises à jour des étapes 2 et 3 du wizard,
+ * complétion atomique du wizard (étape 4 = activation modules + plan comptable + exercice +
+ * journaux + séquences + TVA en une seule transaction), listing.
  *
- * <p>Restructuration 2026-07-24 (prompt {@code PROMPT_AGENT_restructuration_type_organisation}) :
- * le wizard à 9 étapes a désormais une sémantique réelle pour chaque étape (§5), la validation
- * croisée Nature ↔ LegalForm est appliquée (§4.2), et l'activation des modules est pilotée par
- * données via {@link BusinessTypeModuleService} (§6). Le type {@code CUSTOM} remplace
- * l'ancien secteur {@code MIXTE} et active réellement la sélection manuelle de modules à
- * l'étape 8 (correction du bug documenté « MIXTE non testé »).
+ * <p><b>V8.2 (audit Z.ai 2026-07-31) — Refonte wizard 4 étapes avec activation atomique.</b>
+ * Le wizard 9 étapes historique a été supprimé. Les 4 DTO V8.2 ({@link WizardStep2Request},
+ * {@link WizardStep3Request}, {@link CompleteWizardRequest}, {@link CompanyWizardResult}) sont
+ * désormais câblés. La constante {@link Company#TOTAL_WIZARD_STEPS} vaut 4, enfin alignée sur
+ * la migration V84 qui avait déjà clampé wizard_step à 4 en base.
  *
- * <p>§11 (révisé) : {@code organizationNature}, {@code legalForm}, {@code sector},
- * {@code businessTypeCode} et {@code extraAttributes} sont verrouillés une fois
- * {@code wizardCompleted = true}.
+ * <p>Les 4 étapes du wizard V8.2 :
+ * <ol>
+ *   <li><b>Identité</b> — name + country + functionalCurrency (création via POST /companies,
+ *       méthode {@link #createCompany})</li>
+ *   <li><b>Activité</b> — businessTypeCode + primaryActivityLabel + sector + extraAttributes
+ *       + customModules (PATCH /wizard/2, méthode {@link #applyWizardStep2})</li>
+ *   <li><b>Comptabilité</b> — accountingFrameworkId + fiscalYearStart + vatMode + numberingPrefixes
+ *       (PATCH /wizard/3, méthode {@link #applyWizardStep3})</li>
+ *   <li><b>Activation atomique</b> — modules + plan comptable + exercice + journaux + séquences + TVA
+ *       (POST /wizard/complete, méthode {@link #completeWizard})</li>
+ * </ol>
+ *
+ * <p><b>Idempotence</b> : {@link #completeWizard} est ré-entrante. Si l'activation est rappelée
+ * (suite à un retry), les objets existants ne sont pas recréés (catch des ConflictException
+ * dans {@link AccountingProvisioningService}).
+ *
+ * <p><b>Atomicité</b> : {@link #completeWizard} est {@code @Transactional}. Si une sous-étape
+ * échoue avec une exception non-récupérable, toute la transaction est rollbackée — aucun objet
+ * partiel ne persiste. Corrige le bug documenté « completeWizard ne fait pas de rollback
+ * transactionnel » (cf. ancien README ligne 318-321).
  */
 @Service
 public class CompanyService {
@@ -64,7 +91,11 @@ public class CompanyService {
     private final MaxCompaniesGuard maxCompaniesGuard;
     private final BusinessTypeModuleService businessTypeModuleService;
     private final OrganizationNatureLegalFormValidator natureLegalFormValidator;
+    private final AccountingProvisioningPort accountingProvisioningPort;
     private final ApplicationEventPublisher events;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public CompanyService(CompanyRepository companyRepository,
                           AccountingFrameworkRepository frameworkRepository,
@@ -76,6 +107,7 @@ public class CompanyService {
                           MaxCompaniesGuard maxCompaniesGuard,
                           BusinessTypeModuleService businessTypeModuleService,
                           OrganizationNatureLegalFormValidator natureLegalFormValidator,
+                          AccountingProvisioningPort accountingProvisioningPort,
                           ApplicationEventPublisher events) {
         this.companyRepository = companyRepository;
         this.frameworkRepository = frameworkRepository;
@@ -87,15 +119,19 @@ public class CompanyService {
         this.maxCompaniesGuard = maxCompaniesGuard;
         this.businessTypeModuleService = businessTypeModuleService;
         this.natureLegalFormValidator = natureLegalFormValidator;
+        this.accountingProvisioningPort = accountingProvisioningPort;
         this.events = events;
     }
 
+    // ── Étape 1 — Identité (création) ──────────────────────────────────────────
+
     /**
-     * Crée une Company à l'étape 1 du wizard — champs d'identité uniquement (§5).
+     * Crée une Company à l'étape 1 du wizard — champs d'identité uniquement.
      *
-     * <p>Restructuration : seuls {@code name}, {@code country} et {@code functionalCurrency}
-     * sont requis à ce stade. {@code legalForm}, {@code sector}, {@code accountingFrameworkId}
-     * et {@code fiscalYearStartMonth} sont saisis via les étapes 2, 3 et 6 du wizard.
+     * <p>Seuls {@code name}, {@code country} et {@code functionalCurrency} sont requis à ce stade.
+     * Les autres champs ({@code legalForm}, {@code sector}, {@code businessTypeCode},
+     * {@code accountingFrameworkId}, {@code fiscalYearStartMonth}) sont saisis via les étapes 2 et 3
+     * du wizard.
      *
      * <p>Assigne le rôle OWNER au créateur et le stamp comme createdBy.
      */
@@ -111,14 +147,14 @@ public class CompanyService {
         company.setName(name.trim());
         company.setCountry(country.toUpperCase());
         company.setFunctionalCurrency(functionalCurrency.toUpperCase());
-        // Defaults provisoires — seront écrasés par les étapes correspondantes du wizard.
+        // Defaults provisoires — seront écrasés par les étapes 2 et 3 du wizard.
         company.setLegalForm(LegalForm.OTHER);
         company.setSector(Sector.AUTRE);
         company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
         company.setBusinessTypeCode("CUSTOM");
         company.setPrimaryActivityLabel("");
-        company.setAccountingFrameworkId(null);  // positionné à l'étape 6
-        company.setFiscalYearStartMonth(1);       // positionné à l'étape 6
+        company.setAccountingFrameworkId(null);  // positionné à l'étape 3
+        company.setFiscalYearStartMonth(1);       // positionné à l'étape 3
         company.setWizardStep(1);
         company.setWizardCompleted(false);
         company.setCreatedAt(Instant.now());
@@ -164,6 +200,8 @@ public class CompanyService {
             .orElseThrow(() -> new NotFoundException("Company", companyId));
     }
 
+    // ── PATCH /legal — champs légaux éditables post-wizard ─────────────────────
+
     /**
      * Met à jour les champs légaux d'une Company (Phase D — Audit v4.7 §4.2).
      *
@@ -175,14 +213,6 @@ public class CompanyService {
      * {@code wizardCompleted = true} — ils relèvent de la conformité réglementaire (mentions
      * légales des factures CGI art. 289 + Factur-X) et doivent pouvoir être mis à jour à tout
      * moment (ex: changement d'adresse, obtention du numéro de TVA...).
-     *
-     * <p>Publie un {@link CompanyLegalFieldsUpdatedEvent} pour audit-trail (oldValue/newValue
-     * au format JSON, PII masquée par {@code PiiMasker} au moment de la persistance).
-     *
-     * @param companyId  id de la Company à mettre à jour
-     * @param userId     id de l'utilisateur authentifié (pour audit + stamp {@code updatedBy})
-     * @param req        payload partiel — champs non-nuls uniquement
-     * @return la Company mise à jour (à mapper en {@code CompanyResponse} par le contrôleur)
      */
     @Transactional
     public Company updateLegalFields(UUID companyId, UUID userId, UpdateCompanyLegalFieldsRequest req) {
@@ -234,10 +264,6 @@ public class CompanyService {
         return company;
     }
 
-    /**
-     * Construit un snapshot des 4 champs légaux pour l'audit (oldValue/newValue JSON).
-     * Utilisé par {@link #updateLegalFields} uniquement — ne pas exposer publiquement.
-     */
     private static Map<String, Object> legalFieldsSnapshot(Company c) {
         Map<String, Object> snap = new java.util.LinkedHashMap<>();
         snap.put("siret", c.getSiret());
@@ -247,81 +273,369 @@ public class CompanyService {
         return snap;
     }
 
+    // ── Étape 1 (ré-éditable) — PATCH /wizard/1 ────────────────────────────────
+
     /**
-     * Met à jour une étape du wizard (§5 — restructuration :company).
-     *
-     * <p>Chaque étape a désormais un payload spécifique et une sémantique métier réelle.
-     * L'étape 1 reste ré-éditable, les autres doivent être appliquées en ordre.
-     * Tout est verrouillé après {@code wizardCompleted = true}.
+     * Met à jour l'étape 1 (identité) — ré-éditable même après être passée à l'étape 2.
+     * Permet de corriger name/country/functionalCurrency sans recréer la société.
      */
     @Transactional
-    public Company updateWizardStep(UUID companyId, UUID userId, int step, Map<String, Object> payload) {
+    public Company applyWizardStep1(UUID companyId, UUID userId, String name, String country,
+                                     String functionalCurrency) {
         Company company = getCompanyForUser(companyId, userId);
         if (company.isWizardCompleted()) {
             throw new ConflictException("WIZARD_ALREADY_COMPLETED",
                 "Wizard is already completed — company can no longer be edited via wizard endpoints");
         }
-        if (step < 1 || step > Company.TOTAL_WIZARD_STEPS) {
-            throw new ValidationException("INVALID_WIZARD_STEP",
-                "Wizard step must be between 1 and " + Company.TOTAL_WIZARD_STEPS + " (got " + step + ")");
+        if (name != null && !name.isBlank()) {
+            company.setName(name.trim());
         }
-        if (step <= company.getWizardStep() && step != 1) {
-            throw new ConflictException("WIZARD_STEP_OUT_OF_ORDER",
-                "Cannot edit step " + step + " — current progress is at step " + company.getWizardStep());
+        if (country != null && country.length() == 2) {
+            company.setCountry(country.toUpperCase());
         }
-
-        switch (step) {
-            case 1 -> applyStep1Identity(company, payload);
-            case 2 -> applyStep2NatureAndLegalForm(company, payload);
-            case 3 -> applyStep3Sector(company, payload);
-            case 4 -> applyStep4BusinessType(company, payload);
-            case 5 -> applyStep5PrimaryActivity(company, payload);
-            case 6 -> applyStep6FrameworkAndFiscalYear(company, payload);
-            case 7 -> applyStep7RequiredFields(company, payload);
-            case 8 -> applyStep8ModuleSelection(company, payload);
-            case 9 -> applyStep9Confirmation(company, payload);
-            default -> throw new ValidationException("INVALID_WIZARD_STEP",
-                "Unknown wizard step: " + step);
+        if (functionalCurrency != null && functionalCurrency.length() == 3) {
+            company.setFunctionalCurrency(functionalCurrency.toUpperCase());
         }
-
-        // L'étape 1 est ré-éditable — ne pas reculer le curseur.
-        // Pour les autres étapes, le curseur avance au max(step, current).
-        if (step != 1 || company.getWizardStep() < 1) {
-            company.setWizardStep(Math.max(company.getWizardStep(), step));
+        // L'étape 1 ne fait pas avancer wizardStep (ré-éditable, mais le curseur reste à 1+).
+        if (company.getWizardStep() < 1) {
+            company.setWizardStep(1);
         }
         company.setUpdatedAt(Instant.now());
         company.setUpdatedBy(userId);
         return companyRepository.save(company);
     }
 
+    // ── Étape 2 — Activité — PATCH /wizard/2 ───────────────────────────────────
+
+    /**
+     * Applique l'étape 2 du wizard V8.2 : activité + type métier.
+     *
+     * <p>Fusionne les anciennes étapes 3 (sector), 4 (business type), 5 (activity),
+     * 7 (required fields) et 8 (module selection pour CUSTOM).
+     *
+     * <p>Auto-popule {@code organizationNature} et {@code sector} depuis les defaults du
+     * BusinessType si l'utilisateur ne les a pas fournis (ou s'ils sont aux defaults provisoires).
+     *
+     * @throws ValidationException si {@code businessTypeCode} n'existe pas ou n'est pas actif,
+     *         ou si un champ requis (BusinessTypeRequiredField) est manquant dans extraAttributes
+     * @throws ConflictException si le wizard est déjà complété ou si l'étape 2 est appelée
+     *         alors que wizardStep < 1
+     */
     @Transactional
-    public Company completeWizard(UUID companyId, UUID userId) {
+    public Company applyWizardStep2(UUID companyId, UUID userId, WizardStep2Request req) {
         Company company = getCompanyForUser(companyId, userId);
+        if (company.isWizardCompleted()) {
+            throw new ConflictException("WIZARD_ALREADY_COMPLETED",
+                "Wizard is already completed — company can no longer be edited via wizard endpoints");
+        }
+        if (company.getWizardStep() < 1) {
+            throw new ConflictException("WIZARD_STEP_OUT_OF_ORDER",
+                "Cannot apply step 2 — current progress is at step " + company.getWizardStep());
+        }
+
+        // 1. Valider businessTypeCode existe et est actif
+        BusinessType bt = businessTypeModuleService.getActiveByCode(req.businessTypeCode());
+        company.setBusinessTypeCode(bt.getCode());
+
+        // 2. Auto-populate organizationNature + sector si non déjà saisis (defaults du type métier)
+        if (company.getOrganizationNature() == null
+                || (company.getOrganizationNature() == OrganizationNature.FOR_PROFIT
+                    && company.getLegalForm() == LegalForm.OTHER)) {
+            company.setOrganizationNature(bt.getDefaultOrganizationNature());
+        }
+        if (req.sector() != null) {
+            company.setSector(req.sector());
+        } else if (company.getSector() == null || company.getSector() == Sector.AUTRE) {
+            company.setSector(bt.getDefaultSector());
+        }
+
+        // 3. primaryActivityLabel
+        company.setPrimaryActivityLabel(req.primaryActivityLabel().trim());
+
+        // 4. extraAttributes — valider les champs requis du BusinessType
+        Map<String, Object> extra = new HashMap<>();
+        if (req.extraAttributes() != null) {
+            extra.putAll(req.extraAttributes());
+        }
+        List<BusinessTypeRequiredField> requiredFields =
+            businessTypeRequiredFieldRepository.findByBusinessTypeCodeOrderByDisplayOrderAsc(
+                company.getBusinessTypeCode());
+        for (BusinessTypeRequiredField f : requiredFields) {
+            Object value = extra.get(f.getFieldKey());
+            if (f.isRequired() && (value == null || (value instanceof String s && s.isBlank()))) {
+                throw new ValidationException("REQUIRED_FIELD_MISSING",
+                    "Champ requis manquant : " + f.getLabel() + " (clé : " + f.getFieldKey() + ")");
+            }
+        }
+
+        // 5. customModules — stockés dans extraAttributes (consommés à completeWizard si CUSTOM)
+        if (req.customModules() != null && !req.customModules().isEmpty()) {
+            // Valider que les codes sont valides (sinon ignorer silencieusement pour ne pas bloquer)
+            List<String> valid = new ArrayList<>();
+            for (String code : req.customModules()) {
+                try {
+                    ModuleCode.valueOf(code);
+                    valid.add(code);
+                } catch (IllegalArgumentException ignored) {
+                    // Module code inconnu — ignoré silencieusement
+                }
+            }
+            extra.put("customModules", valid);
+        }
+        company.setExtraAttributes(extra);
+
+        // Avancer le curseur à 2 (sauf si déjà plus loin — ne pas reculer)
+        company.setWizardStep(Math.max(company.getWizardStep(), 2));
+        company.setUpdatedAt(Instant.now());
+        company.setUpdatedBy(userId);
+        return companyRepository.save(company);
+    }
+
+    // ── Étape 3 — Comptabilité — PATCH /wizard/3 ───────────────────────────────
+
+    /**
+     * Applique l'étape 3 du wizard V8.2 : comptabilité & fiscalité.
+     *
+     * <p>Fusionne les anciennes étapes 6 (framework+fiscal), 9 (VAT mode), 10 (numbering).
+     *
+     * <p>Stocke {@code vatMode} et {@code numberingPrefixes} dans {@code extraAttributes} pour
+     * consommation par {@link AccountingProvisioningService#provision} à l'étape 4.
+     *
+     * @throws NotFoundException si {@code accountingFrameworkId} n'existe pas
+     * @throws ValidationException si {@code fiscalYearStartMonth} ∉ [1, 12]
+     */
+    @Transactional
+    public Company applyWizardStep3(UUID companyId, UUID userId, WizardStep3Request req) {
+        Company company = getCompanyForUser(companyId, userId);
+        if (company.isWizardCompleted()) {
+            throw new ConflictException("WIZARD_ALREADY_COMPLETED",
+                "Wizard is already completed — company can no longer be edited via wizard endpoints");
+        }
+        if (company.getWizardStep() < 2) {
+            throw new ConflictException("WIZARD_STEP_OUT_OF_ORDER",
+                "Cannot apply step 3 — current progress is at step " + company.getWizardStep()
+                + " (must be >= 2)");
+        }
+
+        // 1. Valider accountingFrameworkId
+        AccountingFramework af = frameworkRepository.findById(req.accountingFrameworkId())
+            .orElseThrow(() -> new NotFoundException("ACCOUNTING_FRAMEWORK_NOT_FOUND",
+                "Accounting framework not found: " + req.accountingFrameworkId()));
+        company.setAccountingFrameworkId(af.getId());
+
+        // 2. fiscalYearStartMonth
+        if (req.fiscalYearStartMonth() < 1 || req.fiscalYearStartMonth() > 12) {
+            throw new ValidationException("FISCAL_YEAR_START_INVALID",
+                "Fiscal year start month must be between 1 and 12");
+        }
+        company.setFiscalYearStartMonth(req.fiscalYearStartMonth());
+
+        // 3. Stocker vatMode + numberingPrefixes dans extraAttributes pour l'étape 4
+        Map<String, Object> extra = company.getExtraAttributes() != null
+            ? new HashMap<>(company.getExtraAttributes()) : new HashMap<>();
+        extra.put("vatMode", req.vatMode() != null ? req.vatMode().name() : "DEBIT");
+        if (req.fiscalYearStartYear() != 0) {
+            extra.put("fiscalYearStartYear", req.fiscalYearStartYear());
+        }
+        if (req.fiscalYearLabel() != null && !req.fiscalYearLabel().isBlank()) {
+            extra.put("fiscalYearLabel", req.fiscalYearLabel());
+        }
+        if (req.numberingPrefixes() != null && !req.numberingPrefixes().isEmpty()) {
+            extra.put("numberingPrefixes", req.numberingPrefixes());
+        }
+        company.setExtraAttributes(extra);
+
+        // Avancer le curseur à 3 (prêt pour completeWizard)
+        company.setWizardStep(Math.max(company.getWizardStep(), 3));
+        company.setUpdatedAt(Instant.now());
+        company.setUpdatedBy(userId);
+        return companyRepository.save(company);
+    }
+
+    // ── Étape 4 — Activation atomique — POST /wizard/complete ─────────────────
+
+    /**
+     * Finalise le wizard V8.2 par activation atomique.
+     *
+     * <p>Exécute en UNE SEULE transaction (rollback si échec) :
+     * <ol>
+     *   <li>Activation des modules (always-on + sectoriels BusinessType + customModules si CUSTOM)</li>
+     *   <li>Initialisation du plan comptable (ChartOfAccountsService.initialize)</li>
+     *   <li>Création de l'exercice fiscal + 12 périodes mensuelles (AccountingEngineService.createFiscalYear)</li>
+     *   <li>Création des 8 journaux standards VT/AC/BQ/CA/OD/PA/DP/FX (AccountingEngineService.createJournal)</li>
+     *   <li>Création des 6 séquences de numérotation par défaut (DocumentNumberingService.createSequence)</li>
+     *   <li>Création des règles TVA par défaut si pays non couvert par seeds globaux (TaxService.createTaxRule)</li>
+     * </ol>
+     *
+     * <p>Publie {@link CompanyWizardCompletedEvent} après commit. Cet événement est écouté
+     * par deux listeners {@code @TransactionalEventListener(AFTER_COMMIT)} (V8.2 Phase 4) :
+     * <ul>
+     *   <li>{@code ChartOfAccountsAutoInitializer} (chart-of-accounts) — filet de sécurité idempotent</li>
+     *   <li>{@code AccountingEngineAutoInitializer} (accounting-engine) — filet de sécurité idempotent</li>
+     * </ul>
+     *
+     * <p><b>Architecture hybride V8.2</b> : l'activation atomique est faite directement dans
+     * cette méthode via {@link AccountingProvisioningPort} (synchrone, même transaction).
+     * Les listeners event-driven (Phase 4) sont des <b>filets de sécurité idempotents</b> qui
+     * permettent également à de futurs modules de réagir à {@code CompanyWizardCompletedEvent}
+     * sans modifier {@code CompanyService}. À terme, l'appel direct pourrait être supprimé
+     * au profit exclusif des listeners — mais la coexistence actuelle garantit la robustesse.
+     *
+     * @param companyId id de la Company à finaliser
+     * @param userId    id de l'utilisateur authentifié
+     * @param req       payload optionnel (mfaCode, expenseCategories, contributionRules — pré-seed)
+     * @return {@link CompanyWizardResult} récapitulant tout ce qui a été créé
+     *
+     * @throws ConflictException      si wizard déjà complété ou wizardStep < 3
+     * @throws ValidationException    si businessTypeCode incohérent
+     * @throws NotFoundException      si accountingFrameworkId n'existe plus
+     */
+    @Transactional
+    public CompanyWizardResult completeWizard(UUID companyId, UUID userId, CompleteWizardRequest req) {
+        // Flush les modifications en attente dans le persistence context avant de clearer,
+        // pour s'assurer que les entités créées dans la même transaction (ex: createCompany
+        // suivi de applyWizardStep2/3 dans Phase1IntegrationTest) sont bien persistées en DB.
+        // Sans ce flush, le clear() qui suit les détacherait sans les écrire, et le
+        // findById suivant échouerait (Company not found).
+        entityManager.flush();
+        // Vider le persistence context pour garantir qu'on recharge la version la plus récente
+        // depuis la DB (en particulier wizardCompleted qui peut avoir été setté par un appel
+        // précédent dont l'instance est encore en cache). Sans ce clear, le check
+        // isWizardCompleted() pourrait ne pas déclencher et on entrerait dans l'activation
+        // atomique → JpaSystemException sur duplicate key.
+        entityManager.clear();
+        Company company = getCompanyForUser(companyId, userId);
+
         if (company.isWizardCompleted()) {
             throw new ConflictException("WIZARD_ALREADY_COMPLETED",
                 "Wizard is already completed");
         }
-        if (company.getWizardStep() < Company.TOTAL_WIZARD_STEPS) {
+        if (company.getWizardStep() < Company.TOTAL_WIZARD_STEPS - 1) {
+            // wizardStep doit être >= 3 (TOTAL_WIZARD_STEPS=4, étape 4 = completeWizard lui-même)
             throw new ConflictException("WIZARD_STEP_INCOMPLETE",
                 "Wizard cannot be completed — current step is " + company.getWizardStep()
-                + " of " + Company.TOTAL_WIZARD_STEPS);
+                + " of " + Company.TOTAL_WIZARD_STEPS
+                + " (must be >= " + (Company.TOTAL_WIZARD_STEPS - 1) + ")");
         }
 
         // Vérification finale de cohérence : businessTypeCode doit exister et être actif.
         businessTypeModuleService.getActiveByCode(company.getBusinessTypeCode());
 
-        // Activer les modules : socle always-on + mapping BusinessType → modules sectoriels.
-        // Pour le type métier CUSTOM, la sélection manuelle de l'étape 8 (extraAttributes
-        // ["customModules"]) est également activée — correction du bug documenté « MIXTE non
-        // testé, sélection manuelle non implémentée ».
+        // Extraire les paramètres stockés à l'étape 3 depuis extraAttributes
+        WizardStep3Params step3 = extractStep3Params(company);
+
+        // Positionner le TenantContext pour les services appelés (ChartOfAccounts, AccountingEngine, etc.)
         TenantContext.setCompanyId(company.getId());
         TenantContext.setUserId(userId);
+
+        // 1. Activer les modules : socle always-on + mapping BusinessType → modules sectoriels
+        List<String> activatedModules = activateModules(company);
+
+        // 2-6. Activation comptable atomique via le port (plan comptable + exercice + journaux + séquences + TVA)
+        AccountingProvisioningPort.ProvisioningResult provisioning =
+            accountingProvisioningPort.provision(
+                company,
+                step3.vatMode(),
+                step3.fiscalYearStartYear(),
+                step3.fiscalYearLabel(),
+                step3.numberingPrefixes()
+            );
+
+        // Recharger la company depuis la DB avant de la modifier — l'activation comptable
+        // peut avoir modifié la colonne active_fiscal_year_id via JDBC direct (bypass Hibernate),
+        // ce qui incrémente @Version en DB. Sans rechargement, le save qui suit lèverait
+        // ObjectOptimisticLockingFailureException.
+        // On détache l'ancienne instance du persistence context et on recharge une version fraîche.
+        if (entityManager.contains(company)) {
+            entityManager.detach(company);
+        }
+        Company fresh = companyRepository.findById(company.getId())
+            .orElseThrow(() -> new NotFoundException("Company", company.getId()));
+
+        // Marquer wizard comme complété
+        fresh.setWizardStep(Company.TOTAL_WIZARD_STEPS);
+        fresh.setWizardCompleted(true);
+        fresh.setUpdatedAt(Instant.now());
+        fresh.setUpdatedBy(userId);
+        // Préserver les champs éventuellement modifiés par provisioning (extraAttributes, etc.)
+        if (company.getExtraAttributes() != null) {
+            fresh.setExtraAttributes(company.getExtraAttributes());
+        }
+        Company saved = companyRepository.save(fresh);
+
+        // Publier l'événement (pour futurs listeners @TransactionalEventListener AFTER_COMMIT)
+        events.publishEvent(new CompanyWizardCompletedEvent(saved, userId));
+
+        return new CompanyWizardResult(
+            toResponse(saved),
+            activatedModules,
+            provisioning.chartOfAccountsCreated(),
+            provisioning.fiscalYearId(),
+            provisioning.journalCodesCreated(),
+            provisioning.sequencesCreated(),
+            provisioning.taxRulesCreated()
+        );
+    }
+
+    /**
+     * Paramètres extraits de l'étape 3 (stockés dans extraAttributes).
+     * Utilisé par {@link #completeWizard} pour appeler {@link AccountingProvisioningPort#provision}.
+     */
+    private record WizardStep3Params(
+        String vatMode,
+        int fiscalYearStartYear,
+        String fiscalYearLabel,
+        Map<String, String> numberingPrefixes
+    ) {}
+
+    /**
+     * Extrait les paramètres de l'étape 3 depuis {@code company.extraAttributes}.
+     */
+    @SuppressWarnings("unchecked")
+    private WizardStep3Params extractStep3Params(Company company) {
+        Map<String, Object> extra = company.getExtraAttributes();
+        if (extra == null) {
+            throw new ValidationException("WIZARD_STEP3_MISSING",
+                "Étape 3 non appliquée — extraAttributes est null");
+        }
+        String vatMode = (String) extra.getOrDefault("vatMode", "DEBIT");
+        int fiscalYearStartYear = 0;
+        Object yRaw = extra.get("fiscalYearStartYear");
+        if (yRaw instanceof Number n) fiscalYearStartYear = n.intValue();
+        String fiscalYearLabel = (String) extra.get("fiscalYearLabel");
+
+        Map<String, String> numberingPrefixes = null;
+        Object npRaw = extra.get("numberingPrefixes");
+        if (npRaw instanceof Map<?, ?> m) {
+            numberingPrefixes = new HashMap<>();
+            for (Map.Entry<?, ?> e : m.entrySet()) {
+                if (e.getKey() instanceof String k && e.getValue() instanceof String v) {
+                    numberingPrefixes.put(k, v);
+                }
+            }
+        }
+        return new WizardStep3Params(vatMode, fiscalYearStartYear, fiscalYearLabel, numberingPrefixes);
+    }
+
+    /**
+     * Active les modules : always-on + mapping BusinessType → sectoriels + customModules si CUSTOM.
+     */
+    private List<String> activateModules(Company company) {
+        List<String> activated = new ArrayList<>();
+
+        // Always-on (15 modules socle)
         for (ModuleCode code : businessTypeModuleService.alwaysOnModules()) {
             companyModuleService.enable(company.getId(), code);
+            activated.add(code.name());
         }
+
+        // Sectoriels (selon BusinessType)
         for (ModuleCode code : businessTypeModuleService.modulesFor(company.getBusinessTypeCode())) {
             companyModuleService.enable(company.getId(), code);
+            activated.add(code.name());
         }
+
+        // Custom modules (si type métier CUSTOM)
         if ("CUSTOM".equals(company.getBusinessTypeCode()) && company.getExtraAttributes() != null) {
             Object raw = company.getExtraAttributes().get("customModules");
             if (raw instanceof List<?> list) {
@@ -329,140 +643,18 @@ public class CompanyService {
                     if (entry instanceof String s) {
                         try {
                             companyModuleService.enable(company.getId(), ModuleCode.valueOf(s));
+                            activated.add(s);
                         } catch (IllegalArgumentException ignored) {
-                            // Module code inconnu — ignoré silencieusement pour ne pas
-                            // bloquer la complétion ; les codes attendus sont validés côté
-                            // client (catalogue ModuleCode).
+                            // Module code inconnu — ignoré silencieusement
                         }
                     }
                 }
             }
         }
-
-        company.setWizardCompleted(true);
-        company.setUpdatedAt(Instant.now());
-        company.setUpdatedBy(userId);
-        Company saved = companyRepository.save(company);
-
-        events.publishEvent(new CompanyWizardCompletedEvent(saved, userId));
-        return saved;
+        return activated;
     }
 
-    // -- Apply step payloads ------------------------------------------------------
-
-    @SuppressWarnings("unchecked")
-    private void applyStep1Identity(Company company, Map<String, Object> payload) {
-        if (payload.get("name") instanceof String n && !n.isBlank()) {
-            company.setName(n.trim());
-        }
-        if (payload.get("country") instanceof String c) {
-            company.setCountry(c.toUpperCase());
-        }
-        if (payload.get("functionalCurrency") instanceof String fc) {
-            company.setFunctionalCurrency(fc.toUpperCase());
-        }
-    }
-
-    private void applyStep2NatureAndLegalForm(Company company, Map<String, Object> payload) {
-        OrganizationNature nature = readEnum(payload, "organizationNature", OrganizationNature.class,
-            "ORGANIZATION_NATURE_INVALID");
-        LegalForm legalForm = readEnum(payload, "legalForm", LegalForm.class, "LEGAL_FORM_INVALID");
-        natureLegalFormValidator.validate(nature, legalForm);
-        company.setOrganizationNature(nature);
-        company.setLegalForm(legalForm);
-    }
-
-    private void applyStep3Sector(Company company, Map<String, Object> payload) {
-        Sector sector = readEnum(payload, "sector", Sector.class, "SECTOR_INVALID");
-        company.setSector(sector);
-    }
-
-    private void applyStep4BusinessType(Company company, Map<String, Object> payload) {
-        String code = readString(payload, "businessTypeCode", "BUSINESS_TYPE_CODE_REQUIRED");
-        BusinessType bt = businessTypeModuleService.getActiveByCode(code);
-        company.setBusinessTypeCode(bt.getCode());
-        // Auto-populate organizationNature + sector si non déjà saisis (defaults du type métier).
-        if (company.getOrganizationNature() == null
-                || company.getOrganizationNature() == OrganizationNature.FOR_PROFIT
-                    && (company.getLegalForm() == LegalForm.OTHER)) {
-            company.setOrganizationNature(bt.getDefaultOrganizationNature());
-        }
-        if (company.getSector() == null || company.getSector() == Sector.AUTRE) {
-            company.setSector(bt.getDefaultSector());
-        }
-    }
-
-    private void applyStep5PrimaryActivity(Company company, Map<String, Object> payload) {
-        String label = readString(payload, "primaryActivityLabel", "PRIMARY_ACTIVITY_LABEL_REQUIRED");
-        if (label.isBlank()) {
-            throw new ValidationException("PRIMARY_ACTIVITY_LABEL_REQUIRED",
-                "Le libellé d'activité principale ne peut pas être vide");
-        }
-        company.setPrimaryActivityLabel(label.trim());
-    }
-
-    private void applyStep6FrameworkAndFiscalYear(Company company, Map<String, Object> payload) {
-        UUID frameworkId = readUuid(payload, "accountingFrameworkId", "ACCOUNTING_FRAMEWORK_ID_INVALID");
-        AccountingFramework af = frameworkRepository.findById(frameworkId)
-            .orElseThrow(() -> new NotFoundException("ACCOUNTING_FRAMEWORK_NOT_FOUND",
-                "Accounting framework not found: " + frameworkId));
-        int fiscalYearStartMonth = readInt(payload, "fiscalYearStartMonth",
-            "FISCAL_YEAR_START_INVALID");
-        if (fiscalYearStartMonth < 1 || fiscalYearStartMonth > 12) {
-            throw new ValidationException("FISCAL_YEAR_START_INVALID",
-                "Fiscal year start month must be between 1 and 12");
-        }
-        company.setAccountingFrameworkId(af.getId());
-        company.setFiscalYearStartMonth(fiscalYearStartMonth);
-    }
-
-    private void applyStep7RequiredFields(Company company, Map<String, Object> payload) {
-        // Charge la liste des champs attendus pour le businessTypeCode courant et
-        // valide que toutes les valeurs requises sont présentes.
-        List<BusinessTypeRequiredField> requiredFields =
-            businessTypeRequiredFieldRepository.findByBusinessTypeCodeOrderByDisplayOrderAsc(
-                company.getBusinessTypeCode());
-
-        Map<String, Object> extra = new HashMap<>();
-        for (BusinessTypeRequiredField f : requiredFields) {
-            Object value = payload.get(f.getFieldKey());
-            if (f.isRequired() && (value == null || (value instanceof String s && s.isBlank()))) {
-                throw new ValidationException("REQUIRED_FIELD_MISSING",
-                    "Champ requis manquant : " + f.getLabel() + " (clé : " + f.getFieldKey() + ")");
-            }
-            if (value != null) {
-                extra.put(f.getFieldKey(), value);
-            }
-        }
-        company.setExtraAttributes(extra);
-    }
-
-    @SuppressWarnings("unchecked")
-    private void applyStep8ModuleSelection(Company company, Map<String, Object> payload) {
-        // Pour le type métier CUSTOM, l'utilisateur peut ajuster la sélection manuelle.
-        // On persiste la sélection dans extraAttributes["customModules"] — c'est cette liste
-        // qui est activée à la complétion du wizard (complétée du socle always-on).
-        // Pour les autres types métier, cette étape est purement informative — les modules
-        // sont déjà connus via le mapping BusinessType → modules (activés automatiquement à la
-        // complétion).
-        if (!"CUSTOM".equals(company.getBusinessTypeCode())) {
-            return;
-        }
-        Object raw = payload.get("customModules");
-        if (raw instanceof List<?> list) {
-            Map<String, Object> extra = company.getExtraAttributes() != null
-                ? new HashMap<>(company.getExtraAttributes()) : new HashMap<>();
-            extra.put("customModules", list);
-            company.setExtraAttributes(extra);
-        }
-    }
-
-    private void applyStep9Confirmation(Company company, Map<String, Object> payload) {
-        // Étape purement déclarative — aucune donnée métier à persister. La complétion
-        // effective (activation des modules) se fait via POST /wizard/complete.
-    }
-
-    // -- Helpers ------------------------------------------------------------------
+    // ── Helpers ------------------------------------------------------------------
 
     private void validateStep1Inputs(String name, String country, String functionalCurrency) {
         if (name == null || name.isBlank()) {
@@ -477,49 +669,31 @@ public class CompanyService {
         }
     }
 
-    private <E extends Enum<E>> E readEnum(Map<String, Object> payload, String key,
-                                           Class<E> enumClass, String errorCode) {
-        Object raw = payload.get(key);
-        if (raw == null) {
-            throw new ValidationException(errorCode, "Missing field: " + key);
-        }
-        String s = raw.toString();
-        try {
-            return Enum.valueOf(enumClass, s);
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException(errorCode, "Unknown value for " + key + ": " + s);
-        }
-    }
-
-    private String readString(Map<String, Object> payload, String key, String missingErrorCode) {
-        Object raw = payload.get(key);
-        if (!(raw instanceof String s) || s.isBlank()) {
-            throw new ValidationException(missingErrorCode, "Missing or empty field: " + key);
-        }
-        return s;
-    }
-
-    private int readInt(Map<String, Object> payload, String key, String invalidErrorCode) {
-        Object raw = payload.get(key);
-        if (raw instanceof Number n) return n.intValue();
-        if (raw instanceof String s) {
-            try { return Integer.parseInt(s); }
-            catch (NumberFormatException e) {
-                throw new ValidationException(invalidErrorCode, "Not an integer: " + key + "=" + s);
-            }
-        }
-        throw new ValidationException(invalidErrorCode, "Missing field: " + key);
-    }
-
-    private UUID readUuid(Map<String, Object> payload, String key, String invalidErrorCode) {
-        Object raw = payload.get(key);
-        if (raw == null) {
-            throw new ValidationException(invalidErrorCode, "Missing field: " + key);
-        }
-        if (raw instanceof UUID u) return u;
-        try { return UUID.fromString(raw.toString()); }
-        catch (IllegalArgumentException e) {
-            throw new ValidationException(invalidErrorCode, "Not a UUID: " + key + "=" + raw);
-        }
+    /**
+     * Convertit une {@link Company} en {@link CompanyResponse} pour la sérialisation JSON.
+     */
+    public static CompanyResponse toResponse(Company c) {
+        return new CompanyResponse(
+            c.getId(),
+            c.getName(),
+            c.getLegalForm(),
+            c.getCountry(),
+            c.getFunctionalCurrency(),
+            c.getSector(),
+            c.getOrganizationNature(),
+            c.getBusinessTypeCode(),
+            c.getPrimaryActivityLabel(),
+            c.getExtraAttributes(),
+            c.getAccountingFrameworkId(),
+            c.getFiscalYearStartMonth(),
+            c.getWizardStep(),
+            c.isWizardCompleted(),
+            c.getSiret(),
+            c.getVatNumber(),
+            c.getNif(),
+            c.getAddress(),
+            c.getCreatedAt(),
+            c.getUpdatedAt()
+        );
     }
 }

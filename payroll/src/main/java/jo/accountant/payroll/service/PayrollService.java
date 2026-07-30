@@ -539,10 +539,10 @@ public class PayrollService {
                 "442000", "442", "443000", "443");
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "PA")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_PA_NOT_FOUND",
-                "Journal PA (Paie) introuvable. Créer un journal de code 'PA'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.PAIE).getCode();
 
         // Date d'écriture = dernier jour du mois de la période
         LocalDate entryDate = LocalDate.of(run.getPeriodYear(), run.getPeriodMonth(), 1)

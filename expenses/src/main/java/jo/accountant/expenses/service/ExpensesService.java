@@ -208,10 +208,10 @@ public class ExpensesService {
             chargesByAccount.merge(chargeAccount.getCode(), line.getAmount(), BigDecimal::add);
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "DP")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_DP_NOT_FOUND",
-                "Journal DP (Dépenses) introuvable. Créer un journal de code 'DP'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.DEPENSES).getCode();
 
         List<LineDto> entryLines = new ArrayList<>();
         for (var entry : chargesByAccount.entrySet()) {

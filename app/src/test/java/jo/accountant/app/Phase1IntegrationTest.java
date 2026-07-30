@@ -75,6 +75,7 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
     @Autowired private CompanyService companyService;
     @Autowired private CompanyModuleService companyModuleService;
     @Autowired private CompanyModuleRepository companyModuleRepository;
+    @Autowired private jo.accountant.company.repository.CompanyRepository companyRepository;
     @Autowired private AccountingFrameworkRepository frameworkRepository;
     @Autowired private MaxCompaniesGuard maxCompaniesGuard;
     @Autowired private BusinessTypeModuleService businessTypeModuleService;
@@ -95,56 +96,60 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
     }
 
     /**
-     * Helper — exécute le wizard complet de bout en bout (étapes 1 à 9 + completion) pour une
-     * company fraîchement créée, en choisissant le type métier indiqué (défaut :
-     * {@code RETAIL_COMMERCE} — équivalent du secteur {@code COMMERCE} pré-restructuration).
+     * Helper — exécute le wizard V8.2 complet (4 étapes : identité → activité → comptabilité → activation atomique)
+     * pour une company fraîchement créée, en choisissant le type métier indiqué.
+     *
+     * <p>V8.2 (audit Z.ai 2026-07-31) — le wizard 9 étapes a été supprimé. Les anciennes étapes
+     * 3+4+5+7+8 sont fusionnées dans {@code applyWizardStep2} (activité), les anciennes 6+9+10
+     * dans {@code applyWizardStep3} (comptabilité). L'activation atomique (modules + plan comptable +
+     * exercice + journaux + séquences + TVA) se fait dans {@code completeWizard}.
+     *
+     * <p>{@code nature}/{@code legalForm} sont ignorés en V8.2 (auto-populés depuis les defaults
+     * du BusinessType). {@code sector} est passé via {@code WizardStep2Request.sector}.
+     *
+     * @return la Company finalisée (wizardCompleted=true)
      */
     private Company runFullWizard(UUID userId, String businessTypeCode,
-                                  OrganizationNature nature, LegalForm legalForm,
+                                  OrganizationNature natureIgnored, LegalForm legalFormIgnored,
                                   Sector sector, UUID frameworkId) {
         TenantContext.setUserId(userId);
         Company company = companyService.createCompany(userId, "Co " + businessTypeCode,
             "HT", "HTG");
 
-        // Étape 2 — nature + forme juridique (validation croisée appliquée).
-        companyService.updateWizardStep(company.getId(), userId, 2, Map.of(
-            "organizationNature", nature.name(),
-            "legalForm", legalForm.name()));
-
-        // Étape 3 — secteur (descriptif).
-        companyService.updateWizardStep(company.getId(), userId, 3, Map.of(
-            "sector", sector.name()));
-
-        // Étape 4 — type métier (catalogue BusinessType).
-        companyService.updateWizardStep(company.getId(), userId, 4, Map.of(
-            "businessTypeCode", businessTypeCode));
-
-        // Étape 5 — activité principale (libellé libre).
-        companyService.updateWizardStep(company.getId(), userId, 5, Map.of(
-            "primaryActivityLabel", "Activité principale de test"));
-
-        // Étape 6 — référentiel comptable + mois de clôture d'exercice.
-        companyService.updateWizardStep(company.getId(), userId, 6, Map.of(
-            "accountingFrameworkId", frameworkId.toString(),
-            "fiscalYearStartMonth", 1));
-
-        // Étape 7 — champs spécifiques (varie selon le type métier — voir V3_003 seeds).
-        Map<String, Object> step7Payload = switch (businessTypeCode) {
-            case "NGO_HUMANITARIAN" -> Map.of("donor_reporting_currency", "USD");
-            case "SCHOOL" -> Map.of("ministry_approval_number", "MIN-1234");
-            case "HOSPITAL" -> Map.of("health_license_number", "SAN-5678");
-            case "ACCOUNTING_FIRM" -> Map.of("professional_order_number", "OCP-9999");
-            default -> Map.of();
+        // Étape 2 — Activité + type métier (fusionne anciennes étapes 3+4+5+7+8).
+        // Champs spécifiques au type métier (extraAttributes) selon V3_003 seeds.
+        java.util.Map<String, Object> extraAttrs = switch (businessTypeCode) {
+            case "NGO_HUMANITARIAN" -> java.util.Map.of("donor_reporting_currency", "USD");
+            case "SCHOOL" -> java.util.Map.of("ministry_approval_number", "MIN-1234");
+            case "HOSPITAL" -> java.util.Map.of("health_license_number", "SAN-5678");
+            case "ACCOUNTING_FIRM" -> java.util.Map.of("professional_order_number", "OCP-9999");
+            default -> java.util.Map.of();
         };
-        companyService.updateWizardStep(company.getId(), userId, 7, step7Payload);
+        companyService.applyWizardStep2(company.getId(), userId,
+            new jo.accountant.company.dto.WizardStep2Request(
+                "Activité principale de test",
+                businessTypeCode,
+                sector,
+                extraAttrs,
+                null  // customModules — null pour les types non CUSTOM
+            ));
 
-        // Étape 8 — récapitulatif modules (vide pour les types non CUSTOM).
-        companyService.updateWizardStep(company.getId(), userId, 8, Map.of());
+        // Étape 3 — Comptabilité + fiscalité (fusionne anciennes étapes 6+9+10).
+        companyService.applyWizardStep3(company.getId(), userId,
+            new jo.accountant.company.dto.WizardStep3Request(
+                frameworkId,
+                1,                    // fiscalYearStartMonth
+                2026,                 // fiscalYearStartYear
+                "Exercice 2026",      // fiscalYearLabel
+                jo.accountant.core.tax.VatMode.DEBIT,
+                null                  // numberingPrefixes — defaults
+            ));
 
-        // Étape 9 — confirmation finale (déclarative).
-        companyService.updateWizardStep(company.getId(), userId, 9, Map.of());
+        // Étape 4 — Activation atomique (modules + plan comptable + exercice + journaux + séquences + TVA).
+        companyService.completeWizard(company.getId(), userId,
+            new jo.accountant.company.dto.CompleteWizardRequest(null, null, null));
 
-        return companyService.completeWizard(company.getId(), userId);
+        return companyRepository.findById(company.getId()).orElseThrow();
     }
 
     @Nested
@@ -266,9 +271,11 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
                 OrganizationNature.FOR_PROFIT, LegalForm.SARL, Sector.COMMERCE,
                 java.util.UUID.fromString(PCN_HAITI_ID));
 
-            // Attempt to edit step 4 (businessTypeCode) now → must be rejected
-            assertThatThrownBy(() -> companyService.updateWizardStep(company.getId(), owner.getId(), 4,
-                Map.of("businessTypeCode", "PROFESSIONAL_SERVICES")))
+            // Attempt to edit step 2 (businessTypeCode) now → must be rejected (WIZARD_ALREADY_COMPLETED)
+            assertThatThrownBy(() -> companyService.applyWizardStep2(company.getId(), owner.getId(),
+                new jo.accountant.company.dto.WizardStep2Request(
+                    "Activité modifiée", "PROFESSIONAL_SERVICES",
+                    Sector.SERVICE, java.util.Map.of(), null)))
                 .isInstanceOf(ConflictException.class)
                 .extracting("code").isEqualTo("WIZARD_ALREADY_COMPLETED");
         }
@@ -318,24 +325,26 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
             Company company = companyService.createCompany(owner.getId(),
                 "Co CUSTOM", "HT", "HTG");
 
-            companyService.updateWizardStep(company.getId(), owner.getId(), 2, Map.of(
-                "organizationNature", OrganizationNature.FOR_PROFIT.name(),
-                "legalForm", LegalForm.OTHER.name()));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 3, Map.of(
-                "sector", Sector.AUTRE.name()));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 4, Map.of(
-                "businessTypeCode", "CUSTOM"));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 5, Map.of(
-                "primaryActivityLabel", "Activité personnalisée"));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 6, Map.of(
-                "accountingFrameworkId", PCN_HAITI_ID,
-                "fiscalYearStartMonth", 1));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 7, Map.of());
-            // Étape 8 — sélection manuelle : INVENTORY + TIME_BILLING (multisectorielle).
-            companyService.updateWizardStep(company.getId(), owner.getId(), 8, Map.of(
-                "customModules", java.util.List.of("INVENTORY", "TIME_BILLING")));
-            companyService.updateWizardStep(company.getId(), owner.getId(), 9, Map.of());
-            companyService.completeWizard(company.getId(), owner.getId());
+            // Étape 2 — type métier CUSTOM avec customModules (fusionne anciennes étapes 3+4+5+7+8)
+            companyService.applyWizardStep2(company.getId(), owner.getId(),
+                new jo.accountant.company.dto.WizardStep2Request(
+                    "Activité personnalisée",
+                    "CUSTOM",
+                    Sector.AUTRE,
+                    java.util.Map.of(),
+                    java.util.List.of("INVENTORY", "TIME_BILLING")  // customModules
+                ));
+
+            // Étape 3 — Comptabilité + fiscalité
+            companyService.applyWizardStep3(company.getId(), owner.getId(),
+                new jo.accountant.company.dto.WizardStep3Request(
+                    java.util.UUID.fromString(PCN_HAITI_ID),
+                    1, 2026, "Exercice 2026",
+                    jo.accountant.core.tax.VatMode.DEBIT, null));
+
+            // Étape 4 — Activation atomique
+            companyService.completeWizard(company.getId(), owner.getId(),
+                new jo.accountant.company.dto.CompleteWizardRequest(null, null, null));
 
             assertThat(companyModuleService.isEnabled(company.getId(),
                 jo.accountant.company.entity.ModuleCode.INVENTORY)).isTrue();
@@ -452,53 +461,32 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
     }
 
     @Nested
-    @DisplayName("Rule 11 — validation croisée Nature ↔ LegalForm (restructuration §4.2)")
+    @DisplayName("Rule 11 — validation croisée Nature ↔ LegalForm (V8.2 : supprimée du wizard)")
     class NatureLegalFormValidation {
+        // V8.2 (audit Z.ai 2026-07-31) — organizationNature et legalForm ne sont plus saisis
+        // via le wizard. Ils sont auto-populés depuis les defaults du BusinessType à l'étape 2.
+        // La validation croisée OrganizationNatureLegalFormValidator n'est donc plus appelée
+        // depuis le wizard. Les 3 tests historiques (associationRequiresNonProfit,
+        // sarlRequiresForProfit, otherAcceptsAnyNature) ont été supprimés avec l'ancien wizard 9 étapes.
+        //
+        // Si l'utilisateur veut override les defaults, il devra passer par un endpoint dédié
+        // (à créer dans une future version — PATCH /organization-nature avec validation croisée).
+        //
+        // Test sanity : le BusinessType contient bien les defaults OrganizationNature attendus.
         @Test
         @Transactional
-        @DisplayName("ASSOCIATION + FOR_PROFIT → 422 LEGAL_FORM_NATURE_MISMATCH")
-        void associationRequiresNonProfit() {
-            var owner = authService.register("val@jo.dev", "StrongPass#2026", "V", "fr");
-            TenantContext.setUserId(owner.getId());
-            Company company = companyService.createCompany(owner.getId(), "Val Co", "HT", "HTG");
-
-            assertThatThrownBy(() -> companyService.updateWizardStep(company.getId(), owner.getId(), 2,
-                Map.of("organizationNature", "FOR_PROFIT", "legalForm", "ASSOCIATION")))
-                .isInstanceOf(ValidationException.class)
-                .extracting("code").isEqualTo("LEGAL_FORM_NATURE_MISMATCH");
+        @DisplayName("BusinessType.defaultOrganizationNature est correct pour RETAIL_COMMERCE (FOR_PROFIT)")
+        void retailCommerceDefaultsToForProfit() {
+            var bt = businessTypeModuleService.getActiveByCode("RETAIL_COMMERCE");
+            assertThat(bt.getDefaultOrganizationNature()).isEqualTo(OrganizationNature.FOR_PROFIT);
         }
 
         @Test
         @Transactional
-        @DisplayName("SARL + NON_PROFIT → 422 LEGAL_FORM_NATURE_MISMATCH")
-        void sarlRequiresForProfit() {
-            var owner = authService.register("val2@jo.dev", "StrongPass#2026", "V2", "fr");
-            TenantContext.setUserId(owner.getId());
-            Company company = companyService.createCompany(owner.getId(), "Val Co 2", "HT", "HTG");
-
-            assertThatThrownBy(() -> companyService.updateWizardStep(company.getId(), owner.getId(), 2,
-                Map.of("organizationNature", "NON_PROFIT", "legalForm", "SARL")))
-                .isInstanceOf(ValidationException.class)
-                .extracting("code").isEqualTo("LEGAL_FORM_NATURE_MISMATCH");
-        }
-
-        @Test
-        @Transactional
-        @DisplayName("OTHER + n'importe quelle nature → OK")
-        void otherAcceptsAnyNature() {
-            var owner = authService.register("val3@jo.dev", "StrongPass#2026", "V3", "fr");
-            TenantContext.setUserId(owner.getId());
-
-            // Première company — OTHER + COOPERATIVE
-            Company co1 = companyService.createCompany(owner.getId(), "Val Co 3a", "HT", "HTG");
-            companyService.updateWizardStep(co1.getId(), owner.getId(), 2, Map.of(
-                "organizationNature", "COOPERATIVE", "legalForm", "OTHER"));
-
-            // Seconde company — OTHER + PUBLIC_SECTOR (l'étape 2 ne peut pas être re-éditée
-            // sur la même company une fois avancée, donc on crée une nouvelle company).
-            Company co2 = companyService.createCompany(owner.getId(), "Val Co 3b", "HT", "HTG");
-            companyService.updateWizardStep(co2.getId(), owner.getId(), 2, Map.of(
-                "organizationNature", "PUBLIC_SECTOR", "legalForm", "OTHER"));
+        @DisplayName("BusinessType.defaultOrganizationNature est correct pour NGO_HUMANITARIAN (NON_PROFIT)")
+        void ngoHumanitarianDefaultsToNonProfit() {
+            var bt = businessTypeModuleService.getActiveByCode("NGO_HUMANITARIAN");
+            assertThat(bt.getDefaultOrganizationNature()).isEqualTo(OrganizationNature.NON_PROFIT);
         }
     }
 

@@ -188,9 +188,11 @@ public class TenantRlsConnectionCustomizer extends AbstractDataSource {
                 }
                 return;
             }
-            try (PreparedStatement ps = delegate.prepareStatement("SET LOCAL app.current_tenant = ?")) {
-                ps.setString(1, tenantId.toString());
-                ps.executeUpdate();
+            try (java.sql.Statement stmt = delegate.createStatement()) {
+                // V8.2 — PostgreSQL n'accepte pas les paramètres bind (?) dans SET LOCAL.
+                // L'UUID est déjà validé (toString() d'un java.util.UUID), pas d'injection SQL possible.
+                // On utilise un Statement simple avec la valeur inline.
+                stmt.execute("SET LOCAL app.current_tenant = '" + tenantId + "'");
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("RLS : SET LOCAL app.current_tenant = {} appliqué à la transaction courante", tenantId);
                 }

@@ -693,10 +693,10 @@ public class InvoicingService {
                 "443800", "4438", "4438");
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "VT")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_VT_NOT_FOUND",
-                "Journal VT (Ventes) introuvable. Créer un journal de code 'VT'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.VENTES).getCode();
 
         // ── R-F-validation v6-2 — RS sur ventes (Code Fiscal art. 156-1 Haïti) ──
         // Si la facture porte une retenue à la source (withholdingAmount > 0), l'écriture
@@ -1011,15 +1011,10 @@ public class InvoicingService {
             "Aucun compte de TVA différée trouvé pour la bascule 4438 → 443.",
             "443800", "4438", "4438");
 
-        // Journal OD (Opérations Diverses) — requis pour la bascule. Si absent, on tombe sur
-        // VT (Ventes) par fallback pour ne pas bloquer le règlement.
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .or(() -> journalRepository.findByCompanyIdAndCode(companyId, "VT")
-                .map(j -> j.getCode()))
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_OR_VT_NOT_FOUND",
-                "Aucun journal OD (Opérations Diverses) ni VT (Ventes) trouvé. " +
-                "Créer un journal de code 'OD' pour la bascule TVA sur encaissement."));
+        // V8.2 Phase 3 — getOrCreateJournal ne lève jamais pour les types standards.
+        // Le fallback OD→VT n'est plus nécessaire.
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         String label = "Bascule TVA encaissement — Facture " + invoice.getInvoiceNumber();
         List<LineDto> lines = new ArrayList<>();

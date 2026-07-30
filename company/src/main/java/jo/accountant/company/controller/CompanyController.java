@@ -114,7 +114,7 @@ public class CompanyController {
     @GetMapping
     public List<CompanyResponse> list(@CurrentUser java.util.UUID userId) {
         return companyService.listCompaniesForUser(userId).stream()
-            .map(CompanyController::toResponse)
+            .map(CompanyService::toResponse)
             .toList();
     }
 
@@ -143,7 +143,7 @@ public class CompanyController {
                                                   @Valid @RequestBody CreateCompanyRequest req) {
         Company created = companyService.createCompany(userId, req.name(),
             req.country(), req.functionalCurrency());
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(created));
+        return ResponseEntity.status(HttpStatus.CREATED).body(CompanyService.toResponse(created));
     }
 
     @Operation(summary = "Get a single company",
@@ -192,7 +192,7 @@ public class CompanyController {
     public CompanyResponse get(@CurrentUser java.util.UUID userId,
                                @PathVariable java.util.UUID companyId) {
         roleChecker.ensureRole(companyId, "VIEWER");
-        return toResponse(companyService.getCompanyForUser(companyId, userId));
+        return CompanyService.toResponse(companyService.getCompanyForUser(companyId, userId));
     }
 
     @Operation(summary = "Update the legal fields of a company (Phase D — Audit v4.7 §4.2)",
@@ -250,33 +250,103 @@ public class CompanyController {
                                              @PathVariable java.util.UUID companyId,
                                              @Valid @RequestBody UpdateCompanyLegalFieldsRequest req) {
         roleChecker.ensureRole(companyId, "ADMIN");
-        return toResponse(companyService.updateLegalFields(companyId, userId, req));
+        return CompanyService.toResponse(companyService.updateLegalFields(companyId, userId, req));
     }
 
-    @Operation(summary = "Update a wizard step",
-        description = "Restructuration 2026-07-24 : chaque étape (1-9) a désormais un payload " +
-                      "spécifique et une sémantique métier réelle. Étape 1 ré-éditable, " +
-                      "étapes 2-9 en ordre, tout verrouillé après wizardCompleted=true.")
-    @PatchMapping("/{companyId}/wizard/{step}")
-    public CompanyResponse updateWizardStep(@CurrentUser java.util.UUID userId,
-                                            @PathVariable java.util.UUID companyId,
-                                            @PathVariable int step,
-                                            @RequestBody(required = false) Map<String, Object> payload) {
+    @Operation(summary = "Update wizard step 1 (identité — ré-éditable)",
+        description = "V8.2 (audit Z.ai 2026-07-31) — Wizard refondu en 4 étapes. " +
+                      "Étape 1 (identité) est ré-éditable via cet endpoint : corriger " +
+                      "name/country/functionalCurrency sans recréer la société. " +
+                      "Les étapes 2 et 3 ont leurs propres endpoints dédiés " +
+                      "(PATCH /wizard/2 et PATCH /wizard/3) avec DTO typés.")
+    @PatchMapping("/{companyId}/wizard/1")
+    public CompanyResponse updateWizardStep1(@CurrentUser java.util.UUID userId,
+                                              @PathVariable java.util.UUID companyId,
+                                              @RequestBody(required = false) Map<String, Object> payload) {
         roleChecker.ensureRole(companyId, "ADMIN");
-        return toResponse(companyService.updateWizardStep(companyId, userId, step, payload == null ? Map.of() : payload));
+        String name = payload != null && payload.get("name") instanceof String s ? s : null;
+        String country = payload != null && payload.get("country") instanceof String c ? c : null;
+        String functionalCurrency = payload != null && payload.get("functionalCurrency") instanceof String fc ? fc : null;
+        return CompanyService.toResponse(
+            companyService.applyWizardStep1(companyId, userId, name, country, functionalCurrency));
     }
 
-    @Operation(summary = "Complete the wizard",
-        description = "Activates always-on modules + BusinessType → modules sectoriels. " +
-                      "Pour le type métier CUSTOM, active également la sélection manuelle " +
-                      "de l'étape 8 (extraAttributes[\"customModules\"]). " +
-                      "organizationNature, legalForm, sector, businessTypeCode et " +
-                      "extraAttributes deviennent immuables après ceci.")
+    @Operation(summary = "Update wizard step 2 (activité & type métier)",
+        description = "V8.2 — Fusionne les anciennes étapes 3 (sector), 4 (business type), " +
+                      "5 (activity), 7 (required fields) et 8 (module selection pour CUSTOM). " +
+                      "Auto-popule organizationNature et sector depuis les defaults du BusinessType. " +
+                      "Accepte le DTO typé {@code WizardStep2Request} (validation @Valid).")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+        description = "Payload typé WizardStep2Request",
+        content = @io.swagger.v3.oas.annotations.media.Content(
+            mediaType = "application/json",
+            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = jo.accountant.company.dto.WizardStep2Request.class),
+            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(name = "RETAIL_COMMERCE", value = """
+                {
+                  "primaryActivityLabel": "Vente au détail de produits alimentaires",
+                  "businessTypeCode": "RETAIL_COMMERCE",
+                  "sector": "COMMERCE",
+                  "extraAttributes": {"pointOfSaleType": "PHYSICAL_STORE"},
+                  "customModules": null
+                }
+                """)))
+    @PatchMapping("/{companyId}/wizard/2")
+    public CompanyResponse updateWizardStep2(@CurrentUser java.util.UUID userId,
+                                              @PathVariable java.util.UUID companyId,
+                                              @Valid @RequestBody jo.accountant.company.dto.WizardStep2Request req) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return CompanyService.toResponse(companyService.applyWizardStep2(companyId, userId, req));
+    }
+
+    @Operation(summary = "Update wizard step 3 (comptabilité & fiscalité)",
+        description = "V8.2 — Fusionne les anciennes étapes 6 (framework+fiscal), 9 (VAT mode), " +
+                      "10 (numbering). Stocke vatMode + numberingPrefixes dans extraAttributes " +
+                      "pour consommation à l'étape 4 (completeWizard). Accepte le DTO typé " +
+                      "{@code WizardStep3Request} (validation @Valid).")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+        description = "Payload typé WizardStep3Request",
+        content = @io.swagger.v3.oas.annotations.media.Content(
+            mediaType = "application/json",
+            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = jo.accountant.company.dto.WizardStep3Request.class),
+            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(name = "SYSCOHADA + débits", value = """
+                {
+                  "accountingFrameworkId": "01978a10-syscohad-0001-0000-000000000001",
+                  "fiscalYearStartMonth": 1,
+                  "fiscalYearStartYear": 2026,
+                  "fiscalYearLabel": "Exercice 2026",
+                  "vatMode": "DEBIT",
+                  "numberingPrefixes": {
+                    "SALES_INVOICE": "INV-2026-",
+                    "PURCHASE_INVOICE": "ACH-2026-"
+                  }
+                }
+                """)))
+    @PatchMapping("/{companyId}/wizard/3")
+    public CompanyResponse updateWizardStep3(@CurrentUser java.util.UUID userId,
+                                              @PathVariable java.util.UUID companyId,
+                                              @Valid @RequestBody jo.accountant.company.dto.WizardStep3Request req) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return CompanyService.toResponse(companyService.applyWizardStep3(companyId, userId, req));
+    }
+
+    @Operation(summary = "Complete the wizard (V8.2 — activation atomique)",
+        description = "V8.2 (audit Z.ai 2026-07-31) — Active atomiquement en UNE SEULE transaction : " +
+                      "(1) modules always-on + sectoriels BusinessType + customModules si CUSTOM, " +
+                      "(2) plan comptable (ChartOfAccountsService.initialize avec seed sectoriel), " +
+                      "(3) exercice fiscal + 12 périodes mensuelles, " +
+                      "(4) 8 journaux standards (VT/AC/BQ/CA/OD/PA/DP/FX), " +
+                      "(5) 6 séquences de numérotation par défaut, " +
+                      "(6) règles TVA par défaut si pays non couvert par seeds globaux. " +
+                      "Idempotent : si rappelé, ne crée pas de doublons. " +
+                      "Retourne {@code CompanyWizardResult} avec récapitulatif des objets créés.")
     @PostMapping("/{companyId}/wizard/complete")
-    public CompanyResponse completeWizard(@CurrentUser java.util.UUID userId,
-                                          @PathVariable java.util.UUID companyId) {
+    public jo.accountant.company.dto.CompanyWizardResult completeWizard(
+        @CurrentUser java.util.UUID userId,
+        @PathVariable java.util.UUID companyId,
+        @RequestBody(required = false) jo.accountant.company.dto.CompleteWizardRequest req) {
         roleChecker.ensureRole(companyId, "ADMIN");
-        return toResponse(companyService.completeWizard(companyId, userId));
+        return companyService.completeWizard(companyId, userId,
+            req != null ? req : new jo.accountant.company.dto.CompleteWizardRequest(null, null, null));
     }
 
     @Operation(summary = "List activated modules for this company")
@@ -331,16 +401,4 @@ public class CompanyController {
         }
     }
 
-    static CompanyResponse toResponse(Company c) {
-        return new CompanyResponse(
-            c.getId(), c.getName(), c.getLegalForm(), c.getCountry(), c.getFunctionalCurrency(),
-            c.getSector(), c.getOrganizationNature(), c.getBusinessTypeCode(),
-            c.getPrimaryActivityLabel(), c.getExtraAttributes(),
-            c.getAccountingFrameworkId(), c.getFiscalYearStartMonth(),
-            c.getWizardStep(), c.isWizardCompleted(),
-            // Audit v4.7 §4.2 — champs légaux pour Factur-X + mentions légales
-            c.getSiret(), c.getVatNumber(), c.getNif(), c.getAddress(),
-            c.getCreatedAt(), c.getUpdatedAt()
-        );
-    }
 }

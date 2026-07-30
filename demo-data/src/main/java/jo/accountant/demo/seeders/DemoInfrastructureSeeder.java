@@ -156,11 +156,16 @@ public class DemoInfrastructureSeeder {
         if (count != null && count > 0) {
             return;
         }
+        // V8.2 Phase 3 — inférer le type depuis le code (VT→VENTES, AC→ACHATS, etc.)
+        // et setter active=true pour aligner avec le modèle V8.2 enrichi.
+        jo.accountant.accountingengine.entity.JournalType journalType =
+            jo.accountant.accountingengine.entity.JournalType.fromCode(code);
+        String typeValue = journalType != null ? journalType.name() : null;
         jdbcTemplate.update(
-            "INSERT INTO journal (id, company_id, code, label, version, created_at, updated_at) " +
-            "VALUES (uuidv7(), ?, ?, ?, 0, NOW(), NOW())",
-            companyId, code, label);
-        LOG.info("V8.2 — Journal {} créé", code);
+            "INSERT INTO journal (id, company_id, code, label, type, active, version, created_at, updated_at) " +
+            "VALUES (uuidv7(), ?, ?, ?, ?, TRUE, 0, NOW(), NOW())",
+            companyId, code, label, typeValue);
+        LOG.info("V8.2 — Journal {} créé (type={})", code, typeValue);
     }
 
     private void createFiscalYear(UUID companyId, int startYear, int startMonth) {

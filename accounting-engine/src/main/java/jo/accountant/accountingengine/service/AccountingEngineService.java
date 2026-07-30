@@ -423,6 +423,7 @@ public class AccountingEngineService {
     // --- Journaux ---
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "journals", allEntries = true)
     public Journal createJournal(UUID companyId, String code, String label) {
         if (code == null || code.isBlank()) {
             throw new ValidationException("JOURNAL_CODE_REQUIRED", "Le code du journal est requis");
@@ -438,7 +439,75 @@ public class AccountingEngineService {
         journal.setCompanyId(companyId);
         journal.setCode(code.trim().toUpperCase());
         journal.setLabel(label.trim());
+        // V8.2 Phase 3 — déduire le type depuis le code si standard, sinon null (journal perso)
+        jo.accountant.accountingengine.entity.JournalType inferredType =
+            jo.accountant.accountingengine.entity.JournalType.fromCode(code);
+        journal.setType(inferredType);
+        journal.setActive(true);
         return journalRepository.save(journal);
+    }
+
+    /**
+     * V8.2 Phase 3 — Récupère un journal par type, le crée s'il n'existe pas encore.
+     *
+     * <p>Remplace le pattern ad-hoc {@code journalRepository.findByCompanyIdAndCode(companyId, "VT")
+     * .orElseThrow(JOURNAL_NOT_FOUND)} utilisé dans 8 modules métier. Le journal est créé
+     * avec le code et le label par défaut du {@link jo.accountant.accountingengine.entity.JournalType},
+     * ce qui rend toute opération métier (facturation, achat, paie, etc.) fonctionnelle même
+     * si l'admin n'a pas pré-créé les journaux manuellement.
+     *
+     * <p><b>Idempotence</b> : si le journal existe déjà (par code), il est retourné tel quel.
+     * La race condition entre deux appels concurrents est gérée via catch de
+     * {@link ConflictException} ({@code JOURNAL_CODE_ALREADY_EXISTS}) — on recharge alors le
+     * journal existant.
+     *
+     * <p><b>Note sur le type</b> : cette méthode cherche par code (le code par défaut du type).
+     * Si l'admin a créé un journal personnalisé avec un code non-standard (ex: BQ1, BQ2 pour
+     * plusieurs banques), il ne sera pas trouvé — il faudra alors utiliser
+     * {@link #createJournal(UUID, String, String)} explicitement.
+     *
+     * @param companyId id de la société
+     * @param type      type de journal (VENTES, ACHATS, BANQUE, CAISSE, OD, PAIE, DEPENSES, FX)
+     * @return le journal existant ou nouvellement créé (jamais null)
+     */
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "journals", allEntries = true)
+    public Journal getOrCreateJournal(UUID companyId,
+                                       jo.accountant.accountingengine.entity.JournalType type) {
+        if (type == null) {
+            throw new ValidationException("JOURNAL_TYPE_REQUIRED",
+                "Le type de journal est requis pour getOrCreateJournal");
+        }
+        String code = type.getDefaultCode();
+        // 1. Lookup par code — retourne l'existant si présent
+        var existing = journalRepository.findByCompanyIdAndCode(companyId, code);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        // 2. Sinon, créer avec code + label par défaut du type
+        try {
+            Journal journal = new Journal();
+            journal.setCompanyId(companyId);
+            journal.setCode(code);
+            journal.setLabel(type.getDefaultLabel());
+            journal.setType(type);
+            journal.setActive(true);
+            LOG.info("Auto-création journal {} ({}) pour company {} (lazy creation V8.2)",
+                code, type.name(), companyId);
+            Journal saved = journalRepository.save(journal);
+            // V8.2 — forcer le flush pour que le journal soit visible dans la DB avant
+            // toute query ultérieure dans la même transaction. Sans ce flush, Hibernate
+            // peut retarder l'INSERT jusqu'au prochain query, causant des incohérences
+            // avec le cache @Cacheable qui retourne Optional.empty() stale.
+            journalRepository.flush();
+            return saved;
+        } catch (ConflictException ex) {
+            // JOURNAL_CODE_ALREADY_EXISTS — race condition : une autre requête a créé le journal
+            // entre le check et le save. Recharger l'existant.
+            LOG.debug("Race condition sur création journal {} — rechargement", code);
+            return journalRepository.findByCompanyIdAndCode(companyId, code)
+                .orElseThrow(() -> ex);
+        }
     }
 
     // --- Écritures ---
@@ -476,9 +545,23 @@ public class AccountingEngineService {
         // On catch DataIntegrityViolationException et on recharge l'entry existante.
 
         // Valider les entrées
-        Journal journal = journalRepository.findByCompanyIdAndCode(companyId, req.journalCode())
-            .orElseThrow(() -> new NotFoundException("JOURNAL_NOT_FOUND",
-                "Journal introuvable : " + req.journalCode()));
+        // V8.2 Phase 3 — lazy creation : si le code correspond à un JournalType standard
+        // (VT, AC, BQ, CA, OD, PA, DP, FX), on appelle directement getOrCreateJournal qui fait
+        // son propre lookup + création (avec @CacheEvict). Pour les codes non-standards
+        // (journaux personnalisés), on garde le comportement historique (404 JOURNAL_NOT_FOUND).
+        // Note : on évite le double lookup (findByCompanyIdAndCode + getOrCreateJournal) qui
+        // causait un bug de cache stale (@Cacheable retournait Optional.empty() même après création).
+        jo.accountant.accountingengine.entity.JournalType knownType =
+            jo.accountant.accountingengine.entity.JournalType.fromCode(req.journalCode());
+        Journal journal;
+        if (knownType != null) {
+            journal = getOrCreateJournal(companyId, knownType);
+        } else {
+            journal = journalRepository.findByCompanyIdAndCode(companyId, req.journalCode())
+                .orElseThrow(() -> new NotFoundException("JOURNAL_NOT_FOUND",
+                    "Journal introuvable : " + req.journalCode()
+                    + " (et ne correspond à aucun JournalType standard — créer via POST /journals)"));
+        }
 
         // Trouver la période fiscale correspondant à entryDate
         FiscalPeriod period = findPeriodForDate(companyId, req.entryDate());

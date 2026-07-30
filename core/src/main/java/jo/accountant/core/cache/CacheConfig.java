@@ -74,7 +74,15 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
         // Ne pas créer de cache à la volée pour des noms inconnus — safety net contre les typos.
-        manager.setAllowNullValues(false);  // ne pas cacher les Optional.empty()
+        //
+        // V8.2 (audit Z.ai 2026-07-31) — setAllowNullValues(true) pour supporter Optional.empty()
+        // retourné par @Cacheable (ex: AccountRepository.findByCompanyIdAndCode quand le compte
+        // n'existe pas encore). Avant le fix, setAllowNullValues(false) levait
+        // IllegalArgumentException "Cache 'accounts' is configured to not allow null values but
+        // null was provided" dès que ChartOfAccountsService.initialize était appelé (cas du wizard
+        // V8.2 qui appelle initialize atomiquement). Le caching de valeurs null est acceptable
+        // ici car les TTL courts (10-30 min) évitent de servir stale trop longtemps.
+        manager.setAllowNullValues(true);
         // Spécifications par nom de cache — voir javadoc de classe pour les TTL.
         manager.registerCustomCache("accounts", Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.MINUTES)

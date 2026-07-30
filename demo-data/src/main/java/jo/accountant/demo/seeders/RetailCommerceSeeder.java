@@ -317,7 +317,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
     company.setFreeZone(false);
     company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD); // IS 30% standard
     company.setMonthlyLegalHours(new BigDecimal("208")); // Haïti 48h/sem × 52/12
-    company.setWizardStep(9);
+    company.setWizardStep(jo.accountant.company.entity.Company.TOTAL_WIZARD_STEPS);
     company.setWizardCompleted(true);
     company.setIsDemo(true);
     return companyRepository.save(company);

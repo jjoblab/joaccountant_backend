@@ -238,10 +238,10 @@ public class FixedAssetsService {
             throw new NotFoundException("Account", counterpartyId.toString());
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD introuvable. Créer un journal de code 'OD'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         List<LineDto> lines = new ArrayList<>();
         // Débit Immobilisation (coût d'acquisition)
@@ -685,11 +685,10 @@ public class FixedAssetsService {
             throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
         }
 
-        // Trouver un journal (OD par défaut pour les opérations diverses)
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD (Opérations diverses) introuvable. Créer un journal de code 'OD'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         // Construire les lignes de l'écriture comptable — 1 débit + 1 crédit par ligne d'échéancier.
         // En mode global (1 ligne) → écriture 2 lignes (comportement historique).
@@ -819,10 +818,10 @@ public class FixedAssetsService {
             throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD introuvable"));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         // Écriture de cession :
         // D Amortissement cumulé (cumulativeDepreciation)
@@ -1031,11 +1030,10 @@ public class FixedAssetsService {
             throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
         }
 
-        // Code journal OD
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD (Opérations diverses) introuvable. Créer un journal de code 'OD'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         // Créer la ligne d'échéancier supplémentaire (postée immédiatement)
         BigDecimal newCumulative = cumulativeDepreciation.add(additional);
@@ -1321,10 +1319,10 @@ public class FixedAssetsService {
                 throw new NotFoundException("Account", accumAcctId.toString());
             }
 
-            String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-                .map(j -> j.getCode())
-                .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                    "Journal OD (Opérations diverses) introuvable. Créer un journal de code 'OD'."));
+            // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+            // le code/label par défaut du type (jamais d'exception pour les types standards).
+            String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+                jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
             LocalDate entryDate = LocalDate.now();
             CreateJournalEntryRequest entryReq = new CreateJournalEntryRequest(

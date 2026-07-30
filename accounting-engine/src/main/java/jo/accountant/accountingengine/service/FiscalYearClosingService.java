@@ -194,11 +194,11 @@ public class FiscalYearClosingService {
                 "Créer un compte de capitaux propres (idéalement marqué taxMappingCode=\"FISCAL_RESULT\") " +
                 "ou initialiser le plan comptable de l'entreprise."));
 
-        // Créer l'écriture de clôture : on solde les produits et charges contre le compte de résultat
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException(
-                "JOURNAL_OD_NOT_FOUND", "Journal OD introuvable"));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        // Écriture de clôture : on solde les produits et charges contre le compte de résultat
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         // Trouver la période fiscale de la date de fin d'exercice
         FiscalPeriod closingPeriod = findPeriodForDate(companyId, fy.getEndDate());

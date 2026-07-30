@@ -52,8 +52,14 @@ spring:
       initialize-schema: never
 
   # ─── Désactiver Swagger UI en staging (comme en prod) ──────────
-  doc:
+  # ⚠️ FIX Phase 1 (audit Z.ai 2026-07-31) — typo `spring.doc` → `springdoc`.
+  # Le préfixe `spring.doc` n'existe pas dans Spring Boot / springdoc-openapi.
+  # La clé correcte est `springdoc` au top-level (cf. application.yml et application-prod.yml).
+  # Sans ce fix, swagger-ui restait ENABLED en staging malgré l'intention contraire.
+  springdoc:
     swagger-ui:
+      enabled: false
+    api-docs:
       enabled: false
 
 # ─── Server ─────────────────────────────────────────────────────────

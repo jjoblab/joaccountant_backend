@@ -2,6 +2,11 @@
 // Cœur non négociable du projet. Premier consommateur réel de :document-numbering,
 // :approval-workflow, :chart-of-accounts, et implémente AccountBalanceGuard (interface posée
 // en Phase 3).
+//
+// V8.2 Phase 4 (audit Z.ai 2026-07-31) — ajout dépendance vers :company pour
+// AccountingEngineAutoInitializer (@TransactionalEventListener sur CompanyWizardCompletedEvent).
+// Cette dépendance est autorisée par ArchUnit Rule 13 (qui n'interdit que les modules en aval
+// comme :invoicing, :tax, :purchasing, etc. — pas :company).
 dependencies {
     implementation(project(":core"))
     implementation(project(":audit-trail"))
@@ -9,6 +14,7 @@ dependencies {
     implementation(project(":document-numbering"))
     implementation(project(":approval-workflow"))
     implementation(project(":analytics"))
+    implementation(project(":company"))
 }
 
 // =============================================================================

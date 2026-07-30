@@ -303,10 +303,10 @@ public class PurchasingService {
         // Montant net à payer au fournisseur = TTC − retenue à la source
         BigDecimal supplierCredit = invoice.getTotalAmount().subtract(withholdingAmount);
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(companyId, "AC")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_AC_NOT_FOUND",
-                "Journal AC (Achats) introuvable. Créer un journal de code 'AC'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.ACHATS).getCode();
 
         List<LineDto> entryLines = new ArrayList<>();
         for (var entry : chargesByAccount.entrySet()) {

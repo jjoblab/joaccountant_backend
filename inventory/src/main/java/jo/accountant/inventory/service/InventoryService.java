@@ -317,10 +317,10 @@ public class InventoryService {
                 "Compte de contrepartie introuvable : " + counterpartyAccountId);
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(move.getCompanyId(), "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD introuvable. Créer un journal de code 'OD'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(move.getCompanyId(),
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         List<LineDto> lines = new ArrayList<>();
         // Débit Stock (coût total)
@@ -471,10 +471,10 @@ public class InventoryService {
             throw new NotFoundException("Account", item.getInventoryAccountId().toString());
         }
 
-        String journalCode = journalRepository.findByCompanyIdAndCode(move.getCompanyId(), "OD")
-            .map(j -> j.getCode())
-            .orElseThrow(() -> new ValidationException("JOURNAL_OD_NOT_FOUND",
-                "Journal OD introuvable. Créer un journal de code 'OD'."));
+        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // le code/label par défaut du type (jamais d'exception pour les types standards).
+        String journalCode = accountingEngineService.getOrCreateJournal(move.getCompanyId(),
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
 
         CreateJournalEntryRequest entryReq = new CreateJournalEntryRequest(
             journalCode, move.getMoveDate(),

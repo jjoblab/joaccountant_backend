@@ -354,7 +354,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     company.setFreeZone(false);
     company.setTaxExemptionStatus(TaxExemptionStatus.NGO_EXEMPT); // V8-1 — IS 0% art. 195
     company.setMonthlyLegalHours(new BigDecimal("208")); // Haïti 48h/sem × 52/12
-    company.setWizardStep(9);
+    company.setWizardStep(jo.accountant.company.entity.Company.TOTAL_WIZARD_STEPS);
     company.setWizardCompleted(true);
     company.setIsDemo(true);
     return companyRepository.save(company);
