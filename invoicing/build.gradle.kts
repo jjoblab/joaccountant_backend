@@ -22,5 +22,5 @@ dependencies {
     // openpdf ne fournit pas de PDF/A-3 strict (iText 7 + add-on PDF/A nécessaire pour cela),
     // mais permet l'ajout d'une pièce jointe + métadonnées catalogue /AF + /AFRelationship=/Data
     // qui couvrent le contrat Factur-X : un PDF unique contenant le XML CII D16B embarqué.
-    implementation("com.github.librepdf:openpdf:1.4.2")
+    implementation("com.github.librepdf:openpdf:3.0.5")
 }
