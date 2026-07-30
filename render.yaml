@@ -78,6 +78,10 @@ services:
         value: "24"
       - key: UPLOAD_DIR
         value: /tmp/uploads
+      # FIX v8.2 : APP_STORAGE_ROOT doit pointer vers un dossier writable par l'user joaccountant
+      # (le défaut ./storage résout vers /app/storage qui appartient à root → AccessDeniedException)
+      - key: APP_STORAGE_ROOT
+        value: /tmp/uploads
       - key: HIKARI_MAX_POOL_SIZE
         value: "10"             # Free tier = 512 MB RAM → 10 connexions max (au lieu de 50)
       - key: HIKARI_MIN_IDLE

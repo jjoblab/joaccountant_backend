@@ -106,3 +106,8 @@ app:
     secret: ${JWT_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  # FIX v8.2 : storage root doit être writable par l'user non-root joaccountant
+  # /app appartient à root → on utilise /tmp/uploads (créé par Dockerfile avec joaccountant ownership)
+  storage:
+    fs:
+      root: ${APP_STORAGE_ROOT:/tmp/uploads}
