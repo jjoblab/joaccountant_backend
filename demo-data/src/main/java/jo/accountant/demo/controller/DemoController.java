@@ -97,6 +97,23 @@ public class DemoController {
   // ────────────────────────────────────────────────────────────────────
 
   @Operation(
+      summary = "Ping — vérifie que le DemoController est enregistré",
+      description =
+          "v2.5.2 — Endpoint de diagnostic minimal (aucune dépendance DB). Si ce endpoint "
+              + "retourne 404, le DemoController n'est pas déployé (build Render échoué "
+              + "ou push GitHub incomplet). Si 200, le controller est OK.")
+  @GetMapping("/ping")
+  public ResponseEntity<java.util.Map<String, Object>> ping() {
+    return ResponseEntity.ok(
+        java.util.Map.of(
+            "ok", true,
+            "controller", "DemoController",
+            "version", "v9.4",
+            "timestamp", java.time.Instant.now().toString(),
+            "demoProfileActive", demoDataSeeder != null));
+  }
+
+  @Operation(
       summary = "Statut du seed démo",
       description =
           "v2.5.2 — Vérifie si le seed automatique a tourné au startup. Retourne le "

@@ -68,6 +68,22 @@ public class GlobalExceptionHandler {
             "An unexpected error occurred. Reference: " + correlationId, req);
     }
 
+    // v2.5.2 — NoResourceFoundException (Spring Boot 3.2+) : retourner 404 avec détail
+    // au lieu de laisser tomber dans Exception.class → 500 générique. Permet de
+    // distinguer "endpoint n'existe pas" (404) des vraies erreurs serveur (500).
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex,
+            HttpServletRequest req) {
+        String correlationId = TenantContext.getCorrelationId();
+        LOG.warn("No resource found [correlationId={}] : {}", correlationId, ex.getMessage());
+        ProblemDetail pd = build(HttpStatus.NOT_FOUND, "NOT_FOUND",
+            "Endpoint ou ressource introuvable : " + req.getMethod() + " " + req.getRequestURI()
+                + " (Reference: " + correlationId + ")", req);
+        pd.setProperty("hint", "Vérifiez l'URL ou la version du backend déployé.");
+        return pd;
+    }
+
     private ProblemDetail build(HttpStatus status, String code, String detail, HttpServletRequest req) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
         pd.setTitle(status.getReasonPhrase());
