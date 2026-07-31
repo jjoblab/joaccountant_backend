@@ -105,19 +105,32 @@ public class DemoController {
               + "DB, le seeder n'a pas tourné — appeler POST /demos/seed pour le déclencher).")
   @GetMapping("/seed/status")
   public ResponseEntity<java.util.Map<String, Object>> seedStatus() {
-    long actual = demoService.countDemoCompanies();
+    // v2.5.2 — wrap dans try/catch pour exposer l'erreur au lieu d'un 500 générique
+    // (le GlobalExceptionHandler masque le détail). RLS peut bloquer findAll() si pas
+    // de tenant context, ou la DB peut être indisponible.
+    long actual;
+    String error = null;
+    try {
+      actual = demoService.countDemoCompanies();
+    } catch (Exception e) {
+      actual = -1;
+      error = e.getClass().getSimpleName() + " : " + e.getMessage();
+    }
     int expected = demoService.expectedDemoCount();
-    boolean seeded = actual >= expected;
-    return ResponseEntity.ok(
-        java.util.Map.of(
-            "seeded", seeded,
-            "actualCount", actual,
-            "expectedCount", expected,
-            "demoProfileActive", demoDataSeeder != null,
-            "message", seeded
-                ? "Seed OK — " + actual + " entreprise(s) démo en DB."
-                : "Seed INCOMPLET — " + actual + "/" + expected
-                    + " entreprise(s). Appeler POST /api/v1/demos/seed pour re-seed."));
+    boolean seeded = actual >= 0 && actual >= expected;
+    java.util.Map<String, Object> body = new java.util.HashMap<>();
+    body.put("seeded", seeded);
+    body.put("actualCount", actual);
+    body.put("expectedCount", expected);
+    body.put("demoProfileActive", demoDataSeeder != null);
+    body.put("message", error != null
+        ? "Erreur lors du comptage des démos : " + error
+        : seeded
+            ? "Seed OK — " + actual + " entreprise(s) démo en DB."
+            : "Seed INCOMPLET — " + actual + "/" + expected
+                + " entreprise(s). Appeler POST /api/v1/demos/seed pour re-seed.");
+    if (error != null) body.put("error", error);
+    return ResponseEntity.ok(body);
   }
 
   @Operation(

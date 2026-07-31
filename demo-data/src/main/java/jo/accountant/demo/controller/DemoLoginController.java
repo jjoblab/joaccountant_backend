@@ -52,6 +52,8 @@ import org.springframework.web.bind.annotation.RestController;
             + "POST /api/v1/demos/login/{demoCode} = connexion rapide en un clic.")
 public class DemoLoginController {
 
+  private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DemoLoginController.class);
+
   /** Mot de passe démo partagé par les 4 users OWNER démo. */
   static final String DEMO_PASSWORD = DemoCredentials.DEMO_PASSWORD;
 
@@ -116,10 +118,20 @@ public class DemoLoginController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   @PostMapping(value = "/login/{demoCode}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<LoginResponse> demoLogin(@PathVariable String demoCode) {
+  public ResponseEntity<?> demoLogin(@PathVariable String demoCode) {
     var company = demoService.findDemoCompany(demoCode);
     if (company.isEmpty()) {
-      return ResponseEntity.notFound().build();
+      // v2.5.2 — message explicite : la company démo n'existe pas en DB.
+      // Le seeder n'a probablement pas tourné → appeler POST /api/v1/demos/seed.
+      ProblemDetail problem =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.NOT_FOUND,
+              "Entreprise démo '" + demoCode + "' introuvable en DB. "
+                  + "Le seed automatique a-t-il tourné au startup ? "
+                  + "Appeler POST /api/v1/demos/seed pour déclencher le seed manuellement.");
+      problem.setProperty("demoCode", demoCode);
+      problem.setProperty("hint", "POST /api/v1/demos/seed");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
     }
 
     // Email démo prédictible : owner@<domain>.demo
@@ -140,18 +152,34 @@ public class DemoLoginController {
               false,
               null);
       return ResponseEntity.ok(response);
+    } catch (jo.accountant.core.exception.ForbiddenException e) {
+      // v2.5.2 — 403 avec détail au lieu de 500 générique. Cause probable :
+      // user démo non créé (seeder incomplet) ou password mismatch.
+      LOG.warn("Login démo échoué pour {} (email={}) : {}", demoCode, email, e.getMessage());
+      ProblemDetail problem =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.FORBIDDEN,
+              "Login démo échoué pour '" + demoCode + "' (email=" + email + ") : "
+                  + e.getMessage() + " (code=" + e.getCode() + "). "
+                  + "Causes probables : (1) le user démo n'existe pas en DB — appeler "
+                  + "POST /api/v1/demos/seed ; (2) le password ne matche pas — vérifier "
+                  + "que DemoCredentials.DEMO_PASSWORD ('" + DEMO_PASSWORD
+                  + "') correspond au password utilisé par le seeder.");
+      problem.setProperty("demoCode", demoCode);
+      problem.setProperty("email", email);
+      problem.setProperty("errorCode", e.getCode());
+      problem.setProperty("hint", "POST /api/v1/demos/seed");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
     } catch (Exception e) {
+      LOG.error("Login démo erreur inattendue pour {} (email={})", demoCode, email, e);
       ProblemDetail problem =
           ProblemDetail.forStatusAndDetail(
               HttpStatus.INTERNAL_SERVER_ERROR,
-              "Login démo échoué pour "
-                  + demoCode
-                  + " : "
-                  + e.getMessage()
-                  + " (le seeder a-t-il terminé ? Le user démo a-t-il été créé avec le mot de passe '"
-                  + DEMO_PASSWORD
-                  + "' ?)");
-      return ResponseEntity.internalServerError().build();
+              "Login démo échoué pour '" + demoCode + "' (email=" + email + ") : "
+                  + e.getClass().getSimpleName() + " : " + e.getMessage());
+      problem.setProperty("demoCode", demoCode);
+      problem.setProperty("email", email);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
   }
 }
