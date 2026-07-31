@@ -37,8 +37,22 @@ public class DemoDataSeeder {
   @Async
   @Transactional
   public void seedAllOnStartup() {
+    seedAll("seed automatique (startup)");
+  }
+
+  /**
+   * v2.5.2 — Déclenche le seed manuellement (depuis POST /api/v1/demos/seed).
+   * Synchrone (pas @Async) pour que l'appelant reçoive le résultat.
+   * Idempotent : les seeders vérifient l'existence par nom + isDemo=true.
+   */
+  @Transactional
+  public int seedAllManually() {
+    return seedAll("seed manuel (POST /api/v1/demos/seed)");
+  }
+
+  private int seedAll(String source) {
     LOG.info("═══════════════════════════════════════════════════════════");
-    LOG.info("  V8.1 Module Démos — Démarrage du seed automatique");
+    LOG.info("  V8.1 Module Démos — {}", source);
     LOG.info("  {} entreprises × 2 exercices fiscaux (FY2024-2025 + FY2025-2026)", seeders.size());
     LOG.info("═══════════════════════════════════════════════════════════");
 
@@ -61,5 +75,6 @@ public class DemoDataSeeder {
     LOG.info("  V8.1 Module Démos — Seed terminé ({} enregistrements au total)", totalRecords);
     LOG.info("  Endpoints publics : /api/v1/demos/**");
     LOG.info("═══════════════════════════════════════════════════════════");
+    return totalRecords;
   }
 }

@@ -97,6 +97,22 @@ public class DemoService {
     return out;
   }
 
+  /**
+   * v2.5.2 — Compte les entreprises démo présentes en DB. Utilisé par
+   * {@code GET /api/v1/demos/seed/status} pour vérifier si le seed automatique
+   * a tourné au startup.
+   */
+  public long countDemoCompanies() {
+    return companyRepository.findAll().stream()
+        .filter(c -> Boolean.TRUE.equals(c.getIsDemo()))
+        .count();
+  }
+
+  /** v2.5.2 — Nombre total d'entreprises démo attendues (configurées via seeders). */
+  public int expectedDemoCount() {
+    return seeders.size();
+  }
+
   public Optional<DemoCompanySummary> getDemo(String demoCode) {
     CompanySeeder seeder = findSeeder(demoCode);
     if (seeder == null) return Optional.empty();

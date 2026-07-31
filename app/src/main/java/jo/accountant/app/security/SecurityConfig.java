@@ -131,6 +131,12 @@ public class SecurityConfig {
                 // ⚠️ À DÉSACTIVER en production réelle (supprimer ce bloc + DemoLoginController).
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/demos/login/**").permitAll()
+                // v2.5.2 — Re-seed manuel démo (POST /api/v1/demos/seed). Public pour
+                // permettre de déclencher le seed sans JWT (utile si le seed auto a échoué
+                // et qu'aucun user démo n'existe encore en DB).
+                // ⚠️ À DÉSACTIVER en production réelle.
+                .requestMatchers(HttpMethod.POST,
+                    "/api/v1/demos/seed").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(jwtDecoder)))
             .addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class)
