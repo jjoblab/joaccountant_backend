@@ -17,7 +17,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
+// v2.5.2 — BearerTokenAuthenticationFilter déprécié en Spring Security 6.x.
+// On utilise l'interface de base (qui reste stable) pour le positioning des filtres.
+// import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -139,9 +142,9 @@ public class SecurityConfig {
                     "/api/v1/demos/seed").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(jwtDecoder)))
-            .addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class)
-            .addFilterBefore(tenantContextFilter, BearerTokenAuthenticationFilter.class)
-            .addFilterAfter(new TenantClaimFilter(), BearerTokenAuthenticationFilter.class);
+            .addFilterBefore(rateLimitFilter, AnonymousAuthenticationFilter.class)
+            .addFilterBefore(tenantContextFilter, AnonymousAuthenticationFilter.class)
+            .addFilterAfter(new TenantClaimFilter(), AnonymousAuthenticationFilter.class);
         return http.build();
     }
 

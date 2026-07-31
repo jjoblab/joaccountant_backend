@@ -75,6 +75,17 @@ public class AsyncConfig {
      * par défaut Spring — un futur pool "email-async-executor" ou "report-async-executor"
      * pourra avoir un sizing différent sans interférer.
      */
+    /**
+     * v2.5.2 — Alias "taskExecutor" sur audit-async-executor pour éviter le warning
+     * "More than one TaskExecutor bean found" au startup. Spring @Async sans qualifier
+     * utilise le bean nommé "taskExecutor" par défaut.
+     */
+    @Bean("taskExecutor")
+    @org.springframework.context.annotation.Primary
+    public Executor taskExecutor() {
+        return auditAsyncExecutor();
+    }
+
     @Bean("audit-async-executor")
     public Executor auditAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -93,6 +104,40 @@ public class AsyncConfig {
         LOG.info("ThreadPoolTaskExecutor 'audit-async-executor' initialisé : " +
                  "corePoolSize=10, maxPoolSize=50, queueCapacity=100, " +
                  "rejectedExecutionHandler=CallerRunsPolicy, awaitTerminationSeconds=30");
+        return executor;
+    }
+
+    /**
+     * v2.5.2 fix — Bean "thirteenthMonthTaskExecutor" référencé par
+     * {@code @Async("thirteenthMonthTaskExecutor")} sur
+     * {@link jo.accountant.payroll.service.ThirteenthMonthAsyncRunner#runAsync}.
+     *
+     * <p>Sans ce bean, Spring lève {@code NoSuchBeanDefinitionException} au moment
+     * d'invoquer la méthode {@code @Async} → le calcul du 13e mois échoue en
+     * cascade, marquant le {@code PayrollRun} en statut ERROR et cassant les
+     * seeders démo qui créent des campagnes de paie THIRTEENTH_MONTH.
+     *
+     * <p><b>Sizing</b> : le 13e mois calcule 1 payslip par employé éligible,
+     * en batches de 100 (cf. {@code ThirteenthMonthAsyncRunner}). Pour 1200
+     * employés (Caribbean Textiles), ça fait ~12 batches × 50ms = 600ms. Un
+     * pool de 2 threads core (5 max) suffit — c'est un calcul rare (1x/an).
+     */
+    @Bean("thirteenthMonthTaskExecutor")
+    public Executor thirteenthMonthTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("13th-month-");
+        // AbortPolicy : si queue pleine + maxPoolSize atteint, on préfère fail-fast
+        // (le calcul 13e mois est rare, on ne veut pas le faire sur le thread métier).
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);  // 60s pour finir un batch en cours
+        executor.initialize();
+        LOG.info("ThreadPoolTaskExecutor 'thirteenthMonthTaskExecutor' initialisé : " +
+                 "corePoolSize=2, maxPoolSize=5, queueCapacity=10, " +
+                 "rejectedExecutionHandler=AbortPolicy, awaitTerminationSeconds=60");
         return executor;
     }
 }

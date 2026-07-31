@@ -27,7 +27,8 @@ spring:
       ddl-auto: none  # Flyway is the only source of schema changes (§3.2)
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # v2.5.2 — dialect retiré (HHH90000025 : Hibernate 6 détecte automatiquement le dialecte via le JDBC driver)
+        # dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
         jdbc.time_zone: UTC
     open-in-view: false
@@ -49,6 +50,12 @@ spring:
   threads:
     virtual:
       enabled: true
+  # v2.5.2 — Les templates Thymeleaf sont stockés en DB (document_template table, seedés par
+  # Flyway V35/V88/V89), PAS sur classpath:/templates/. On désactive la vérification de
+  # l'emplacement pour éviter le warning "Cannot find template location: classpath:/templates/"
+  # au startup. DocumentGenerationService rend le HTML depuis la DB, pas depuis le classpath.
+  thymeleaf:
+    check-template-location: false
   lifecycle:
     timeout-per-shutdown-phase: 30s  # Audit v4.7 §9 — graceful shutdown
 
@@ -213,3 +220,7 @@ logging:
     jo.accountant: INFO
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
+    # v2.5.2 — Spring Batch : warning "ItemProcessor is an interface" est un bruit
+    # interne Spring Batch (pas de bug, juste un reminder de configuration). On le
+    # baisse à ERROR pour nettoyer les logs startup.
+    org.springframework.batch.core.listener.AbstractListenerFactoryBean: ERROR

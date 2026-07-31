@@ -34,6 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @SpringBootTest(classes = {JoAccountantApplication.class, NotificationsIntegrationTest.TestConfig.class})
 @ActiveProfiles("test")
+@java.lang.SuppressWarnings("deprecation")  // v2.5.2 — markAsRead déprécié, test valide la rétro-compat
 class NotificationsIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSupport {
 
     private static final UUID COMPANY_A = UUID.fromString("00000000-0000-0000-0000-a00000000001");

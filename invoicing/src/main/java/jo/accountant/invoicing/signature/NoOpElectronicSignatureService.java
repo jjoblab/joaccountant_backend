@@ -40,11 +40,11 @@ public class NoOpElectronicSignatureService implements ElectronicSignatureServic
      * l'absence de valeur juridique.
      */
     public NoOpElectronicSignatureService() {
-        LOG.warn("Electronic signature not configured — using NoOp implementation. "
-            + "Documents will NOT be legally signed. To enable real signature, set "
-            + "app.signature.xades.enabled=true and configure keystore. See "
-            + "docs/ELECTRONIC_SIGNATURE.md for the legal framework (Haiti Decree "
-            + "2002-02-12 + DGI order 2017-10-04).");
+        // v2.5.2 — baissé à INFO : c'est un état attendu en démo/dev (pas un bug).
+        // En prod, si signature réelle est requise, configurer app.signature.xades.enabled=true.
+        LOG.info("Electronic signature not configured — using NoOp implementation. "
+            + "Documents will NOT be legally signed (expected in demo/dev). To enable "
+            + "real signature, set app.signature.xades.enabled=true and configure keystore.");
     }
 
     @Override

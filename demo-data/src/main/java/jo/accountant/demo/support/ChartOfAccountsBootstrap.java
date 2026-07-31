@@ -87,6 +87,11 @@ public class ChartOfAccountsBootstrap {
 
     // --- 1. Initialisation du squelette PCN (classes niveau 1 + comptes template V6-6) ---
     // Idempotent : si déjà initialisé, le service lève ConflictException — on l'attrape.
+    // v2.5.2 fix : si initialize échoue (ex: IFRS require template), on skip aussi
+    // l'étape 2 (création des comptes feuilles) car les classes parent de niveau 1
+    // n'existent pas → évite les warnings "Classe parente de niveau 1 introuvable".
+    // Le seeder appelant a son propre fallback (ex: ensureIfrsFallbackAccounts).
+    boolean initializeSucceeded = true;
     try {
       coaService.initialize(companyId, frameworkId, null);
       LOG.info(
@@ -99,13 +104,18 @@ public class ChartOfAccountsBootstrap {
           companyId,
           ex.getMessage());
     } catch (RuntimeException ex) {
-      // Autre erreur (ex. framework introuvable) — on logue mais on continue pour
-      // permettre aux autres bootstraps de tourner. Les seeders sont tolérants.
-      LOG.error(
-          "V9 — Erreur non-fatale lors de l'initialisation du plan comptable pour companyId={} : {}",
+      // Autre erreur (ex: IFRS require template, framework introuvable) — on logue
+      // et on skip l'étape 2. Le seeder appelant gère le fallback.
+      LOG.warn(
+          "V9 — Erreur non-fatale lors de l'initialisation du plan comptable pour companyId={} : {} "
+              + "— skip de la création des comptes feuilles (le seeder doit gérer le fallback).",
           companyId,
-          ex.getMessage(),
-          ex);
+          ex.getMessage());
+      initializeSucceeded = false;
+    }
+
+    if (!initializeSucceeded) {
+      return;  // v2.5.2 — skip step 2, le seeder a son propre fallback.
     }
 
     // --- 2. Création des comptes feuilles (6 chiffres) ---

@@ -93,6 +93,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @SpringBootTest(classes = {JoAccountantApplication.class, ActiveFiscalYearIntegrationTest.TestConfig.class})
 @ActiveProfiles("test")
+// v2.5.2 — supprime les warnings de dépréciation pour getActiveFiscalYear/getActiveFiscalYearForRead/
+// checkActiveFiscalYearWritable. Ces méthodes sont dépréciées mais le test valide explicitement
+// leur comportement (rétro-compat) — on ne veut pas refactorer le test pour utiliser
+// resolveFiscalYear() car ça changerait ce qui est testé.
+@java.lang.SuppressWarnings("deprecation")
 class ActiveFiscalYearIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSupport {
 
     private static final UUID COMPANY_A = UUID.fromString("00000000-0000-0000-0000-a00000000001");
