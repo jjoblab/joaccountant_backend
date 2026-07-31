@@ -16,6 +16,7 @@ import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import jo.accountant.reporting.dto.AgedBalance;
 import jo.accountant.reporting.dto.Dashboard;
 import jo.accountant.reporting.dto.ExportResult;
@@ -240,15 +241,11 @@ public class ReportingController {
         variables.put("totalBalanceDue", balance.totalBalanceDue() != null ? balance.totalBalanceDue().toString() : "0");
         variables.put("invoiceCount", balance.invoiceCount());
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, docType, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "balance-agee-" + label + "-" + companyId + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, docType, variables, filename);
         LOG.info("[PDF] Balance âgée {} générée pour companyId={} ({} factures, {} octets)",
-            label, companyId, balance.invoiceCount(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            label, companyId, balance.invoiceCount(), response.getBody().length);
+        return response;
     }
 }

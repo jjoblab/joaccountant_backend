@@ -27,6 +27,7 @@ import jo.accountant.tax.service.TaxExportService;
 import jo.accountant.tax.service.TaxService;
 import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -663,16 +664,12 @@ public class TaxController {
         variables.put("taxCreditCarriedForward", declaration.taxCreditCarriedForward() != null ? declaration.taxCreditCarriedForward().toString() : "0");
         variables.put("taxCreditToCarryForward", declaration.taxCreditToCarryForward() != null ? declaration.taxCreditToCarryForward().toString() : "0");
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, docType, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "declaration-" + normalized.toLowerCase() + "-" + companyId + "-" + from + "_" + to + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, docType, variables, filename);
         LOG.info("[PDF] Déclaration {} générée pour companyId={} période={}→{} ({} octets)",
-            normalized, companyId, from, to, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            normalized, companyId, from, to, response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Générer la projection d'IS en PDF (Reports Hub v2.4.0)",
@@ -714,15 +711,11 @@ public class TaxController {
         variables.put("installments", projection.installments() != null ? projection.installments() : List.of());
         variables.put("balanceDue", projection.balanceDue() != null ? projection.balanceDue().toString() : "0");
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.CORPORATE_TAX_PROJECTION_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "projection-is-" + companyId + "-" + from + "_" + to + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.CORPORATE_TAX_PROJECTION_REPORT, variables, filename);
         LOG.info("[PDF] Projection IS générée pour companyId={} exercice={}→{} ({} octets)",
-            companyId, from, to, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, from, to, response.getBody().length);
+        return response;
     }
 }

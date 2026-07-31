@@ -8,10 +8,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import jo.accountant.chartofaccounts.dto.AccountResponse;
@@ -22,9 +18,9 @@ import jo.accountant.chartofaccounts.dto.UpdateAccountRequest;
 import jo.accountant.chartofaccounts.service.ChartOfAccountsService;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
+import jo.accountant.documentgeneration.util.CsvEndpointHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -234,34 +230,29 @@ public class ChartOfAccountsController {
 
         List<AccountResponse> accounts = service.list(companyId, "flat", null);
 
-        // Génération du CSV (UTF-8 BOM, séparateur ';', CRLF)
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0xEF); baos.write(0xBB); baos.write(0xBF);  // BOM UTF-8 pour Excel
+        // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
+        // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+        StringBuilder sb = new StringBuilder();
         String LINE_SEP = "\r\n";
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            pw.print("Code;Libelle;Classe;Sous-categorie;Niveau;Sens normal;Verrouille;Actif;Collectif;Chemin;Code fiscal" + LINE_SEP);
-            for (AccountResponse a : accounts) {
-                pw.print(safe(a.code()) + ";"
-                    + safe(a.label()) + ";"
-                    + (a.reportingClass() != null ? a.reportingClass().name() : "") + ";"
-                    + (a.reportingSubcategory() != null ? a.reportingSubcategory().name() : "") + ";"
-                    + a.level() + ";"
-                    + (a.normalBalance() != null ? a.normalBalance().name() : "") + ";"
-                    + (a.locked() ? "OUI" : "NON") + ";"
-                    + (a.active() ? "OUI" : "NON") + ";"
-                    + (a.isCollective() ? "OUI" : "NON") + ";"
-                    + safe(a.path()) + ";"
-                    + safe(a.taxMappingCode()) + LINE_SEP);
-            }
+        sb.append("Code;Libelle;Classe;Sous-categorie;Niveau;Sens normal;Verrouille;Actif;Collectif;Chemin;Code fiscal").append(LINE_SEP);
+        for (AccountResponse a : accounts) {
+            sb.append(safe(a.code())).append(";")
+                .append(safe(a.label())).append(";")
+                .append(a.reportingClass() != null ? a.reportingClass().name() : "").append(";")
+                .append(a.reportingSubcategory() != null ? a.reportingSubcategory().name() : "").append(";")
+                .append(a.level()).append(";")
+                .append(a.normalBalance() != null ? a.normalBalance().name() : "").append(";")
+                .append(a.locked() ? "OUI" : "NON").append(";")
+                .append(a.active() ? "OUI" : "NON").append(";")
+                .append(a.isCollective() ? "OUI" : "NON").append(";")
+                .append(safe(a.path())).append(";")
+                .append(safe(a.taxMappingCode())).append(LINE_SEP);
         }
-        byte[] csv = baos.toByteArray();
         String filename = "plan-comptable-" + companyId + ".csv";
+        ResponseEntity<byte[]> response = CsvEndpointHelper.buildCsvResponse(sb.toString(), filename);
         LOG.info("[CSV] Export plan comptable généré pour companyId={} ({} comptes, {} octets)",
-            companyId, accounts.size(), csv.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(csv);
+            companyId, accounts.size(), response.getBody().length);
+        return response;
     }
 
     /** Formate une valeur nullable en chaîne vide (pour CSV). */

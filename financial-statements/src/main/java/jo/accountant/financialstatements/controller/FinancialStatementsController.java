@@ -18,6 +18,7 @@ import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import jo.accountant.financialstatements.dto.BalanceSheet;
 import jo.accountant.financialstatements.dto.CashFlowStatement;
 import jo.accountant.financialstatements.dto.CreateSnapshotRequest;
@@ -29,7 +30,6 @@ import jo.accountant.financialstatements.service.FinancialStatementsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -434,16 +434,12 @@ public class FinancialStatementsController {
         variables.put("liabilities", bs.liabilities() != null ? bs.liabilities() : List.of());
         variables.put("equity", bs.equity() != null ? bs.equity() : List.of());
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.BALANCE_SHEET_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String period = bs.asOf() != null ? bs.asOf().toString() : "now";
         String filename = "bilan-" + companyId + "-" + period + ".pdf";
-        LOG.info("[PDF] Bilan généré pour companyId={} asOf={} ({} octets)", companyId, period, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.BALANCE_SHEET_REPORT, variables, filename);
+        LOG.info("[PDF] Bilan généré pour companyId={} asOf={} ({} octets)", companyId, period, response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Générer le compte de résultat en PDF (Reports Hub v2.4.0)",
@@ -477,17 +473,13 @@ public class FinancialStatementsController {
         variables.put("productsLines", flattenSections(is.products()));
         variables.put("chargesLines", flattenSections(is.charges()));
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.INCOME_STATEMENT_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String period = (is.from() != null ? is.from() : from) + "_" + (is.to() != null ? is.to() : to);
         String filename = "compte-resultat-" + companyId + "-" + period + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.INCOME_STATEMENT_REPORT, variables, filename);
         LOG.info("[PDF] Compte de résultat généré pour companyId={} période={}→{} ({} octets)",
-            companyId, is.from(), is.to(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, is.from(), is.to(), response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Générer le tableau de flux de trésorerie en PDF (Reports Hub v2.4.0)",
@@ -523,17 +515,13 @@ public class FinancialStatementsController {
         variables.put("closingCash", cf.closingCash() != null ? cf.closingCash().toString() : "0");
         variables.put("balanced", cf.balanced());
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.CASH_FLOW_STATEMENT_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String period = (cf.from() != null ? cf.from() : from) + "_" + (cf.to() != null ? cf.to() : to);
         String filename = "flux-tresorerie-" + companyId + "-" + period + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.CASH_FLOW_STATEMENT_REPORT, variables, filename);
         LOG.info("[PDF] Flux de trésorerie généré pour companyId={} période={}→{} ({} octets)",
-            companyId, cf.from(), cf.to(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, cf.from(), cf.to(), response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Générer le tableau de variation des capitaux propres en PDF (Reports Hub v2.4.0)",
@@ -570,16 +558,12 @@ public class FinancialStatementsController {
         variables.put("closingEquity", stmt.closingEquity() != null ? stmt.closingEquity().toString() : "0");
         variables.put("movements", stmt.movements() != null ? stmt.movements() : List.of());
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.STATEMENT_OF_CHANGES_IN_EQUITY_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "variation-capitaux-propres-" + companyId + "-" + from + "_" + to + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.STATEMENT_OF_CHANGES_IN_EQUITY_REPORT, variables, filename);
         LOG.info("[PDF] Variation des capitaux propres générée pour companyId={} période={}→{} ({} octets)",
-            companyId, from, to, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, from, to, response.getBody().length);
+        return response;
     }
 
     /**

@@ -9,4 +9,10 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":audit-trail"))
     implementation(project(":company"))
+    // v2.5.0-task8 — CsvEndpointHelper (util dans :document-generation) pour l'export
+    // CSV du plan comptable. Pas de cycle : Rule 24 ArchUnit n'interdit que la direction
+    // inverse (:document-generation → business modules), pas :chart-of-accounts → :document-generation.
+    // Rule 8 (chart-of-accounts must NOT depend on accounting-engine/financial-statements/etc.)
+    // ne liste pas :document-generation.
+    implementation(project(":document-generation"))
 }

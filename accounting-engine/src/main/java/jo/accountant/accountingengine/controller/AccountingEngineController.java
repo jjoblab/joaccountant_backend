@@ -9,11 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +31,8 @@ import jo.accountant.accountingengine.service.AccountingEngineService;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.CsvEndpointHelper;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -642,16 +640,12 @@ public class AccountingEngineController {
         variables.put("totalCredit", totalCredit.toString());
         variables.put("totalBalance", totalBalance.toString());
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.TRIAL_BALANCE_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "balance-generale-" + companyId + "-" + periodLabel + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.TRIAL_BALANCE_REPORT, variables, filename);
         LOG.info("[PDF] Balance générale générée pour companyId={} période={} ({} lignes, {} octets)",
-            companyId, periodLabel, lines.size(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, periodLabel, lines.size(), response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Générer le grand livre en PDF (Reports Hub v2.4.0)",
@@ -707,16 +701,12 @@ public class AccountingEngineController {
         variables.put("generationDate", LocalDate.now().toString());
         variables.put("lines", lines);
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.LEDGER_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "grand-livre-" + companyId + "-" + accountCode + "-" + periodLabel + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.LEDGER_REPORT, variables, filename);
         LOG.info("[PDF] Grand livre généré pour companyId={} compte={} période={} ({} lignes, {} octets)",
-            companyId, accountCode, periodLabel, lines.size(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, accountCode, periodLabel, lines.size(), response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Exporter les écritures comptables en CSV (Reports Hub v2.4.0)",
@@ -774,31 +764,26 @@ public class AccountingEngineController {
             if (page > 1000) break;  // safety net — 200_000 écritures max
         }
 
-        // Génération du CSV (UTF-8 BOM, séparateur ';', CRLF)
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0xEF); baos.write(0xBB); baos.write(0xBF);  // BOM UTF-8 pour Excel
+        // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
+        // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+        StringBuilder sb = new StringBuilder();
         String LINE_SEP = "\r\n";
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            pw.print("Date;Journal;Reference;Description;Statut;Debit total;Credit total" + LINE_SEP);
-            for (JournalEntryResponse e : entries) {
-                pw.print(safe(e.entryDate()) + ";"
-                    + safe(e.journalCode()) + ";"
-                    + safe(e.reference()) + ";"
-                    + safe(e.description()) + ";"
-                    + (e.status() != null ? e.status().name() : "") + ";"
-                    + (e.totalDebit() != null ? e.totalDebit().toPlainString() : "0") + ";"
-                    + (e.totalCredit() != null ? e.totalCredit().toPlainString() : "0") + LINE_SEP);
-            }
+        sb.append("Date;Journal;Reference;Description;Statut;Debit total;Credit total").append(LINE_SEP);
+        for (JournalEntryResponse e : entries) {
+            sb.append(safe(e.entryDate())).append(";")
+                .append(safe(e.journalCode())).append(";")
+                .append(safe(e.reference())).append(";")
+                .append(safe(e.description())).append(";")
+                .append(e.status() != null ? e.status().name() : "").append(";")
+                .append(e.totalDebit() != null ? e.totalDebit().toPlainString() : "0").append(";")
+                .append(e.totalCredit() != null ? e.totalCredit().toPlainString() : "0").append(LINE_SEP);
         }
-        byte[] csv = baos.toByteArray();
         String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
         String filename = "ecritures-" + companyId + "-" + periodLabel + ".csv";
+        ResponseEntity<byte[]> response = CsvEndpointHelper.buildCsvResponse(sb.toString(), filename);
         LOG.info("[CSV] Export écritures généré pour companyId={} période={} ({} écritures, {} octets)",
-            companyId, periodLabel, entries.size(), csv.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(csv);
+            companyId, periodLabel, entries.size(), response.getBody().length);
+        return response;
     }
 
     /** Formate une valeur nullable en chaîne vide (pour CSV). */

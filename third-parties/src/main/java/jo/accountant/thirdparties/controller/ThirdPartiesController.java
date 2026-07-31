@@ -8,11 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +19,8 @@ import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.CsvEndpointHelper;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import jo.accountant.thirdparties.dto.AgedBalance;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.LettrageListResponse;
@@ -37,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -379,19 +376,13 @@ public class ThirdPartiesController {
         variables.put("totalMatchedAmount", totalMatchedAmount.toString());
         variables.put("lines", result.getContent());
 
-        // Règle d'immuabilité contournée : resourceId aléatoire pour forcer la régénération
-        // à chaque appel (même pattern que step2-backend PDF endpoints).
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.LETTERING_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
         String filename = "lettrage-" + companyId + "-" + periodLabel + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.LETTERING_REPORT, variables, filename);
         LOG.info("[PDF] Lettrage généré pour companyId={} période={} ({} lettrages, {} octets)",
-            companyId, periodLabel, totalLettrages, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, periodLabel, totalLettrages, response.getBody().length);
+        return response;
     }
 
     @Operation(summary = "Suggérer des lettrages automatiques",
@@ -491,33 +482,28 @@ public class ThirdPartiesController {
             if (page > 5000) break;  // safety net — 1_000_000 tiers max
         }
 
-        // Génération du CSV (UTF-8 BOM, séparateur ';', CRLF)
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0xEF); baos.write(0xBB); baos.write(0xBF);  // BOM UTF-8 pour Excel
+        // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
+        // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+        StringBuilder sb = new StringBuilder();
         String LINE_SEP = "\r\n";
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            pw.print("Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif" + LINE_SEP);
-            for (ThirdPartyResponse tp : all) {
-                pw.print((tp.type() != null ? tp.type().name() : "") + ";"
-                    + safe(tp.name()) + ";"
-                    + safe(tp.email()) + ";"
-                    + safe(tp.address()) + ";"
-                    + safe(tp.nif()) + ";"
-                    + safe(tp.siret()) + ";"
-                    + safe(tp.vatNumber()) + ";"
-                    + safe(tp.collectiveAccountCode()) + ";"
-                    + safe(tp.dedicatedAccountCode()) + ";"
-                    + (tp.active() ? "OUI" : "NON") + LINE_SEP);
-            }
+        sb.append("Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif").append(LINE_SEP);
+        for (ThirdPartyResponse tp : all) {
+            sb.append(tp.type() != null ? tp.type().name() : "").append(";")
+                .append(safe(tp.name())).append(";")
+                .append(safe(tp.email())).append(";")
+                .append(safe(tp.address())).append(";")
+                .append(safe(tp.nif())).append(";")
+                .append(safe(tp.siret())).append(";")
+                .append(safe(tp.vatNumber())).append(";")
+                .append(safe(tp.collectiveAccountCode())).append(";")
+                .append(safe(tp.dedicatedAccountCode())).append(";")
+                .append(tp.active() ? "OUI" : "NON").append(LINE_SEP);
         }
-        byte[] csv = baos.toByteArray();
         String filename = "tiers-" + companyId + ".csv";
+        ResponseEntity<byte[]> response = CsvEndpointHelper.buildCsvResponse(sb.toString(), filename);
         LOG.info("[CSV] Export tiers généré pour companyId={} ({} tiers, {} octets)",
-            companyId, all.size(), csv.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(csv);
+            companyId, all.size(), response.getBody().length);
+        return response;
     }
 
     /** Formate une valeur nullable en chaîne vide (pour CSV). */

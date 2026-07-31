@@ -77,10 +77,12 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
      */
     private CompanyWizardResult runWizardForRetailCommerce(UUID userId) {
         TenantContext.setUserId(userId);
-        Company company = companyService.createCompany(userId, "Boutique Délice Test", "HT", "HTG");
+        // V8.3 — createCompany retourne désormais un CreateCompanyResponse (record)
+        var created = companyService.createCompany(userId, "Boutique Délice Test", "HT", "HTG");
+        UUID companyId = created.company().id();
 
         // Étape 2 — Activité
-        companyService.applyWizardStep2(company.getId(), userId,
+        companyService.applyWizardStep2(companyId, userId,
             new WizardStep2Request(
                 "Vente au détail de produits alimentaires",
                 "RETAIL_COMMERCE",
@@ -90,7 +92,7 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
             ));
 
         // Étape 3 — Comptabilité
-        companyService.applyWizardStep3(company.getId(), userId,
+        companyService.applyWizardStep3(companyId, userId,
             new WizardStep3Request(
                 UUID.fromString(PCN_HAITI_ID),
                 1, 2026, "Exercice 2026",
@@ -98,7 +100,7 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
             ));
 
         // Étape 4 — Activation atomique
-        return companyService.completeWizard(company.getId(), userId,
+        return companyService.completeWizard(companyId, userId,
             new CompleteWizardRequest(null, null, null));
     }
 
@@ -244,11 +246,13 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
         void completeWizard_beforeStep3_fails() {
             var owner = authService.register("order-1@jo.dev", "StrongPass#2026", "Owner", "fr");
             TenantContext.setUserId(owner.getId());
-            Company company = companyService.createCompany(owner.getId(),
+            // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
+            var created = companyService.createCompany(owner.getId(),
                 "Co Incomplete", "HT", "HTG");
+            UUID companyId = created.company().id();
 
             // Sauter étapes 2 et 3 — directement completeWizard
-            assertThatThrownBy(() -> companyService.completeWizard(company.getId(), owner.getId(),
+            assertThatThrownBy(() -> companyService.completeWizard(companyId, owner.getId(),
                 new CompleteWizardRequest(null, null, null)))
                 .isInstanceOf(ConflictException.class)
                 .extracting("code").isEqualTo("WIZARD_STEP_INCOMPLETE");
@@ -259,11 +263,13 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
         void step3_beforeStep2_fails() {
             var owner = authService.register("order-2@jo.dev", "StrongPass#2026", "Owner", "fr");
             TenantContext.setUserId(owner.getId());
-            Company company = companyService.createCompany(owner.getId(),
+            // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
+            var created = companyService.createCompany(owner.getId(),
                 "Co OutOfOrder", "HT", "HTG");
+            UUID companyId = created.company().id();
 
             // Sauter étape 2 — directement étape 3
-            assertThatThrownBy(() -> companyService.applyWizardStep3(company.getId(), owner.getId(),
+            assertThatThrownBy(() -> companyService.applyWizardStep3(companyId, owner.getId(),
                 new WizardStep3Request(UUID.fromString(PCN_HAITI_ID),
                     1, 2026, "Exercice 2026", VatMode.DEBIT, null)))
                 .isInstanceOf(ConflictException.class)

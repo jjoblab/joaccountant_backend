@@ -113,8 +113,14 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
                                   OrganizationNature natureIgnored, LegalForm legalFormIgnored,
                                   Sector sector, UUID frameworkId) {
         TenantContext.setUserId(userId);
-        Company company = companyService.createCompany(userId, "Co " + businessTypeCode,
+        // V8.3 — createCompany retourne désormais un CreateCompanyResponse (record)
+        // contenant la CompanyResponse + un nouveau JWT. On récupère l'id via
+        // `created.company().id()` puis on recharge l'entité Company depuis le repo
+        // (nécessaire pour applyWizardStep2/3 qui attendent un UUID, et pour le
+        // retour final qui doit être une Company).
+        var created = companyService.createCompany(userId, "Co " + businessTypeCode,
             "HT", "HTG");
+        Company company = companyRepository.findById(created.company().id()).orElseThrow();
 
         // Étape 2 — Activité + type métier (fusionne anciennes étapes 3+4+5+7+8).
         // Champs spécifiques au type métier (extraAttributes) selon V3_003 seeds.
@@ -322,8 +328,10 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
         void customBusinessTypeActivatesManuallySelectedModules() {
             var owner = authService.register("owner-custom@jo.dev", "StrongPass#2026", "Owner", "fr");
             TenantContext.setUserId(owner.getId());
-            Company company = companyService.createCompany(owner.getId(),
+            // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
+            var created = companyService.createCompany(owner.getId(),
                 "Co CUSTOM", "HT", "HTG");
+            Company company = companyRepository.findById(created.company().id()).orElseThrow();
 
             // Étape 2 — type métier CUSTOM avec customModules (fusionne anciennes étapes 3+4+5+7+8)
             companyService.applyWizardStep2(company.getId(), owner.getId(),
@@ -407,7 +415,7 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
 
             // Owner B tries to access company A → must be 404 (NotFound) to avoid leaking existence (§3.9)
             TenantContext.setUserId(ownerB.getId());
-            assertThatThrownBy(() -> companyService.getCompanyForUser(companyA.getId(), ownerB.getId()))
+            assertThatThrownBy(() -> companyService.getCompanyForUser(companyA.company().id(), ownerB.getId()))
                 .isInstanceOf(jo.accountant.core.exception.NotFoundException.class);
         }
     }
@@ -429,15 +437,17 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
             var owner = authService.register("scope@jo.dev", "StrongPass#2026", "S", "fr");
             TenantContext.setUserId(owner.getId());
 
+            // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
             var company = companyService.createCompany(owner.getId(), "Scope Co", "HT", "HTG");
-            TenantContext.setCompanyId(company.getId());
+            UUID companyId = company.company().id();
+            TenantContext.setCompanyId(companyId);
 
-            companyModuleService.enable(company.getId(),
+            companyModuleService.enable(companyId,
                 jo.accountant.company.entity.ModuleCode.INVENTORY);
 
-            var saved = companyModuleRepository.findByCompanyId(company.getId());
+            var saved = companyModuleRepository.findByCompanyId(companyId);
             assertThat(saved).hasSize(1);
-            assertThat(saved.get(0).getCompanyId()).isEqualTo(company.getId());
+            assertThat(saved.get(0).getCompanyId()).isEqualTo(companyId);
         }
     }
 
@@ -454,7 +464,7 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
             var company = companyService.createCompany(owner.getId(), "Inv Co", "HT", "HTG");
 
             notificationSpy.reset();
-            ucrService.inviteUser(company.getId(), "inv-ee@jo.dev", UserRole.ACCOUNTANT);
+            ucrService.inviteUser(company.company().id(), "inv-ee@jo.dev", UserRole.ACCOUNTANT);
             assertThat(notificationSpy.lastTemplateCode).isEqualTo("user-invitation");
             assertThat(notificationSpy.lastTo).isEqualTo("inv-ee@jo.dev");
         }

@@ -18,6 +18,8 @@ import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import jo.accountant.payroll.dto.CnssReturnResponse;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
@@ -55,10 +57,10 @@ public class PayrollController {
 
     private final PayrollService service;
     private final RoleChecker roleChecker;
-    private final jo.accountant.documentgeneration.service.DocumentGenerationService documentGenerationService;
+    private final DocumentGenerationService documentGenerationService;
 
     public PayrollController(PayrollService service, RoleChecker roleChecker,
-                              jo.accountant.documentgeneration.service.DocumentGenerationService documentGenerationService) {
+                              DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.roleChecker = roleChecker;
         this.documentGenerationService = documentGenerationService;
@@ -502,17 +504,13 @@ public class PayrollController {
         variables.put("totalEmployerContributions", totalEmployerContributions.toString());
         variables.put("runs", filtered);
 
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.PAYROLL_SUMMARY_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
         String filename = "synthese-paie-" + companyId + "-" + periodLabel + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.PAYROLL_SUMMARY_REPORT, variables, filename);
         LOG.info("[PDF] Synthèse paie générée pour companyId={} période={} ({} campagnes, {} bulletins, {} octets)",
-            companyId, periodLabel, filtered.size(), payslipCount, pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, periodLabel, filtered.size(), payslipCount, response.getBody().length);
+        return response;
     }
 
     // ======================================================================
@@ -586,17 +584,11 @@ public class PayrollController {
             data.totalEmployerContribution() != null ? data.totalEmployerContribution().toString() : "0");
         variables.put("lines", data.lines() != null ? data.lines() : List.of());
 
-        // Règle d'immuabilité contournée : resourceId aléatoire pour forcer la régénération
-        // à chaque appel (même pattern que step2-backend PDF endpoints).
-        UUID resourceId = UUID.randomUUID();
-        documentGenerationService.generateDocument(companyId, DocumentType.CNSS_RETURN_REPORT, resourceId, variables);
-        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
         String filename = "bordereau-cnss-" + companyId + "-" + data.period() + ".pdf";
+        ResponseEntity<byte[]> response = PdfEndpointHelper.generatePdf(
+            documentGenerationService, companyId, DocumentType.CNSS_RETURN_REPORT, variables, filename);
         LOG.info("[PDF] Bordereau CNSS généré pour companyId={} période={} ({} employés, {} octets)",
-            companyId, data.period(), data.lines().size(), pdf.length);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-            .body(pdf);
+            companyId, data.period(), data.lines().size(), response.getBody().length);
+        return response;
     }
 }
