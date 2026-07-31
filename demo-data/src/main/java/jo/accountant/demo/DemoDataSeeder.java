@@ -10,7 +10,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * V8.1 — Orchestrateur principal du module Démos.
@@ -35,7 +34,14 @@ public class DemoDataSeeder {
   @EventListener(ApplicationReadyEvent.class)
   @Order(100)
   @Async
-  @Transactional
+  // v2.5.2 fix RLS — RETIRÉ @Transactional de la méthode globale. Chaque
+  // CompanySeeder.seed() a déjà sa propre @Transactional → le SET LOCAL
+  // app.current_tenant sera appliqué au début de CHAQUE transaction seed,
+  // APRES que DemoTenantContext.of() ait positionné le ThreadLocal dans
+  // la boucle. Avant, @Transactional ici ouvrait une seule transaction
+  // globale (au début de seedAll, quand TenantContext était encore null)
+  // → SET LOCAL était appliqué avec current_tenant=null → tous les INSERT
+  // sur journal_entry étaient bloqués par la policy RLS (fail-closed).
   public void seedAllOnStartup() {
     seedAll("seed automatique (startup)");
   }
@@ -45,7 +51,7 @@ public class DemoDataSeeder {
    * Synchrone (pas @Async) pour que l'appelant reçoive le résultat.
    * Idempotent : les seeders vérifient l'existence par nom + isDemo=true.
    */
-  @Transactional
+  // v2.5.2 fix RLS — pas de @Transactional ici (cf. seedAllOnStartup).
   public int seedAllManually() {
     return seedAll("seed manuel (POST /api/v1/demos/seed)");
   }
