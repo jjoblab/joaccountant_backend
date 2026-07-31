@@ -3,6 +3,8 @@ package jo.accountant.core.exception;
 /** 404 — Ressource introuvable OU appartient à un autre tenant. On ne distingue JAMAIS (§3.9). */
 public class NotFoundException extends BusinessException {
 
+    private static final long serialVersionUID = 1L;
+
     public NotFoundException(String resourceType, Object id) {
         super("NOT_FOUND", resourceType + " not found: " + id);
     }

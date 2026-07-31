@@ -64,8 +64,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     @Query("select a from AuditLog a where a.companyId = :companyId " +
            "and (COALESCE(:entityType, a.entityType) = a.entityType) " +
            "and (COALESCE(:actorUserId, a.actorUserId) = a.actorUserId) " +
-           "and (:from is null or a.occurredAt >= :from) " +
-           "and (:to is null or a.occurredAt <= :to) " +
+           "and (COALESCE(:from, a.occurredAt) <= a.occurredAt) " +
+           "and (COALESCE(:to, a.occurredAt) >= a.occurredAt) " +
            "order by a.occurredAt desc")
     Page<AuditLog> findByCompanyIdWithFilters(@Param("companyId") UUID companyId,
                                                @Param("entityType") String entityType,

@@ -17,6 +17,8 @@ import jo.accountant.core.exception.ForbiddenException;
  */
 public class InvalidJwtException extends ForbiddenException {
 
+    private static final long serialVersionUID = 1L;
+
     public InvalidJwtException(String message) {
         super("MFA_CHALLENGE_TOKEN_INVALID", message);
     }

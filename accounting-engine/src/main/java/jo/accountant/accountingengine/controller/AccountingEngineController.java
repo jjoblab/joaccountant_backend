@@ -563,6 +563,7 @@ public class AccountingEngineController {
                     """)))
     })
     @GetMapping("/fiscal-years/active")
+    @java.lang.SuppressWarnings("deprecation")  // v2.5.2 — endpoint déprécié, garde rétro-compat
     public FiscalYear getActiveFiscalYear(@PathVariable UUID companyId,
                                            @CurrentUser UUID userId) {
         roleChecker.ensureRole(companyId, "VIEWER");
