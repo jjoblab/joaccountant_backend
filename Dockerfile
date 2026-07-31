@@ -29,6 +29,9 @@ COPY core/build.gradle.kts ./core/build.gradle.kts
 COPY audit-trail/build.gradle.kts ./audit-trail/build.gradle.kts
 COPY auth/build.gradle.kts ./auth/build.gradle.kts
 COPY company/build.gradle.kts ./company/build.gradle.kts
+# v2.5.2 fix — le module demo-data manquait du Dockerfile → DemoController
+# n'était jamais inclus dans le fat JAR → mode démo cassé sur Render.
+COPY demo-data/build.gradle.kts ./demo-data/build.gradle.kts
 COPY document-numbering/build.gradle.kts ./document-numbering/build.gradle.kts
 COPY chart-of-accounts/build.gradle.kts ./chart-of-accounts/build.gradle.kts
 COPY approval-workflow/build.gradle.kts ./approval-workflow/build.gradle.kts
@@ -62,6 +65,8 @@ COPY core ./core
 COPY audit-trail ./audit-trail
 COPY auth ./auth
 COPY company ./company
+# v2.5.2 fix — source du module demo-data (manquait du Dockerfile).
+COPY demo-data ./demo-data
 COPY document-numbering ./document-numbering
 COPY chart-of-accounts ./chart-of-accounts
 COPY approval-workflow ./approval-workflow
