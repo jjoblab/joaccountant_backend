@@ -6,4 +6,9 @@ dependencies {
     implementation(project(":audit-trail"))
     implementation(project(":chart-of-accounts"))
     implementation(project(":accounting-engine"))
+    // step7-backend — Reports Hub v2.5.0 : needed for the LETTERING_REPORT PDF endpoint
+    // (GET /api/v1/companies/{companyId}/third-parties/lettrage/pdf).
+    // ArchUnit Rule 24 only forbids the reverse direction (:document-generation → business modules),
+    // so this dependency is allowed.
+    implementation(project(":document-generation"))
 }

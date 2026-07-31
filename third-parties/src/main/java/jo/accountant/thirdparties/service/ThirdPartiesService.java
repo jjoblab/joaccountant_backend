@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,6 +32,7 @@ import jo.accountant.core.framework.ReportingClass;
 import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.thirdparties.dto.AgedBalance;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
+import jo.accountant.thirdparties.dto.LettrageListResponse;
 import jo.accountant.thirdparties.dto.LettrageRequest;
 import jo.accountant.thirdparties.dto.LettrageResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
@@ -381,6 +383,95 @@ public class ThirdPartiesService {
     }
 
     // --- Lettrage ---
+
+    /**
+     * step7-backend — Reports Hub v2.5.0 : Liste paginée des lettrages d'une entreprise.
+     *
+     * <p>Filtre par :
+     * <ul>
+     *   <li>{@code thirdPartyId} (optionnel) — restreint à un seul tiers.</li>
+     *   <li>{@code from}/{@code to} (optionnel) — plage de dates sur {@code matchedAt}.</li>
+     *   <li>{@code status} (optionnel) — {@link LettrageStatus#FULL} ou {@link LettrageStatus#PARTIAL}.</li>
+     * </ul>
+     *
+     * <p>Les lettrages DELETED sont toujours exclus (soft-delete préservé pour forensique).
+     *
+     * <p>Enrichissement : pour chaque {@link LettrageMatch} de la page courante, on résout
+     * le {@code thirdPartyName} (via {@code ThirdPartyRepository.findAllById}) et l'{@code accountCode}
+     * (snapshot du compte dédié au tiers). Le {@code entryCount} est calculé en parsant le JSONB
+     * {@code journalLineIds} via le helper {@link #deserializeLineIds(String)} existant.
+     *
+     * @param companyId    identifiant du tenant
+     * @param thirdPartyId filtre optionnel par tiers (null = tous les tiers)
+     * @param from         filtre optionnel date de début (inclusive) sur {@code matchedAt}
+     * @param to           filtre optionnel date de fin (inclusive) sur {@code matchedAt}
+     * @param status       filtre optionnel par statut (null = FULL + PARTIAL)
+     * @param pageable     paramètres de pagination
+     * @return page de {@link LettrageListResponse}
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<LettrageListResponse> listLettrages(
+            UUID companyId, UUID thirdPartyId, LocalDate from, LocalDate to,
+            LettrageStatus status, org.springframework.data.domain.Pageable pageable) {
+
+        // Convertir LocalDate → Instant pour la requête JPQL.
+        // from → début de journée (00:00:00 UTC), to → fin de journée (23:59:59.999 UTC).
+        Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        Instant toInstant = to != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+
+        org.springframework.data.domain.Page<LettrageMatch> page = lettrageRepository.findFiltered(
+            companyId, LettrageStatus.DELETED, thirdPartyId, status, fromInstant, toInstant, pageable);
+
+        // Batch lookup des ThirdParty pour résoudre thirdPartyName + accountCode (évite N+1).
+        Set<UUID> tpIds = new HashSet<>();
+        for (LettrageMatch lm : page.getContent()) {
+            if (lm.getThirdPartyId() != null) tpIds.add(lm.getThirdPartyId());
+        }
+        Map<UUID, ThirdParty> tpById = new HashMap<>();
+        if (!tpIds.isEmpty()) {
+            for (ThirdParty tp : thirdPartyRepository.findAllById(tpIds)) {
+                tpById.put(tp.getId(), tp);
+            }
+        }
+
+        // Batch lookup des Account dédiés pour résoudre accountCode.
+        Set<UUID> accountIds = new HashSet<>();
+        for (ThirdParty tp : tpById.values()) {
+            if (tp.getDedicatedAccountId() != null) accountIds.add(tp.getDedicatedAccountId());
+        }
+        Map<UUID, Account> accountById = new HashMap<>();
+        if (!accountIds.isEmpty()) {
+            for (Account acc : accountRepository.findAllById(accountIds)) {
+                accountById.put(acc.getId(), acc);
+            }
+        }
+
+        return page.map(lm -> {
+            ThirdParty tp = tpById.get(lm.getThirdPartyId());
+            String tpName = tp != null ? tp.getName() : null;
+            String accountCode = null;
+            if (tp != null && tp.getDedicatedAccountId() != null) {
+                Account dedicated = accountById.get(tp.getDedicatedAccountId());
+                if (dedicated != null) accountCode = dedicated.getCode();
+                // Defense-in-depth : filtrer par companyId (audit v4.7 §6.2)
+                if (dedicated != null && !dedicated.getCompanyId().equals(companyId)) {
+                    accountCode = null;
+                }
+            }
+            int entryCount = deserializeLineIds(lm.getJournalLineIds()).size();
+            return new LettrageListResponse(
+                lm.getId(),
+                lm.getThirdPartyId(),
+                tpName,
+                accountCode,
+                lm.getMatchCode(),
+                lm.getMatchedAt(),
+                lm.getMatchedBy(),
+                lm.getMatchedAmount(),
+                lm.getStatus(),
+                entryCount);
+        });
+    }
 
     /**
      * Lettre manuellement un ensemble de lignes pour un tiers.

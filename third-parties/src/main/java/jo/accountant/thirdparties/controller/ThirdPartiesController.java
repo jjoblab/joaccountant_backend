@@ -11,19 +11,26 @@ import jakarta.validation.Valid;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
+import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import jo.accountant.thirdparties.dto.AgedBalance;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
+import jo.accountant.thirdparties.dto.LettrageListResponse;
 import jo.accountant.thirdparties.dto.LettrageRequest;
 import jo.accountant.thirdparties.dto.LettrageResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyStatement;
+import jo.accountant.thirdparties.entity.LettrageStatus;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
 import jo.accountant.thirdparties.service.ThirdPartiesService;
 import org.slf4j.Logger;
@@ -57,10 +64,13 @@ public class ThirdPartiesController {
 
     private final ThirdPartiesService service;
     private final RoleChecker roleChecker;
+    private final DocumentGenerationService documentGenerationService;
 
-    public ThirdPartiesController(ThirdPartiesService service, RoleChecker roleChecker) {
+    public ThirdPartiesController(ThirdPartiesService service, RoleChecker roleChecker,
+                                   DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.roleChecker = roleChecker;
+        this.documentGenerationService = documentGenerationService;
     }
 
     @Operation(summary = "Lister les tiers (paginé)",
@@ -284,6 +294,104 @@ public class ThirdPartiesController {
         roleChecker.ensureRole(companyId, "ADMIN");
         service.deleteLettrage(companyId, lettrageId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ======================================================================
+    // step7-backend — Reports Hub v2.5.0 : endpoint liste + PDF pour le
+    // rapport LETTERING. L'URL /third-parties/lettrage (GET) retourne une page
+    // JSON filtrable ; /third-parties/lettrage/pdf génère un PDF binaire via
+    // DocumentGenerationService (template LETTERING_REPORT seedé par V89).
+    // ======================================================================
+
+    @Operation(summary = "Lister les lettrages (paginé, filtrable) — Reports Hub v2.5.0",
+        description = "Retourne une page de lettrages actifs (FULL + PARTIAL — DELETED exclu) " +
+                      "avec le nom du tiers et le code compte dédié résolus. " +
+                      "Filtres optionnels : ?thirdPartyId=&from=&to=&status=&page=&size= (défaut 0/50, size capped à 200).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = LettrageListResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/lettrage")
+    public org.springframework.data.domain.Page<LettrageListResponse> getLettrageList(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam(required = false) UUID thirdPartyId,
+        @RequestParam(required = false) LocalDate from,
+        @RequestParam(required = false) LocalDate to,
+        @RequestParam(required = false) LettrageStatus status,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "50") int size) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        org.springframework.data.domain.Pageable pageable =
+            org.springframework.data.domain.PageRequest.of(page, Math.min(size, 200));
+        return service.listLettrages(companyId, thirdPartyId, from, to, status, pageable);
+    }
+
+    @Operation(summary = "Générer la liste des lettrages en PDF (Reports Hub v2.5.0)",
+        description = "Rendu PDF de la liste des lettrages via :document-generation (template LETTERING_REPORT). " +
+                      "Sert un PDF binaire en attachment. Délègue au même service métier que GET /lettrage.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (liste des lettrages)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/lettrage/pdf")
+    public ResponseEntity<byte[]> getLettragePdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam(required = false) UUID thirdPartyId,
+        @RequestParam(required = false) LocalDate from,
+        @RequestParam(required = false) LocalDate to,
+        @RequestParam(required = false) LettrageStatus status) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+
+        // Paginer large pour le PDF (le PDF agrège tous les lettrages filtrés — on cap à 1000).
+        org.springframework.data.domain.Pageable pageable =
+            org.springframework.data.domain.PageRequest.of(0, 1000);
+        org.springframework.data.domain.Page<LettrageListResponse> result =
+            service.listLettrages(companyId, thirdPartyId, from, to, status, pageable);
+
+        // Agréger les totaux pour le résumé du PDF.
+        int totalLettrages = (int) result.getTotalElements();
+        int totalFull = 0;
+        int totalPartial = 0;
+        BigDecimal totalMatchedAmount = BigDecimal.ZERO;
+        for (LettrageListResponse line : result.getContent()) {
+            if (line.status() == LettrageStatus.FULL) totalFull++;
+            else if (line.status() == LettrageStatus.PARTIAL) totalPartial++;
+            if (line.matchedAmount() != null) totalMatchedAmount = totalMatchedAmount.add(line.matchedAmount());
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", from != null ? from.toString() : "debut");
+        variables.put("to", to != null ? to.toString() : "fin");
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("totalLettrages", totalLettrages);
+        variables.put("totalFull", totalFull);
+        variables.put("totalPartial", totalPartial);
+        variables.put("totalMatchedAmount", totalMatchedAmount.toString());
+        variables.put("lines", result.getContent());
+
+        // Règle d'immuabilité contournée : resourceId aléatoire pour forcer la régénération
+        // à chaque appel (même pattern que step2-backend PDF endpoints).
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.LETTERING_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
+        String filename = "lettrage-" + companyId + "-" + periodLabel + ".pdf";
+        LOG.info("[PDF] Lettrage généré pour companyId={} période={} ({} lettrages, {} octets)",
+            companyId, periodLabel, totalLettrages, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
     }
 
     @Operation(summary = "Suggérer des lettrages automatiques",

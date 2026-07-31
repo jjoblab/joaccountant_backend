@@ -1,5 +1,10 @@
 -- V88 — Reports Hub v2.4.0 (step2-backend)
 --
+-- 0. Élargit document_type de VARCHAR(25) à VARCHAR(50) sur les 2 tables
+--    (5 des 12 nouveaux DocumentType dépassent 25 caractères :
+--     CASH_FLOW_STATEMENT_REPORT=26, AGED_BALANCE_PAYABLES_REPORT=28,
+--     AGED_BALANCE_RECEIVABLES_REPORT=31, CORPORATE_TAX_PROJECTION_REPORT=31,
+--     STATEMENT_OF_CHANGES_IN_EQUITY_REPORT=36).
 -- 1. Élargit les CHECK chk_dt_document_type et chk_gd_document_type pour autoriser
 --    les 12 nouveaux DocumentType ajoutés pour les exports PDF du Reports Hub mobile.
 -- 2. Insère un template HTML Thymeleaf par défaut (company_id = NULL — gabarit global)
@@ -19,6 +24,15 @@
 --          DocumentGenerationService.renderPdf() enveloppe déjà le contenu dans une
 --          structure complète <!DOCTYPE html><html>...</html>.
 -- NOTE 3 : Caractères accentués évités pour compatibilité XML (openhtmltopdf).
+
+-- ─── 0. Élargissement de la colonne document_type (VARCHAR(25) → VARCHAR(50)) ──
+-- v2.4.2 fix : avant cette migration, plusieurs nouveaux DocumentType dépassaient
+-- 25 caractères et l'INSERT échouait avec "value too long for type character
+-- varying(25)". On élargit à 50 (largement suffisant pour tous les types actuels
+-- + futurs).
+
+ALTER TABLE document_template ALTER COLUMN document_type TYPE VARCHAR(50);
+ALTER TABLE generated_document ALTER COLUMN document_type TYPE VARCHAR(50);
 
 -- ─── 1. Mise à jour des CHECK constraints ────────────────────────────────────
 

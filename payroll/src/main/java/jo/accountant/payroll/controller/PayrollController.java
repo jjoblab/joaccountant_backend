@@ -18,6 +18,7 @@ import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.payroll.dto.CnssReturnResponse;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.dto.PayslipResponse;
@@ -508,6 +509,91 @@ public class PayrollController {
         String filename = "synthese-paie-" + companyId + "-" + periodLabel + ".pdf";
         LOG.info("[PDF] Synthèse paie générée pour companyId={} période={} ({} campagnes, {} bulletins, {} octets)",
             companyId, periodLabel, filtered.size(), payslipCount, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    // ======================================================================
+    // step7-backend — Reports Hub v2.5.0 : endpoint JSON + PDF pour le
+    // rapport CNSS_RETURN (bordereau CNSS/OFATMA/AST agrégé par employé
+    // sur une période). L'URL /payroll/cnss-return (GET) retourne le JSON ;
+    // /payroll/cnss-return/pdf génère un PDF binaire via DocumentGenerationService
+    // (template CNSS_RETURN_REPORT seedé par V89).
+    // ======================================================================
+
+    @Operation(summary = "Bordereau CNSS/OFATMA/AST agrégé par employé (Reports Hub v2.5.0)",
+        description = "Agrège sur la période [from, to] toutes les cotisations sociales des bulletins " +
+                      "de paie dont le code commence par CNSS_HT / OFATMA_HT / AST_HT (V57 ContributionRule). " +
+                      "Retourne une ligne par employé avec totalGross / assiette imposable / cotisations " +
+                      "salariales + patronales, plus les totaux globaux.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = CnssReturnResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = org.springframework.http.ProblemDetail.class)))
+    })
+    @GetMapping("/cnss-return")
+    public CnssReturnResponse getCnssReturn(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Date de début (incluse) — si null, début d'historique", example = "2026-01-01")
+        @RequestParam(required = false) LocalDate from,
+        @Parameter(description = "Date de fin (incluse) — si null, fin d'historique", example = "2026-12-31")
+        @RequestParam(required = false) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        return service.getCnssReturn(companyId, from, to);
+    }
+
+    @Operation(summary = "Générer le bordereau CNSS/OFATMA/AST en PDF (Reports Hub v2.5.0)",
+        description = "Rendu PDF du bordereau CNSS_RETURN via :document-generation (template CNSS_RETURN_REPORT). " +
+                      "Sert un PDF binaire en attachment. Délègue au même service métier que GET /cnss-return.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (bordereau CNSS)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = org.springframework.http.ProblemDetail.class)))
+    })
+    @GetMapping("/cnss-return/pdf")
+    public ResponseEntity<byte[]> getCnssReturnPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Date de début (incluse) — si null, début d'historique", example = "2026-01-01")
+        @RequestParam(required = false) LocalDate from,
+        @Parameter(description = "Date de fin (incluse) — si null, fin d'historique", example = "2026-12-31")
+        @RequestParam(required = false) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+
+        CnssReturnResponse data = service.getCnssReturn(companyId, from, to);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", data.companyName() != null ? data.companyName() : "");
+        variables.put("period", data.period() != null ? data.period() : "");
+        variables.put("fiscalYearLabel", data.fiscalYearLabel() != null ? data.fiscalYearLabel() : "");
+        variables.put("currency", data.currency() != null ? data.currency() : "");
+        variables.put("from", from != null ? from.toString() : "debut");
+        variables.put("to", to != null ? to.toString() : "fin");
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("totalGross", data.totalGross() != null ? data.totalGross().toString() : "0");
+        variables.put("totalTaxableBase", data.totalTaxableBase() != null ? data.totalTaxableBase().toString() : "0");
+        variables.put("totalEmployeeContribution",
+            data.totalEmployeeContribution() != null ? data.totalEmployeeContribution().toString() : "0");
+        variables.put("totalEmployerContribution",
+            data.totalEmployerContribution() != null ? data.totalEmployerContribution().toString() : "0");
+        variables.put("lines", data.lines() != null ? data.lines() : List.of());
+
+        // Règle d'immuabilité contournée : resourceId aléatoire pour forcer la régénération
+        // à chaque appel (même pattern que step2-backend PDF endpoints).
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.CNSS_RETURN_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "bordereau-cnss-" + companyId + "-" + data.period() + ".pdf";
+        LOG.info("[PDF] Bordereau CNSS généré pour companyId={} période={} ({} employés, {} octets)",
+            companyId, data.period(), data.lines().size(), pdf.length);
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

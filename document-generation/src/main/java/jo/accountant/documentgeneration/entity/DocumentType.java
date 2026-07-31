@@ -37,6 +37,14 @@ package jo.accountant.documentgeneration.entity;
  *   <li>{@link #TCA_DECLARATION_REPORT} — déclaration TCA (Haïti art. 196)</li>
  *   <li>{@link #PAYROLL_SUMMARY_REPORT} — synthèse de paie agrégée par période</li>
  * </ul>
+ *
+ * <p><b>step7-backend — Reports Hub v2.5.0</b> : 2 nouveaux types pour les derniers
+ * rapports manquants du Reports Hub mobile (LETTERING + CNSS_RETURN), pour atteindre
+ * 19/19 rapports fonctionnels.
+ * <ul>
+ *   <li>{@link #LETTERING_REPORT} — liste des lettrages d'un tiers (endpoint dédié /third-parties/lettrage/pdf)</li>
+ *   <li>{@link #CNSS_RETURN_REPORT} — bordereau CNSS/OFATMA/AST agrégé par employé sur une période (endpoint /payroll/cnss-return/pdf)</li>
+ * </ul>
  */
 public enum DocumentType {
     INVOICE,
@@ -60,5 +68,8 @@ public enum DocumentType {
     CORPORATE_TAX_PROJECTION_REPORT,
     VAT_DECLARATION_REPORT,
     TCA_DECLARATION_REPORT,
-    PAYROLL_SUMMARY_REPORT
+    PAYROLL_SUMMARY_REPORT,
+    // step7-backend — Reports Hub v2.5.0 : 2 derniers types pour atteindre 19/19 rapports
+    LETTERING_REPORT,
+    CNSS_RETURN_REPORT
 }
