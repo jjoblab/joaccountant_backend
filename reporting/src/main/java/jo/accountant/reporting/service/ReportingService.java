@@ -550,8 +550,322 @@ public class ReportingService {
             LOG.warn("[Dashboard] erreur non fatale lors du comptage approbations pour companyId={}", companyId, e);
         }
 
+        // ── 4. Analytics (Task v2.5.0-task18) ─────────────────────────────
+        // Chaque bloc est indépendant et best-effort : une erreur non fatale
+        // (ex. exercice non ouvert, module inventory désactivé, NPE) laisse
+        // le champ analytics à null — le mobile affiche alors "Données
+        // indisponibles" pour cette section sans bloquer le reste du
+        // dashboard.
+        List<jo.accountant.reporting.dto.AnalyticsRatio> ratios = null;
+        List<jo.accountant.reporting.dto.AnalyticsTopEntity> topClients = null;
+        List<jo.accountant.reporting.dto.AnalyticsTopEntity> topSuppliers = null;
+        List<jo.accountant.reporting.dto.AnalyticsAlert> alerts = null;
+        jo.accountant.reporting.dto.AnalyticsPeriodComparison periodComparison = null;
+        try {
+            ratios = computeRatios(companyId);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] ratios indisponibles pour companyId={}: {}", companyId, e.getMessage());
+        }
+        try {
+            topClients = computeTopClients(companyId);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] topClients indisponibles pour companyId={}: {}", companyId, e.getMessage());
+        }
+        try {
+            topSuppliers = computeTopSuppliers(companyId);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] topSuppliers indisponibles pour companyId={}: {}", companyId, e.getMessage());
+        }
+        try {
+            alerts = computeAlerts(companyId);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] alerts indisponibles pour companyId={}: {}", companyId, e.getMessage());
+        }
+        try {
+            periodComparison = computePeriodComparison(companyId);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] periodComparison indisponible pour companyId={}: {}", companyId, e.getMessage());
+        }
+
         return new Dashboard(companyId, cashPosition, totalReceivables, totalPayables,
-            topExpenses, topRevenues, pendingApprovals, overdueInvoices);
+            topExpenses, topRevenues, pendingApprovals, overdueInvoices,
+            ratios, topClients, topSuppliers, alerts, periodComparison);
+    }
+
+    // ======================================================================
+    // Task v2.5.0-task18 — Analytics Dashboard
+    // ======================================================================
+
+    /**
+     * Calcule les 3 ratios financiers principaux à partir du bilan et du
+     * compte de résultat de l'exercice actif.
+     *
+     * <ul>
+     *   <li><b>Liquidité générale</b> = actif courant / passif courant (≥ 1,5 = bon) ;</li>
+     *   <li><b>Solvabilité</b> = total actif / total passif (≥ 1,2 = solide) ;</li>
+     *   <li><b>Rentabilité nette</b> = résultat net / total produits × 100 (≥ 5% = sain).</li>
+     * </ul>
+     *
+     * <p>Les seuils d'interprétation sont conventionnels (pratique PME). Les
+     * valeurs sont arrondies à 2 décimales. Si le bilan ou le CR ne peuvent
+     * pas être calculés (ex. pas d'exercice), la méthode retourne une liste
+     * vide.
+     */
+    private List<jo.accountant.reporting.dto.AnalyticsRatio> computeRatios(UUID companyId) {
+        List<jo.accountant.reporting.dto.AnalyticsRatio> ratios = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        // ── Bilan : liquidité + solvabilité ──
+        try {
+            jo.accountant.financialstatements.dto.BalanceSheet bs =
+                financialStatementsService.getBalanceSheet(companyId, today);
+
+            // Actif courant = somme des sections "assets" dont reportingSubcategory
+            // contient "COURANT". Idem pour passif courant côté "liabilities".
+            BigDecimal currentAssets = sumSectionSubtotal(bs.assets(), "COURANT");
+            BigDecimal currentLiabilities = sumSectionSubtotal(bs.liabilities(), "COURANT");
+            BigDecimal totalAssets = bs.totalAssets() != null ? bs.totalAssets() : BigDecimal.ZERO;
+            BigDecimal totalLiabilities = bs.totalLiabilities() != null ? bs.totalLiabilities() : BigDecimal.ZERO;
+
+            // Liquidité générale
+            double liquidity = currentLiabilities.compareTo(BigDecimal.ZERO) > 0
+                ? currentAssets.divide(currentLiabilities, 2, java.math.RoundingMode.HALF_UP).doubleValue()
+                : 0d;
+            String liquidityInterp;
+            if (liquidity >= 1.5d)      liquidityInterp = "Bonne liquidité (≥ 1,5)";
+            else if (liquidity >= 1.0d) liquidityInterp = "Liquidité acceptable (1,0 – 1,5)";
+            else if (liquidity > 0d)    liquidityInterp = "Liquidité fragile (< 1,0)";
+            else                        liquidityInterp = "Données indisponibles";
+            ratios.add(new jo.accountant.reporting.dto.AnalyticsRatio(
+                "Liquidité générale", liquidity,
+                "Actif courant ÷ Passif courant", liquidityInterp));
+
+            // Solvabilité
+            double solvency = totalLiabilities.compareTo(BigDecimal.ZERO) > 0
+                ? totalAssets.divide(totalLiabilities, 2, java.math.RoundingMode.HALF_UP).doubleValue()
+                : 0d;
+            String solvencyInterp;
+            if (solvency >= 1.2d)      solvencyInterp = "Solvabilité solide (≥ 1,2)";
+            else if (solvency >= 1.0d) solvencyInterp = "Solvabilité limite (1,0 – 1,2)";
+            else if (solvency > 0d)    solvencyInterp = "Solvabilité insuffisante (< 1,0)";
+            else                        solvencyInterp = "Données indisponibles";
+            ratios.add(new jo.accountant.reporting.dto.AnalyticsRatio(
+                "Solvabilité", solvency,
+                "Total actif ÷ Total passif", solvencyInterp));
+        } catch (Exception e) {
+            LOG.debug("[Analytics] bilan indisponible pour companyId={}: {}", companyId, e.getMessage());
+        }
+
+        // ── Compte de résultat : rentabilité nette ──
+        try {
+            LocalDate yearStart = LocalDate.of(today.getYear(), 1, 1);
+            jo.accountant.financialstatements.dto.IncomeStatement is =
+                financialStatementsService.getIncomeStatement(companyId, yearStart, today);
+
+            BigDecimal revenue = is.totalProducts() != null ? is.totalProducts() : BigDecimal.ZERO;
+            BigDecimal net = is.netResult() != null ? is.netResult() : BigDecimal.ZERO;
+            double profitability = revenue.compareTo(BigDecimal.ZERO) > 0
+                ? net.divide(revenue, 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(2, java.math.RoundingMode.HALF_UP).doubleValue()
+                : 0d;
+            String profitInterp;
+            if (profitability >= 5d)      profitInterp = "Rentabilité saine (≥ 5%)";
+            else if (profitability >= 0d) profitInterp = "Rentabilité faible (0 – 5%)";
+            else                          profitInterp = "Rentabilité négative (< 0%)";
+            ratios.add(new jo.accountant.reporting.dto.AnalyticsRatio(
+                "Rentabilité nette", profitability,
+                "Résultat net ÷ Total produits × 100", profitInterp));
+        } catch (Exception e) {
+            LOG.debug("[Analytics] compte de résultat indisponible pour companyId={}: {}", companyId, e.getMessage());
+        }
+
+        return ratios;
+    }
+
+    /** Somme des subtotals des sections dont reportingSubcategory contient token. */
+    private BigDecimal sumSectionSubtotal(List<jo.accountant.financialstatements.dto.BalanceSheet.Section> sections,
+                                           String token) {
+        BigDecimal sum = BigDecimal.ZERO;
+        if (sections == null) return sum;
+        for (jo.accountant.financialstatements.dto.BalanceSheet.Section s : sections) {
+            if (s.reportingSubcategory() != null
+                && s.reportingSubcategory().toUpperCase().contains(token)
+                && s.subtotal() != null) {
+                sum = sum.add(s.subtotal());
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Top 5 clients par volume de facturation (total TTC des factures de
+     * ventes ISSUED/PARTIALLY_PAID/PAID, agrégé par thirdPartyId).
+     */
+    private List<jo.accountant.reporting.dto.AnalyticsTopEntity> computeTopClients(UUID companyId) {
+        // Map thirdPartyId -> sum(totalAmount)
+        Map<UUID, BigDecimal> amountByClient = new HashMap<>();
+        for (InvoiceStatus st : new InvoiceStatus[]{
+            InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID}) {
+            for (SalesInvoice inv : invoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+                if (inv.getThirdPartyId() == null) continue;
+                BigDecimal total = inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO;
+                amountByClient.merge(inv.getThirdPartyId(), total, BigDecimal::add);
+            }
+        }
+        return topEntitiesFrom(companyId, amountByClient);
+    }
+
+    /**
+     * Top 5 fournisseurs par volume d'achat (total TTC des factures d'achat
+     * RECEIVED/PARTIALLY_PAID/PAID, agrégé par thirdPartyId).
+     */
+    private List<jo.accountant.reporting.dto.AnalyticsTopEntity> computeTopSuppliers(UUID companyId) {
+        Map<UUID, BigDecimal> amountBySupplier = new HashMap<>();
+        for (PurchaseInvoiceStatus st : new PurchaseInvoiceStatus[]{
+            PurchaseInvoiceStatus.RECEIVED, PurchaseInvoiceStatus.PARTIALLY_PAID, PurchaseInvoiceStatus.PAID}) {
+            for (PurchaseInvoice inv : purchaseInvoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+                if (inv.getThirdPartyId() == null) continue;
+                BigDecimal total = inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO;
+                amountBySupplier.merge(inv.getThirdPartyId(), total, BigDecimal::add);
+            }
+        }
+        return topEntitiesFrom(companyId, amountBySupplier);
+    }
+
+    /** Construit la liste triée top-5 des tiers à partir d'une map amountByThirdParty. */
+    private List<jo.accountant.reporting.dto.AnalyticsTopEntity> topEntitiesFrom(
+            UUID companyId, Map<UUID, BigDecimal> amountByThirdParty) {
+        // Résoudre les noms des tiers en une seule passe.
+        Map<UUID, String> nameById = new HashMap<>();
+        for (ThirdParty tp : thirdPartyRepository.findByCompanyIdOrderByName(companyId)) {
+            nameById.put(tp.getId(), tp.getName());
+        }
+
+        List<Map.Entry<UUID, BigDecimal>> sorted = new ArrayList<>(amountByThirdParty.entrySet());
+        sorted.sort((a, b) -> b.getValue().compareTo(a.getValue()));
+        if (sorted.size() > 5) sorted = sorted.subList(0, 5);
+
+        List<jo.accountant.reporting.dto.AnalyticsTopEntity> result = new ArrayList<>();
+        int rank = 1;
+        for (Map.Entry<UUID, BigDecimal> e : sorted) {
+            String name = nameById.getOrDefault(e.getKey(), "Tiers supprimé");
+            result.add(new jo.accountant.reporting.dto.AnalyticsTopEntity(
+                e.getKey(), name, e.getValue(), rank++));
+        }
+        return result;
+    }
+
+    /**
+     * Calcule les alertes métier :
+     * <ul>
+     *   <li><b>OVERDUE_INVOICE</b> — factures de ventes échues depuis plus
+     *       de 90 jours et non réglées (status ISSUED ou PARTIALLY_PAID).
+     *       Severity = HIGH.</li>
+     *   <li><b>LOW_STOCK</b> — articles dont la quantité en stock est passée
+     *       sous le seuil de réapprovisionnement (uniquement si le module
+     *       INVENTORY est activé). Severity = MEDIUM.</li>
+     * </ul>
+     */
+    private List<jo.accountant.reporting.dto.AnalyticsAlert> computeAlerts(UUID companyId) {
+        List<jo.accountant.reporting.dto.AnalyticsAlert> alerts = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        LocalDate ninetyDaysAgo = today.minusDays(90);
+
+        // ── Factures en retard > 90 jours ──
+        int overdueCount = 0;
+        BigDecimal overdueAmount = BigDecimal.ZERO;
+        for (InvoiceStatus st : new InvoiceStatus[]{InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID}) {
+            for (SalesInvoice inv : invoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+                if (inv.getDueDate() == null) continue;
+                if (inv.getDueDate().isBefore(ninetyDaysAgo)) {
+                    overdueCount++;
+                    BigDecimal bal = inv.getBalanceDue();
+                    if (bal != null && bal.compareTo(BigDecimal.ZERO) > 0) {
+                        overdueAmount = overdueAmount.add(bal);
+                    }
+                }
+            }
+        }
+        if (overdueCount > 0) {
+            alerts.add(new jo.accountant.reporting.dto.AnalyticsAlert(
+                "OVERDUE_INVOICE",
+                String.format("%d facture(s) échue(s) depuis plus de 90 jours — solde dû %s",
+                    overdueCount, overdueAmount.toPlainString()),
+                "HIGH",
+                "Voir les factures"));
+        }
+
+        // ── Stock bas (si module INVENTORY activé) ──
+        try {
+            moduleAccessGuard.ensureEnabled(companyId, ModuleCode.INVENTORY);
+            int lowStockCount = 0;
+            for (Item item : itemRepository.findByCompanyIdOrderBySku(companyId)) {
+                if (item.getReorderThreshold() == null) continue;
+                try {
+                    jo.accountant.inventory.dto.ItemValuation val =
+                        inventoryService.getValuation(companyId, item.getId());
+                    if (val.totalQuantity() != null
+                        && val.totalQuantity().compareTo(item.getReorderThreshold()) < 0) {
+                        lowStockCount++;
+                    }
+                } catch (Exception ignored) {
+                    // Article sans couche de stock — on l'ignore.
+                }
+            }
+            if (lowStockCount > 0) {
+                alerts.add(new jo.accountant.reporting.dto.AnalyticsAlert(
+                    "LOW_STOCK",
+                    String.format("%d article(s) sous le seuil de réapprovisionnement", lowStockCount),
+                    "MEDIUM",
+                    "Voir le stock"));
+            }
+        } catch (Exception e) {
+            // Module INVENTORY non activé — pas d'alerte stock. C'est attendu.
+            LOG.debug("[Analytics] module INVENTORY non activé pour companyId={}", companyId);
+        }
+
+        return alerts;
+    }
+
+    /**
+     * Calcule la comparaison de période : somme TTC des factures de ventes
+     * (ISSUED, PARTIALLY_PAID, PAID) pour M, M-1, Y et Y-1.
+     */
+    private jo.accountant.reporting.dto.AnalyticsPeriodComparison computePeriodComparison(UUID companyId) {
+        LocalDate today = LocalDate.now();
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate prevMonthStart = monthStart.minusMonths(1);
+        LocalDate prevMonthEnd = monthStart.minusDays(1);
+        LocalDate yearStart = LocalDate.of(today.getYear(), 1, 1);
+        LocalDate prevYearStart = LocalDate.of(today.getYear() - 1, 1, 1);
+        LocalDate prevYearEnd = LocalDate.of(today.getYear() - 1, 12, 31);
+
+        List<String> statuses = List.of(
+            InvoiceStatus.ISSUED.name(),
+            InvoiceStatus.PARTIALLY_PAID.name(),
+            InvoiceStatus.PAID.name());
+
+        BigDecimal currentMonth = sumSalesInvoiced(companyId, monthStart, today, statuses);
+        BigDecimal previousMonth = sumSalesInvoiced(companyId, prevMonthStart, prevMonthEnd, statuses);
+        BigDecimal currentYear = sumSalesInvoiced(companyId, yearStart, today, statuses);
+        BigDecimal previousYear = sumSalesInvoiced(companyId, prevYearStart, prevYearEnd, statuses);
+
+        return new jo.accountant.reporting.dto.AnalyticsPeriodComparison(
+            currentMonth, previousMonth, currentYear, previousYear);
+    }
+
+    /** Wrapper défensif autour du repository pour ne pas casser le dashboard si la query échoue. */
+    private BigDecimal sumSalesInvoiced(UUID companyId, LocalDate from, LocalDate to, List<String> statuses) {
+        try {
+            return invoiceRepository
+                .sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(companyId, from, to, statuses)
+                .orElse(BigDecimal.ZERO);
+        } catch (Exception e) {
+            LOG.debug("[Analytics] sumSalesInvoiced failed companyId={} from={} to={}: {}",
+                companyId, from, to, e.getMessage());
+            return BigDecimal.ZERO;
+        }
     }
 
     /**

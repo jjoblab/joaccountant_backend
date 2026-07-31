@@ -148,4 +148,24 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
         @Param("afterId") UUID afterId,
         Pageable pageable
     );
+
+    /**
+     * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur le numéro de facture,
+     * pour la recherche globale (Ctrl+K).
+     *
+     * <p>Le numéro de facture est le seul champ texte court pertinent pour une recherche
+     * instantanée côté mobile : la {@code SalesInvoice} n'a pas de champ {@code label} libre
+     * (les libellés sont au niveau des lignes — {@link InvoiceLine}).
+     *
+     * <p>Tri par {@code issueDate DESC} (les factures les plus récentes en premier).
+     *
+     * @param companyId identifiant de l'entreprise (isolation multi-tenant)
+     * @param q         texte recherché (case-insensitive, partial match)
+     * @param pageable  pagination (typiquement {@code PageRequest.of(0, 5)})
+     * @return liste ordonnée des factures dont le numéro contient {@code q}
+     */
+    Page<SalesInvoice> findByCompanyIdAndInvoiceNumberContainingIgnoreCaseOrderByIssueDateDesc(
+        UUID companyId,
+        String invoiceNumber,
+        Pageable pageable);
 }

@@ -53,4 +53,51 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         @Param("companyId") UUID companyId,
         @Param("status") EmployeeStatus status,
         @Param("hireDateCutoff") LocalDate hireDateCutoff);
+
+    /**
+     * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur le nom du tiers
+     * (employé), le matricule, le poste ou le département, pour la recherche globale
+     * (Ctrl+K).
+     *
+     * <p>Le nom de l'employé vit sur le {@code ThirdParty} de type EMPLOYEE (FK
+     * {@code third_party_id}). On fait donc une jointure native sur la table
+     * {@code third_party} pour pouvoir chercher par nom.
+     *
+     * <p>Champs recherchés (OR) :
+     * <ul>
+     *   <li>{@code third_party.name} — nom de l'employé (ex. « Jean Dupont ») ;</li>
+     *   <li>{@code employee.employee_number} — matricule (ex. « EMP-001 ») ;</li>
+     *   <li>{@code employee.position} — poste (ex. « Comptable senior ») ;</li>
+     *   <li>{@code employee.department} — département (ex. « Comptabilité »).</li>
+     * </ul>
+     *
+     * @param companyId identifiant de l'entreprise (isolation multi-tenant)
+     * @param q         texte recherché (case-insensitive, partial match)
+     * @param pageable  pagination (typiquement {@code PageRequest.of(0, 5)})
+     * @return page d'employés triés par date d'embauche décroissante
+     */
+    @Query(value = """
+        SELECT e.* FROM employee e
+        JOIN third_party tp ON tp.id = e.third_party_id
+        WHERE e.company_id = :companyId
+          AND (LOWER(tp.name) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(e.employee_number) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(COALESCE(e.position, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(COALESCE(e.department, '')) LIKE LOWER(CONCAT('%', :q, '%')))
+        ORDER BY e.hire_date DESC
+        """,
+        nativeQuery = true,
+        countQuery = """
+        SELECT count(*) FROM employee e
+        JOIN third_party tp ON tp.id = e.third_party_id
+        WHERE e.company_id = :companyId
+          AND (LOWER(tp.name) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(e.employee_number) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(COALESCE(e.position, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(COALESCE(e.department, '')) LIKE LOWER(CONCAT('%', :q, '%')))
+        """)
+    org.springframework.data.domain.Page<Employee> searchByNameOrNumberOrPosition(
+        @Param("companyId") UUID companyId,
+        @Param("q") String q,
+        org.springframework.data.domain.Pageable pageable);
 }

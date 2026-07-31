@@ -126,4 +126,34 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID
         @Param("afterId") UUID afterId,
         Pageable pageable
     );
+
+    /**
+     * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur la référence
+     * ou la description d'une écriture, pour la recherche globale (Ctrl+K).
+     *
+     * <p>{@code reference} est le numéro de l'écriture (généré par document-numbering
+     * au passage POSTED), {@code description} est le libellé libre saisi par l'utilisateur.
+     * Les deux champs sont recherchés en OR (un écriture correspond si l'un OU l'autre
+     * contient {@code q}).
+     *
+     * <p>Tri par {@code entryDate DESC, createdAt DESC} pour prioriser les écritures
+     * récentes.
+     *
+     * @param companyId identifiant de l'entreprise (isolation multi-tenant)
+     * @param q         texte recherché (case-insensitive, partial match)
+     * @param pageable  pagination (typiquement {@code PageRequest.of(0, 5)})
+     * @return page d'écritures triées par date décroissante
+     */
+    @Query("""
+        SELECT e FROM JournalEntry e
+        WHERE e.companyId = :companyId
+          AND (LOWER(COALESCE(e.reference, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(COALESCE(e.description, '')) LIKE LOWER(CONCAT('%', :q, '%')))
+        ORDER BY e.entryDate DESC, e.createdAt DESC
+        """)
+    Page<JournalEntry> searchByReferenceOrDescription(
+        @Param("companyId") UUID companyId,
+        @Param("q") String q,
+        Pageable pageable
+    );
 }
