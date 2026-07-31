@@ -9,13 +9,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
+import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import jo.accountant.reporting.dto.AgedBalance;
 import jo.accountant.reporting.dto.Dashboard;
 import jo.accountant.reporting.dto.ExportResult;
 import jo.accountant.reporting.service.ReportingService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,12 +39,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Reporting", description = "Exports PDF/Excel, tableaux de bord (§13 Phase 17)")
 public class ReportingController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ReportingController.class);
+
     private final ReportingService service;
     private final RoleChecker roleChecker;
+    private final DocumentGenerationService documentGenerationService;
 
-    public ReportingController(ReportingService service, RoleChecker roleChecker) {
+    public ReportingController(ReportingService service, RoleChecker roleChecker,
+                                DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.roleChecker = roleChecker;
+        this.documentGenerationService = documentGenerationService;
     }
 
     @Operation(summary = "Exporter un état financier ou comptable",
@@ -164,5 +175,80 @@ public class ReportingController {
                                               @CurrentUser UUID userId) {
         roleChecker.ensureRole(companyId, "VIEWER");
         return service.getSupplierAgedBalance(companyId);
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés pour les
+    // balances âgées clients et fournisseurs. Un seul endpoint PDF avec
+    // ?type=receivables|payables qui dispatch vers le bon service métier.
+    // ======================================================================
+
+    @Operation(summary = "Générer la balance âgée en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF de la balance âgée via :document-generation. " +
+                      "<code>?type=receivables</code> (clients — template AGED_BALANCE_RECEIVABLES_REPORT) " +
+                      "ou <code>?type=payables</code> (fournisseurs — template AGED_BALANCE_PAYABLES_REPORT). " +
+                      "Délègue au même service métier que GET /aged-balance ou GET /aged-balance-suppliers.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (balance âgée)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode = "422", description = "Type invalide (doit être 'receivables' ou 'payables')",
+            content = @Content(schema = @Schema(implementation = org.springframework.http.ProblemDetail.class)))
+    })
+    @GetMapping("/aged-balance/pdf")
+    public ResponseEntity<byte[]> getAgedBalancePdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Type de balance âgée : 'receivables' (clients) ou 'payables' (fournisseurs)",
+            required = true, example = "receivables")
+        @RequestParam String type) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        String normalized = type == null ? "" : type.trim().toLowerCase();
+        DocumentType docType;
+        AgedBalance balance;
+        String label;
+        switch (normalized) {
+            case "receivables", "receivable", "clients", "client" -> {
+                docType = DocumentType.AGED_BALANCE_RECEIVABLES_REPORT;
+                balance = service.getAgedBalance(companyId);
+                label = "clients";
+            }
+            case "payables", "payable", "suppliers", "supplier", "fournisseurs", "fournisseur" -> {
+                docType = DocumentType.AGED_BALANCE_PAYABLES_REPORT;
+                balance = service.getSupplierAgedBalance(companyId);
+                label = "fournisseurs";
+            }
+            default -> {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY)
+                    .header("X-Error-Reason", "INVALID_TYPE")
+                    .body(null);
+            }
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("asOf", LocalDate.now().toString());
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("current", balance.current() != null ? balance.current().toString() : "0");
+        variables.put("d0_30", balance.d0_30() != null ? balance.d0_30().toString() : "0");
+        variables.put("d31_60", balance.d31_60() != null ? balance.d31_60().toString() : "0");
+        variables.put("d61_90", balance.d61_90() != null ? balance.d61_90().toString() : "0");
+        variables.put("d90_plus", balance.d90_plus() != null ? balance.d90_plus().toString() : "0");
+        variables.put("totalBalanceDue", balance.totalBalanceDue() != null ? balance.totalBalanceDue().toString() : "0");
+        variables.put("invoiceCount", balance.invoiceCount());
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, docType, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "balance-agee-" + label + "-" + companyId + ".pdf";
+        LOG.info("[PDF] Balance âgée {} générée pour companyId={} ({} factures, {} octets)",
+            label, companyId, balance.invoiceCount(), pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
     }
 }

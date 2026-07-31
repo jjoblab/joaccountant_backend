@@ -10,18 +10,26 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
+import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import jo.accountant.financialstatements.dto.BalanceSheet;
+import jo.accountant.financialstatements.dto.CashFlowStatement;
 import jo.accountant.financialstatements.dto.CreateSnapshotRequest;
 import jo.accountant.financialstatements.dto.IncomeStatement;
 import jo.accountant.financialstatements.dto.PresentationCurrencyRequest;
 import jo.accountant.financialstatements.dto.SnapshotResponse;
 import jo.accountant.financialstatements.dto.StatementOfChangesInEquity;
 import jo.accountant.financialstatements.service.FinancialStatementsService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -45,12 +53,18 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "FinancialStatements", description = "Bilan, compte de résultat, snapshots figés (§13 Phase 6)")
 public class FinancialStatementsController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(FinancialStatementsController.class);
+
     private final FinancialStatementsService service;
     private final RoleChecker roleChecker;
+    private final DocumentGenerationService documentGenerationService;
 
-    public FinancialStatementsController(FinancialStatementsService service, RoleChecker roleChecker) {
+    public FinancialStatementsController(FinancialStatementsService service,
+                                          RoleChecker roleChecker,
+                                          DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.roleChecker = roleChecker;
+        this.documentGenerationService = documentGenerationService;
     }
 
     @Operation(summary = "Générer le bilan à une date donnée",
@@ -373,5 +387,236 @@ public class FinancialStatementsController {
             ? new PresentationCurrencyRequest(presentationCurrency, to, closingRate, null)
             : null;
         return ResponseEntity.ok(service.getStatementOfChangesInEquity(companyId, from, to, pcr));
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés
+    // (4 endpoints — bilan, compte de résultat, flux de trésorerie, variation
+    //  des capitaux propres). Chaque endpoint :
+    //   1. appelle le service métier existant pour obtenir le DTO,
+    //   2. construit une map de variables Thymeleaf (DTO + dates + companyName),
+    //   3. délègue à DocumentGenerationService.generateDocument(...) pour le rendu HTML→PDF,
+    //   4. retourne ResponseEntity<byte[]> avec Content-Type application/pdf et
+    //      Content-Disposition: attachment; filename="<report>-<companyId>-<period>.pdf".
+    //
+    // Règle d'immuabilité contournée : on passe un UUID aléatoire comme resourceId
+    // pour forcer la régénération à chaque appel (les données sous-jacentes
+    // peuvent changer tant que l'exercice n'est pas clôturé — voir commentaire
+    // exportBalanceSheetPdf dans ReportingService).
+    // ======================================================================
+
+    @Operation(summary = "Générer le bilan en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF du bilan via :document-generation (template BALANCE_SHEET_REPORT). " +
+                      "Sert un PDF binaire en attachment. Délègue au même service métier que GET /balance-sheet.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (bilan)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/balance-sheet/pdf")
+    public ResponseEntity<byte[]> getBalanceSheetPdf(@PathVariable UUID companyId,
+                                                      @CurrentUser UUID userId,
+                                                      @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate asOf) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        BalanceSheet bs = service.getBalanceSheet(companyId, asOf, null);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("asOf", bs.asOf() != null ? bs.asOf().toString() : (asOf != null ? asOf.toString() : LocalDate.now().toString()));
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("totalAssets", bs.totalAssets() != null ? bs.totalAssets().toString() : "0");
+        variables.put("totalLiabilities", bs.totalLiabilities() != null ? bs.totalLiabilities().toString() : "0");
+        variables.put("totalEquity", bs.totalEquity() != null ? bs.totalEquity().toString() : "0");
+        variables.put("balanced", bs.balanced());
+        variables.put("assets", bs.assets() != null ? bs.assets() : List.of());
+        variables.put("liabilities", bs.liabilities() != null ? bs.liabilities() : List.of());
+        variables.put("equity", bs.equity() != null ? bs.equity() : List.of());
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.BALANCE_SHEET_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String period = bs.asOf() != null ? bs.asOf().toString() : "now";
+        String filename = "bilan-" + companyId + "-" + period + ".pdf";
+        LOG.info("[PDF] Bilan généré pour companyId={} asOf={} ({} octets)", companyId, period, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Générer le compte de résultat en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF du compte de résultat via :document-generation (template INCOME_STATEMENT_REPORT). " +
+                      "Délègue au même service métier que GET /income-statement.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (compte de résultat)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/income-statement/pdf")
+    public ResponseEntity<byte[]> getIncomeStatementPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        IncomeStatement is = service.getIncomeStatement(companyId, from, to, null);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", is.from() != null ? is.from().toString() : (from != null ? from.toString() : ""));
+        variables.put("to", is.to() != null ? is.to().toString() : (to != null ? to.toString() : ""));
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("totalProducts", is.totalProducts() != null ? is.totalProducts().toString() : "0");
+        variables.put("totalCharges", is.totalCharges() != null ? is.totalCharges().toString() : "0");
+        variables.put("netResult", is.netResult() != null ? is.netResult().toString() : "0");
+        // Aplatir les sections en une liste de lignes pour le template (qui itère sur productsLines/chargesLines)
+        variables.put("productsLines", flattenSections(is.products()));
+        variables.put("chargesLines", flattenSections(is.charges()));
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.INCOME_STATEMENT_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String period = (is.from() != null ? is.from() : from) + "_" + (is.to() != null ? is.to() : to);
+        String filename = "compte-resultat-" + companyId + "-" + period + ".pdf";
+        LOG.info("[PDF] Compte de résultat généré pour companyId={} période={}→{} ({} octets)",
+            companyId, is.from(), is.to(), pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Générer le tableau de flux de trésorerie en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF du tableau de flux (IAS 7 / SYSCOHADA TAFIRE) via :document-generation " +
+                      "(template CASH_FLOW_STATEMENT_REPORT). Délègue au même service que GET /cash-flow-statement.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (tableau de flux de trésorerie)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/cash-flow-statement/pdf")
+    public ResponseEntity<byte[]> getCashFlowStatementPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        CashFlowStatement cf = service.getCashFlowStatement(companyId, from, to, null);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", cf.from() != null ? cf.from().toString() : (from != null ? from.toString() : ""));
+        variables.put("to", cf.to() != null ? cf.to().toString() : (to != null ? to.toString() : ""));
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("netIncome", cf.netIncome() != null ? cf.netIncome().toString() : "0");
+        variables.put("operating", cf.operating());
+        variables.put("investing", cf.investing());
+        variables.put("financing", cf.financing());
+        variables.put("netCashFlow", cf.netCashFlow() != null ? cf.netCashFlow().toString() : "0");
+        variables.put("openingCash", cf.openingCash() != null ? cf.openingCash().toString() : "0");
+        variables.put("closingCash", cf.closingCash() != null ? cf.closingCash().toString() : "0");
+        variables.put("balanced", cf.balanced());
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.CASH_FLOW_STATEMENT_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String period = (cf.from() != null ? cf.from() : from) + "_" + (cf.to() != null ? cf.to() : to);
+        String filename = "flux-tresorerie-" + companyId + "-" + period + ".pdf";
+        LOG.info("[PDF] Flux de trésorerie généré pour companyId={} période={}→{} ({} octets)",
+            companyId, cf.from(), cf.to(), pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Générer le tableau de variation des capitaux propres en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF du tableau IAS 1.106 via :document-generation " +
+                      "(template STATEMENT_OF_CHANGES_IN_EQUITY_REPORT). Délègue au même service que GET /statement-of-changes-in-equity.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (tableau de variation des capitaux propres)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/statement-of-changes-in-equity/pdf")
+    public ResponseEntity<byte[]> getStatementOfChangesInEquityPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        StatementOfChangesInEquity stmt = service.getStatementOfChangesInEquity(companyId, from, to, null);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", from.toString());
+        variables.put("to", to.toString());
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("openingEquity", stmt.openingEquity() != null ? stmt.openingEquity().toString() : "0");
+        variables.put("netIncome", stmt.netIncome() != null ? stmt.netIncome().toString() : "0");
+        variables.put("otherComprehensiveIncome", stmt.otherComprehensiveIncome() != null ? stmt.otherComprehensiveIncome().toString() : "0");
+        variables.put("capitalIssued", stmt.capitalIssued() != null ? stmt.capitalIssued().toString() : "0");
+        variables.put("treasurySharesPurchased", stmt.treasurySharesPurchased() != null ? stmt.treasurySharesPurchased().toString() : "0");
+        variables.put("dividendsDistributed", stmt.dividendsDistributed() != null ? stmt.dividendsDistributed().toString() : "0");
+        variables.put("otherMovements", stmt.otherMovements() != null ? stmt.otherMovements().toString() : "0");
+        variables.put("closingEquity", stmt.closingEquity() != null ? stmt.closingEquity().toString() : "0");
+        variables.put("movements", stmt.movements() != null ? stmt.movements() : List.of());
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.STATEMENT_OF_CHANGES_IN_EQUITY_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "variation-capitaux-propres-" + companyId + "-" + from + "_" + to + ".pdf";
+        LOG.info("[PDF] Variation des capitaux propres générée pour companyId={} période={}→{} ({} octets)",
+            companyId, from, to, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    /**
+     * Aplatit une liste de sections (Bilan ou Compte de résultat) en une liste plate de lignes.
+     * Utilisé par les templates Thymeleaf qui itèrent sur une seule liste (ex. productsLines).
+     */
+    private static List<Map<String, Object>> flattenSections(List<? extends Object> sections) {
+        if (sections == null || sections.isEmpty()) return List.of();
+        List<Map<String, Object>> flat = new java.util.ArrayList<>();
+        for (Object secObj : sections) {
+            // Réflexion légère pour supporter BalanceSheet.Section et IncomeStatement.Section
+            // (mêmes noms de champs : lines, accountCode, accountLabel, amount).
+            try {
+                java.lang.reflect.Method getLines = secObj.getClass().getMethod("lines");
+                Object lines = getLines.invoke(secObj);
+                if (lines instanceof List<?> lineList) {
+                    for (Object line : lineList) {
+                        Map<String, Object> flatLine = new HashMap<>();
+                        flatLine.put("accountCode", invokeGetter(line, "accountCode"));
+                        flatLine.put("accountLabel", invokeGetter(line, "accountLabel"));
+                        flatLine.put("amount", invokeGetter(line, "amount"));
+                        flat.add(flatLine);
+                    }
+                }
+            } catch (Exception e) {
+                // ignore — la section n'a pas la structure attendue
+            }
+        }
+        return flat;
+    }
+
+    private static Object invokeGetter(Object target, String property) {
+        try {
+            java.lang.reflect.Method m = target.getClass().getMethod(property);
+            return m.invoke(target);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -10,7 +10,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import jo.accountant.company.entity.ModuleCode;
 import jo.accountant.company.security.ModuleAccessGuard;
@@ -23,6 +25,10 @@ import jo.accountant.tax.entity.TaxRule;
 import jo.accountant.tax.entity.WithholdingRule;
 import jo.accountant.tax.service.TaxExportService;
 import jo.accountant.tax.service.TaxService;
+import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -44,17 +50,22 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Tax", description = "Règles fiscales locales, TVA, retenues à la source (§13 Phase 16)")
 public class TaxController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(TaxController.class);
+
     private final TaxService service;
     private final TaxExportService exportService;
     private final RoleChecker roleChecker;
     private final ModuleAccessGuard moduleAccessGuard;
+    private final DocumentGenerationService documentGenerationService;
 
     public TaxController(TaxService service, TaxExportService exportService,
-                        RoleChecker roleChecker, ModuleAccessGuard moduleAccessGuard) {
+                        RoleChecker roleChecker, ModuleAccessGuard moduleAccessGuard,
+                        DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.exportService = exportService;
         this.roleChecker = roleChecker;
         this.moduleAccessGuard = moduleAccessGuard;
+        this.documentGenerationService = documentGenerationService;
     }
 
     @Operation(summary = "Créer une règle de TVA",
@@ -239,10 +250,19 @@ public class TaxController {
                                          @Parameter(description = "Date de début (incluse)", required = true, example = "2026-01-01")
                                          @RequestParam LocalDate from,
                                          @Parameter(description = "Date de fin (incluse)", required = true, example = "2026-01-31")
-                                         @RequestParam LocalDate to) {
+                                         @RequestParam LocalDate to,
+                                         @Parameter(description = "Type de taxe à filtrer (optionnel) : VAT, TCA, TURNOVER_TAX, EXCISE. Si null, agrège toutes les taxes (comportement historique).",
+                                             example = "VAT")
+                                         @RequestParam(required = false) String taxType) {
         roleChecker.ensureRole(companyId, "VIEWER");
         moduleAccessGuard.ensureEnabled(companyId, ModuleCode.TAX);
-        return service.getDeclaration(companyId, from, to);
+        // step2-backend — Reports Hub v2.4.0 : exposer le paramètre taxType optionnel.
+        // Comportement backward-compatible : si taxType est null/blank, on délègue à
+        // getDeclaration(cid, from, to) qui agrège toutes les taxes comme avant.
+        if (taxType == null || taxType.isBlank()) {
+            return service.getDeclaration(companyId, from, to);
+        }
+        return service.getDeclaration(companyId, from, to, taxType);
     }
 
     @Operation(summary = "Déclaration RS sur ventes par période (R-F-validation v6-2)",
@@ -581,5 +601,128 @@ public class TaxController {
                     .body(null);
             }
         };
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés
+    // (déclaration TVA, déclaration TCA, projection d'IS).
+    // ======================================================================
+
+    @Operation(summary = "Générer une déclaration fiscale en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF d'une déclaration TVA ou TCA via :document-generation. " +
+                      "<code>?taxType=VAT</code> (template VAT_DECLARATION_REPORT) ou " +
+                      "<code>?taxType=TCA</code> (template TCA_DECLARATION_REPORT). " +
+                      "Délègue au même service métier que GET /tax/declarations?taxType=...")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (déclaration fiscale)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant ou module TAX non activé",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(responseCode = "422", description = "taxType invalide ou dates manquantes",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/declarations/pdf")
+    public ResponseEntity<byte[]> getDeclarationPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Type de taxe : 'VAT' ou 'TCA'", required = true, example = "VAT")
+        @RequestParam String taxType,
+        @Parameter(description = "Date de début (incluse)", required = true, example = "2026-01-01")
+        @RequestParam LocalDate from,
+        @Parameter(description = "Date de fin (incluse)", required = true, example = "2026-01-31")
+        @RequestParam LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        moduleAccessGuard.ensureEnabled(companyId, ModuleCode.TAX);
+        String normalized = taxType == null ? "" : taxType.trim().toUpperCase();
+        DocumentType docType;
+        switch (normalized) {
+            case "VAT" -> docType = DocumentType.VAT_DECLARATION_REPORT;
+            case "TCA" -> docType = DocumentType.TCA_DECLARATION_REPORT;
+            default -> {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .header("X-Error-Reason", "INVALID_TAX_TYPE")
+                    .body(null);
+            }
+        }
+
+        // Appeler le service avec filtre taxType (déjà supporté — v6-1-multi-tax-invoice-line)
+        TaxDeclaration declaration = service.getDeclaration(companyId, from, to, normalized);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", from.toString());
+        variables.put("to", to.toString());
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("collectedLines", declaration.collectedLines() != null ? declaration.collectedLines() : List.of());
+        variables.put("deductibleLines", declaration.deductibleLines() != null ? declaration.deductibleLines() : List.of());
+        variables.put("totalTaxCollected", declaration.totalTaxCollected() != null ? declaration.totalTaxCollected().toString() : "0");
+        variables.put("totalTaxDeductible", declaration.totalTaxDeductible() != null ? declaration.totalTaxDeductible().toString() : "0");
+        variables.put("taxDue", declaration.taxDue() != null ? declaration.taxDue().toString() : "0");
+        variables.put("taxCreditCarriedForward", declaration.taxCreditCarriedForward() != null ? declaration.taxCreditCarriedForward().toString() : "0");
+        variables.put("taxCreditToCarryForward", declaration.taxCreditToCarryForward() != null ? declaration.taxCreditToCarryForward().toString() : "0");
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, docType, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "declaration-" + normalized.toLowerCase() + "-" + companyId + "-" + from + "_" + to + ".pdf";
+        LOG.info("[PDF] Déclaration {} générée pour companyId={} période={}→{} ({} octets)",
+            normalized, companyId, from, to, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Générer la projection d'IS en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF de la projection d'Impôt sur les Sociétés via :document-generation " +
+                      "(template CORPORATE_TAX_PROJECTION_REPORT). " +
+                      "Délègue au même service métier que GET /tax/corporate-tax/projection.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (projection d'IS)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant ou module TAX non activé",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/corporate-tax/projection/pdf")
+    public ResponseEntity<byte[]> getCorporateTaxProjectionPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Date de début d'exercice", required = true, example = "2026-01-01")
+        @RequestParam LocalDate from,
+        @Parameter(description = "Date de fin d'exercice", required = true, example = "2026-12-31")
+        @RequestParam LocalDate to) {
+        roleChecker.ensureRole(companyId, "ACCOUNTANT");
+        moduleAccessGuard.ensureEnabled(companyId, ModuleCode.TAX);
+        jo.accountant.tax.dto.CorporateTaxProjection projection = service.projectCorporateTax(companyId, from, to);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", from.toString());
+        variables.put("to", to.toString());
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("accountingResult", projection.accountingResult() != null ? projection.accountingResult().toString() : "0");
+        variables.put("adjustments", projection.adjustments());
+        variables.put("taxableResult", projection.taxableResult() != null ? projection.taxableResult().toString() : "0");
+        variables.put("appliedRate", projection.appliedRate() != null ? projection.appliedRate().toString() : "0");
+        variables.put("corporateTaxBrut", projection.corporateTaxBrut() != null ? projection.corporateTaxBrut().toString() : "0");
+        variables.put("taxCredits", projection.taxCredits() != null ? projection.taxCredits().toString() : "0");
+        variables.put("corporateTaxNet", projection.corporateTaxNet() != null ? projection.corporateTaxNet().toString() : "0");
+        variables.put("installments", projection.installments() != null ? projection.installments() : List.of());
+        variables.put("balanceDue", projection.balanceDue() != null ? projection.balanceDue().toString() : "0");
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.CORPORATE_TAX_PROJECTION_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "projection-is-" + companyId + "-" + from + "_" + to + ".pdf";
+        LOG.info("[PDF] Projection IS générée pour companyId={} exercice={}→{} ({} octets)",
+            companyId, from, to, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
     }
 }

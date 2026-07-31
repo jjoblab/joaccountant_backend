@@ -51,6 +51,15 @@ public class Employee extends TenantAwareEntity {
     @Column(name = "termination_date")
     private LocalDate terminationDate;
 
+    /**
+     * Task 17 (v2.4.0) — Motif de fin de contrat (texte libre, ex. « Démission »,
+     * « Licenciement économique », « Fin de CDD »). Null tant que l'employé est actif
+     * (status != TERMINATED). Renseigné lors de l'appel à {@code changeStatus(TERMINATED)}
+     * ou via un endpoint d'édition ultérieur.
+     */
+    @Column(name = "termination_reason", length = 500)
+    private String terminationReason;
+
     /** Salaire de base (mensuel pour PERMANENT/FIXED_TERM, prestation pour CONSULTANT). */
     @Column(name = "base_salary", nullable = false, precision = 19, scale = 4)
     private BigDecimal baseSalary;
@@ -161,6 +170,10 @@ public class Employee extends TenantAwareEntity {
 
     public LocalDate getTerminationDate() { return terminationDate; }
     public void setTerminationDate(LocalDate terminationDate) { this.terminationDate = terminationDate; }
+
+    /** Task 17 — Motif de fin de contrat (null si employé actif). */
+    public String getTerminationReason() { return terminationReason; }
+    public void setTerminationReason(String terminationReason) { this.terminationReason = terminationReason; }
 
     public BigDecimal getBaseSalary() { return baseSalary; }
     public void setBaseSalary(BigDecimal baseSalary) { this.baseSalary = baseSalary; }

@@ -17,6 +17,7 @@ public record EmployeeResponse(
     String department,
     LocalDate hireDate,
     LocalDate terminationDate,
+    String terminationReason,
     BigDecimal baseSalary,
     String salaryCurrency,
     ContractType contractType,

@@ -1,6 +1,7 @@
 package jo.accountant.accountingengine.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -8,8 +9,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import jo.accountant.accountingengine.dto.CreateFiscalYearRequest;
 import jo.accountant.accountingengine.dto.CreateJournalEntryRequest;
@@ -23,6 +33,11 @@ import jo.accountant.accountingengine.entity.FiscalYear;
 import jo.accountant.accountingengine.entity.Journal;
 import jo.accountant.accountingengine.service.AccountingEngineService;
 import jo.accountant.core.security.CurrentUser;
+import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.service.DocumentGenerationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -49,16 +64,21 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "AccountingEngine", description = "Moteur comptable — écritures, journal, grand livre, balance (§13 Phase 5)")
 public class AccountingEngineController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(AccountingEngineController.class);
+
     private final AccountingEngineService service;
     private final jo.accountant.core.port.ApproverEmailResolverPort approverEmailResolver;
     private final jo.accountant.core.security.RoleChecker roleChecker;
+    private final DocumentGenerationService documentGenerationService;
 
     public AccountingEngineController(AccountingEngineService service,
                                       jo.accountant.core.port.ApproverEmailResolverPort approverEmailResolver,
-                                      jo.accountant.core.security.RoleChecker roleChecker) {
+                                      jo.accountant.core.security.RoleChecker roleChecker,
+                                      DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.approverEmailResolver = approverEmailResolver;
         this.roleChecker = roleChecker;
+        this.documentGenerationService = documentGenerationService;
     }
 
     // --- Exercices & périodes ---
@@ -549,5 +569,240 @@ public class AccountingEngineController {
                                            @CurrentUser UUID userId) {
         roleChecker.ensureRole(companyId, "VIEWER");
         return service.getActiveFiscalYear(companyId);
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés + export CSV
+    // ======================================================================
+
+    @Operation(summary = "Générer la balance générale en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF de la balance générale via :document-generation (template TRIAL_BALANCE_REPORT). " +
+                      "Délègue au même service métier que GET /trial-balance. " +
+                      "Filtres : ?fiscalYearId= (UUID) ou ?from=&to= (LocalDate) — voir GET /trial-balance.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (balance générale)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/trial-balance/pdf")
+    public ResponseEntity<byte[]> getTrialBalancePdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        // Réutiliser la même logique de résolution d'exercice que le endpoint JSON.
+        List<TrialBalanceLine> lines;
+        String periodLabel;
+        if (fiscalYearId != null) {
+            Optional<FiscalYear> fy = service.resolveFiscalYear(companyId, fiscalYearId);
+            if (fy.isPresent()) {
+                from = fy.get().getStartDate();
+                to = fy.get().getEndDate();
+                lines = service.getTrialBalance(companyId, from, to);
+                periodLabel = "exercice " + fy.get().getStartDate() + "_" + fy.get().getEndDate();
+            } else {
+                lines = service.getTrialBalance(companyId, from, to);
+                periodLabel = (from != null ? from.toString() : "") + "_" + (to != null ? to.toString() : "");
+            }
+        } else if (from != null || to != null) {
+            lines = service.getTrialBalance(companyId, from, to);
+            periodLabel = (from != null ? from.toString() : "") + "_" + (to != null ? to.toString() : "");
+        } else {
+            Optional<FiscalYear> fy = service.resolveFiscalYear(companyId, null);
+            if (fy.isPresent()) {
+                from = fy.get().getStartDate();
+                to = fy.get().getEndDate();
+                periodLabel = "exercice " + from + "_" + to;
+            } else {
+                periodLabel = LocalDate.now().toString();
+            }
+            lines = service.getTrialBalance(companyId);
+        }
+
+        BigDecimal totalDebit = BigDecimal.ZERO;
+        BigDecimal totalCredit = BigDecimal.ZERO;
+        BigDecimal totalBalance = BigDecimal.ZERO;
+        for (TrialBalanceLine line : lines) {
+            if (line.totalDebit() != null) totalDebit = totalDebit.add(line.totalDebit());
+            if (line.totalCredit() != null) totalCredit = totalCredit.add(line.totalCredit());
+            if (line.balance() != null) totalBalance = totalBalance.add(line.balance());
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("period", periodLabel);
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("lines", lines);
+        variables.put("totalDebit", totalDebit.toString());
+        variables.put("totalCredit", totalCredit.toString());
+        variables.put("totalBalance", totalBalance.toString());
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.TRIAL_BALANCE_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "balance-generale-" + companyId + "-" + periodLabel + ".pdf";
+        LOG.info("[PDF] Balance générale générée pour companyId={} période={} ({} lignes, {} octets)",
+            companyId, periodLabel, lines.size(), pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Générer le grand livre en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF du grand livre d'un compte via :document-generation (template LEDGER_REPORT). " +
+                      "Délègue au même service métier que GET /ledger. " +
+                      "Le paramètre accountId est obligatoire (le grand livre est par compte).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (grand livre)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(responseCode = "422", description = "accountId manquant",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/ledger/pdf")
+    public ResponseEntity<byte[]> getLedgerPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam UUID accountId,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        // Réutiliser la même logique de résolution que le endpoint JSON.
+        if (fiscalYearId != null) {
+            Optional<FiscalYear> fy = service.resolveFiscalYear(companyId, fiscalYearId);
+            if (fy.isPresent()) {
+                from = fy.get().getStartDate();
+                to = fy.get().getEndDate();
+            }
+        }
+        if (from == null && to == null) {
+            Optional<FiscalYear> fy = service.resolveFiscalYear(companyId, null);
+            if (fy.isPresent()) {
+                from = fy.get().getStartDate();
+                to = fy.get().getEndDate();
+            }
+        }
+        List<LedgerLine> lines = service.getLedger(companyId, accountId, from, to);
+
+        // Libellé du compte : on prend le code compte de la première ligne si disponible.
+        String accountCode = lines.isEmpty() ? accountId.toString() : lines.get(0).accountCode();
+        String accountLabel = "Compte " + accountCode;
+        String periodLabel = (from != null ? from.toString() : "") + "_" + (to != null ? to.toString() : "");
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("period", periodLabel);
+        variables.put("accountCode", accountCode);
+        variables.put("accountLabel", accountLabel);
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("lines", lines);
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.LEDGER_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String filename = "grand-livre-" + companyId + "-" + accountCode + "-" + periodLabel + ".pdf";
+        LOG.info("[PDF] Grand livre généré pour companyId={} compte={} période={} ({} lignes, {} octets)",
+            companyId, accountCode, periodLabel, lines.size(), pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
+    @Operation(summary = "Exporter les écritures comptables en CSV (Reports Hub v2.4.0)",
+        description = "Export CSV de toutes les écritures POSTED sur la période. " +
+                      "Format : UTF-8 avec BOM (compatible Excel français), séparateur point-virgule, CRLF. " +
+                      "Colonnes : Date;Journal;Reference;Description;Statut;Debit total;Credit total. " +
+                      "Une ligne par écriture (pas par ligne d'écriture — pour le détail ligne, voir /ledger/export CSV.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "CSV binaire (écritures comptables)",
+            content = @Content(mediaType = "text/csv",
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/entries/export")
+    public ResponseEntity<byte[]> exportEntriesCsv(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Format d'export — seule la valeur 'csv' est supportée", example = "csv")
+        @RequestParam(defaultValue = "csv") String format,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        // On ne supporte que CSV pour l'instant. Si un autre format est demandé, on retourne 422.
+        if (!"csv".equalsIgnoreCase(format)) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .header("X-Error-Reason", "UNSUPPORTED_FORMAT")
+                .body(null);
+        }
+
+        // step2-backend — si fiscalYearId est fourni (par le mobile), résoudre l'exercice
+        // et utiliser ses bornes comme from/to (prévalence sur les from/to explicites).
+        // Permet au mobile Reports Hub de passer ?fiscalYearId= sans avoir à calculer
+        // les dates d'exercice côté client.
+        if (fiscalYearId != null) {
+            Optional<FiscalYear> fy = service.resolveFiscalYear(companyId, fiscalYearId);
+            if (fy.isPresent()) {
+                from = fy.get().getStartDate();
+                to = fy.get().getEndDate();
+            }
+        }
+
+        // Récupérer toutes les écritures de la période — on pagine par 200 jusqu'à épuisement.
+        List<JournalEntryResponse> entries = new ArrayList<>();
+        int page = 0;
+        int size = 200;
+        while (true) {
+            org.springframework.data.domain.Page<JournalEntryResponse> p =
+                service.searchJournalEntries(companyId, from, to, null, null, null, PageRequest.of(page, size));
+            entries.addAll(p.getContent());
+            if (!p.hasNext()) break;
+            page++;
+            if (page > 1000) break;  // safety net — 200_000 écritures max
+        }
+
+        // Génération du CSV (UTF-8 BOM, séparateur ';', CRLF)
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0xEF); baos.write(0xBB); baos.write(0xBF);  // BOM UTF-8 pour Excel
+        String LINE_SEP = "\r\n";
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            pw.print("Date;Journal;Reference;Description;Statut;Debit total;Credit total" + LINE_SEP);
+            for (JournalEntryResponse e : entries) {
+                pw.print(safe(e.entryDate()) + ";"
+                    + safe(e.journalCode()) + ";"
+                    + safe(e.reference()) + ";"
+                    + safe(e.description()) + ";"
+                    + (e.status() != null ? e.status().name() : "") + ";"
+                    + (e.totalDebit() != null ? e.totalDebit().toPlainString() : "0") + ";"
+                    + (e.totalCredit() != null ? e.totalCredit().toPlainString() : "0") + LINE_SEP);
+            }
+        }
+        byte[] csv = baos.toByteArray();
+        String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
+        String filename = "ecritures-" + companyId + "-" + periodLabel + ".csv";
+        LOG.info("[CSV] Export écritures généré pour companyId={} période={} ({} écritures, {} octets)",
+            companyId, periodLabel, entries.size(), csv.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(csv);
+    }
+
+    /** Formate une valeur nullable en chaîne vide (pour CSV). */
+    private static String safe(Object o) {
+        return o != null ? o.toString() : "";
     }
 }

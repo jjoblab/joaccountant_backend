@@ -185,7 +185,8 @@ public class EmployeesService {
         return new EmployeeResponse(
             emp.getId(), emp.getCompanyId(), emp.getThirdPartyId(), tpName,
             emp.getEmployeeNumber(), emp.getPosition(), emp.getDepartment(),
-            emp.getHireDate(), emp.getTerminationDate(), emp.getBaseSalary(),
+            emp.getHireDate(), emp.getTerminationDate(), emp.getTerminationReason(),
+            emp.getBaseSalary(),
             emp.getSalaryCurrency(), emp.getContractType(), emp.getStatus(),
             emp.getBankAccountNumber(),
             emp.getOvertimeHours25(), emp.getOvertimeHours50(),

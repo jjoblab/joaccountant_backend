@@ -8,7 +8,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
@@ -21,7 +26,11 @@ import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyStatement;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
 import jo.accountant.thirdparties.service.ThirdPartiesService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +52,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/companies/{companyId}/third-parties")
 @Tag(name = "ThirdParties", description = "Clients/fournisseurs/donateurs, lettrage, balance âgée (§13 Phase 7)")
 public class ThirdPartiesController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ThirdPartiesController.class);
 
     private final ThirdPartiesService service;
     private final RoleChecker roleChecker;
@@ -329,5 +340,80 @@ public class ThirdPartiesController {
                                       @RequestParam(name = "asOf", required = false) LocalDate asOf) {
         roleChecker.ensureRole(companyId, "VIEWER");
         return service.getAgedBalance(companyId, thirdPartyId, asOf);
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : export CSV des tiers
+    // ======================================================================
+
+    @Operation(summary = "Exporter les tiers en CSV (Reports Hub v2.4.0)",
+        description = "Export CSV de tous les tiers (clients, fournisseurs, donateurs, etc.). " +
+                      "Format : UTF-8 avec BOM (compatible Excel français), séparateur point-virgule, CRLF. " +
+                      "Colonnes : Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "CSV binaire (tiers)",
+            content = @Content(mediaType = "text/csv",
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportThirdPartiesCsv(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam(name = "format", defaultValue = "csv") String format) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        if (!"csv".equalsIgnoreCase(format)) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .header("X-Error-Reason", "UNSUPPORTED_FORMAT")
+                .body(null);
+        }
+
+        // Récupérer tous les tiers — on pagine par 200 jusqu'à épuisement.
+        List<ThirdPartyResponse> all = new ArrayList<>();
+        int page = 0;
+        int size = 200;
+        while (true) {
+            org.springframework.data.domain.Page<ThirdPartyResponse> p =
+                service.listThirdParties(companyId, null, PageRequest.of(page, size));
+            all.addAll(p.getContent());
+            if (!p.hasNext()) break;
+            page++;
+            if (page > 5000) break;  // safety net — 1_000_000 tiers max
+        }
+
+        // Génération du CSV (UTF-8 BOM, séparateur ';', CRLF)
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0xEF); baos.write(0xBB); baos.write(0xBF);  // BOM UTF-8 pour Excel
+        String LINE_SEP = "\r\n";
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            pw.print("Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif" + LINE_SEP);
+            for (ThirdPartyResponse tp : all) {
+                pw.print((tp.type() != null ? tp.type().name() : "") + ";"
+                    + safe(tp.name()) + ";"
+                    + safe(tp.email()) + ";"
+                    + safe(tp.address()) + ";"
+                    + safe(tp.nif()) + ";"
+                    + safe(tp.siret()) + ";"
+                    + safe(tp.vatNumber()) + ";"
+                    + safe(tp.collectiveAccountCode()) + ";"
+                    + safe(tp.dedicatedAccountCode()) + ";"
+                    + (tp.active() ? "OUI" : "NON") + LINE_SEP);
+            }
+        }
+        byte[] csv = baos.toByteArray();
+        String filename = "tiers-" + companyId + ".csv";
+        LOG.info("[CSV] Export tiers généré pour companyId={} ({} tiers, {} octets)",
+            companyId, all.size(), csv.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(csv);
+    }
+
+    /** Formate une valeur nullable en chaîne vide (pour CSV). */
+    private static String safe(Object o) {
+        return o != null ? o.toString() : "";
     }
 }

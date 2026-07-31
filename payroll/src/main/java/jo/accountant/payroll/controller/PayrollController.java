@@ -10,14 +10,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
+import jo.accountant.documentgeneration.entity.DocumentType;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.dto.PayslipResponse;
 import jo.accountant.payroll.service.PayrollService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,16 +43,24 @@ import org.springframework.web.bind.annotation.RestController;
  * `BusinessTypeModuleService.alwaysOnModules`). Pas de `ModuleAccessGuard` requise.
  */
 @RestController
-@RequestMapping("/api/v1/companies/{companyId}/payroll-runs")
+@RequestMapping({
+    "/api/v1/companies/{companyId}/payroll-runs",
+    "/api/v1/companies/{companyId}/payroll"
+})
 @Tag(name = "Payroll", description = "Paie consolidée, calcul brut→net, bulletin PDF (restructuration 2026-07-24)")
 public class PayrollController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PayrollController.class);
+
     private final PayrollService service;
     private final RoleChecker roleChecker;
+    private final jo.accountant.documentgeneration.service.DocumentGenerationService documentGenerationService;
 
-    public PayrollController(PayrollService service, RoleChecker roleChecker) {
+    public PayrollController(PayrollService service, RoleChecker roleChecker,
+                              jo.accountant.documentgeneration.service.DocumentGenerationService documentGenerationService) {
         this.service = service;
         this.roleChecker = roleChecker;
+        this.documentGenerationService = documentGenerationService;
     }
 
     @Operation(summary = "Créer une campagne de paie pour une période (mois/année)",
@@ -420,5 +434,83 @@ public class PayrollController {
         roleChecker.ensureRole(companyId, "ADMIN");
         PayrollRunResponse response = service.launchThirteenthMonthRun(companyId, year, userId);
         return ResponseEntity.ok(response);
+    }
+
+    // ======================================================================
+    // step2-backend — Reports Hub v2.4.0 : endpoint PDF de synthèse de paie
+    // agrégée sur une période. L'URL /payroll/summary/pdf est rendue
+    // accessible via le second préfixe de classe /api/v1/companies/{cid}/payroll
+    // (déclaré ci-dessus). L'endpoint /payroll-runs/summary/pdf reste également
+    // accessible pour cohérence avec les autres URLs du controller.
+    // ======================================================================
+
+    @Operation(summary = "Générer la synthèse de paie en PDF (Reports Hub v2.4.0)",
+        description = "Rendu PDF de la synthèse de paie agrégée sur une période via :document-generation " +
+                      "(template PAYROLL_SUMMARY_REPORT). Agrège toutes les campagnes dont le mois de période " +
+                      "tombe dans [from, to] : somme des masses brutes/nettes/charges patronales + détail par campagne.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "PDF binaire (synthèse de paie)",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE,
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+            content = @Content(schema = @Schema(implementation = org.springframework.http.ProblemDetail.class)))
+    })
+    @GetMapping("/summary/pdf")
+    public ResponseEntity<byte[]> getPayrollSummaryPdf(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @Parameter(description = "Date de début (incluse) — si null, début d'historique", example = "2026-01-01")
+        @RequestParam(required = false) LocalDate from,
+        @Parameter(description = "Date de fin (incluse) — si null, fin d'historique", example = "2026-12-31")
+        @RequestParam(required = false) LocalDate to) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+
+        // Récupérer les campagnes — on demande un cap large (120 = 10 ans) pour couvrir tout l'historique.
+        List<PayrollRunResponse> allRuns = service.listRuns(companyId, 120);
+
+        // Filtrer par période (comparaison sur le premier jour du mois de la campagne).
+        LocalDate fromMonth = from != null ? from.withDayOfMonth(1) : null;
+        LocalDate toMonth = to != null ? to.withDayOfMonth(1) : null;
+        List<PayrollRunResponse> filtered = new java.util.ArrayList<>();
+        BigDecimal totalGross = BigDecimal.ZERO;
+        BigDecimal totalNet = BigDecimal.ZERO;
+        BigDecimal totalEmployerContributions = BigDecimal.ZERO;
+        int payslipCount = 0;
+        for (PayrollRunResponse run : allRuns) {
+            LocalDate periodStart = LocalDate.of(run.periodYear(), run.periodMonth(), 1);
+            if (fromMonth != null && periodStart.isBefore(fromMonth)) continue;
+            if (toMonth != null && periodStart.isAfter(toMonth)) continue;
+            filtered.add(run);
+            if (run.totalGross() != null) totalGross = totalGross.add(run.totalGross());
+            if (run.totalNet() != null) totalNet = totalNet.add(run.totalNet());
+            if (run.totalEmployerContributions() != null)
+                totalEmployerContributions = totalEmployerContributions.add(run.totalEmployerContributions());
+            payslipCount += run.payslipCount();
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("companyName", "");
+        variables.put("from", from != null ? from.toString() : "debut");
+        variables.put("to", to != null ? to.toString() : "fin");
+        variables.put("generationDate", LocalDate.now().toString());
+        variables.put("runCount", filtered.size());
+        variables.put("payslipCount", payslipCount);
+        variables.put("totalGross", totalGross.toString());
+        variables.put("totalNet", totalNet.toString());
+        variables.put("totalEmployerContributions", totalEmployerContributions.toString());
+        variables.put("runs", filtered);
+
+        UUID resourceId = UUID.randomUUID();
+        documentGenerationService.generateDocument(companyId, DocumentType.PAYROLL_SUMMARY_REPORT, resourceId, variables);
+        byte[] pdf = documentGenerationService.getDocumentContent(companyId, resourceId);
+        String periodLabel = (from != null ? from.toString() : "debut") + "_" + (to != null ? to.toString() : "fin");
+        String filename = "synthese-paie-" + companyId + "-" + periodLabel + ".pdf";
+        LOG.info("[PDF] Synthèse paie générée pour companyId={} période={} ({} campagnes, {} bulletins, {} octets)",
+            companyId, periodLabel, filtered.size(), payslipCount, pdf.length);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
     }
 }

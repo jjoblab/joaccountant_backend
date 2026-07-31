@@ -15,6 +15,11 @@ dependencies {
     implementation(project(":approval-workflow"))
     implementation(project(":analytics"))
     implementation(project(":company"))
+    // step2-backend — Reports Hub v2.4.0 : rendu PDF de la balance générale et du
+    // grand livre via DocumentGenerationService. Pas de cycle (Rule 24 ArchUnit
+    // n'interdit que la direction inverse : :document-generation ne peut pas
+    // dépendre de :accounting-engine).
+    implementation(project(":document-generation"))
 }
 
 // =============================================================================
