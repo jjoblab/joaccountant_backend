@@ -68,6 +68,8 @@ import jo.accountant.thirdparties.entity.ThirdPartyType;
 import jo.accountant.thirdparties.service.ThirdPartiesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -144,6 +146,21 @@ public class RetailCommerceSeeder implements CompanySeeder {
   private final InventoryService inventoryService;
   private final BankReconciliationService bankReconciliationService;
 
+  /**
+   * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+   *
+   * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID)} depuis {@link #seed()} en traversant
+   * le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData} sera
+   * effectivement appliquée (une méthode appelée directement via {@code this.} ne passe pas par le
+   * proxy → pas de transaction → pas de {@code SET LOCAL app.current_tenant}).
+   *
+   * <p>{@code @Lazy} évite une dépendance circulaire à l'initialisation (le bean s'injecte
+   * lui-même avant la fin de sa propre construction).
+   */
+  @Autowired
+  @Lazy
+  private RetailCommerceSeeder self;
+
   public RetailCommerceSeeder(
       CompanyRepository companyRepository,
       UserRepository userRepository,
@@ -202,9 +219,20 @@ public class RetailCommerceSeeder implements CompanySeeder {
    * Crée la Company + user owner + toutes les données métier.
    *
    * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
+   *
+   * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+   * l'user owner sont créés via les méthodes {@code @Transactional} par défaut des repositories
+   * Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables non
+   * RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
+   * métier (RLS-protégées) sont créées via {@link #seedBusinessData(UUID, UUID)}, appelée à travers
+   * le proxy Spring self-injecté — la transaction s'ouvre APRÈS que {@code DemoTenantContext.of()}
+   * ait positionné le ThreadLocal, et le {@code TenantRlsConnectionCustomizer} intercepte le
+   * {@code setAutoCommit(false)} pour appliquer {@code SET LOCAL app.current_tenant = companyId} au
+   * bon moment. Les INSERT sur {@code journal_entry}/{@code third_party}/{@code sales_invoice}/
+   * {@code purchase_invoice}/{@code expense_report}/{@code journal_line} passent alors la policy
+   * RLS.
    */
   @Override
-  @Transactional
   @SuppressWarnings(
       "try") // DemoTenantContext utilisé pour close() automatique, pas référencé dans le corps
   public int seed() {
@@ -218,7 +246,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
       return 0;
     }
 
-    // ── 2. Création de la Company ──
+    // ── 2. Création de la Company ── (hors DemoTenantContext — table companies non RLS-protégée)
     Company company = createCompany();
     final UUID companyId = company.getId();
     LOG.info(
@@ -226,64 +254,17 @@ public class RetailCommerceSeeder implements CompanySeeder {
         companyId,
         company.getNif());
 
-    // ── 3 + 4. User owner + UserCompanyRole OWNER ──
+    // ── 3 + 4. User owner + UserCompanyRole OWNER ── (tables users/ucr non RLS-protégées)
     UUID ownerId = ensureOwnerUser(companyId);
     LOG.info("V9 — User owner créé/résolu (id={}, email={})", ownerId, OWNER_EMAIL);
 
     // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
-    int totalCreated;
+    // La transaction @Transactional est ouverte par self.seedBusinessData() via le proxy Spring,
+    // APRÈS que DemoTenantContext.of() ait positionné le ThreadLocal. Le
+    // TenantRlsConnectionCustomizer intercepte setAutoCommit(false) au début de cette méthode
+    // et applique SET LOCAL app.current_tenant = companyId.
     try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
-      // a, b, c — bootstraps (COA + journaux/exercices + séquences)
-      coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
-      fiscalYearBootstrap.bootstrap(companyId);
-      numberingBootstrap.bootstrap(companyId);
-      // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
-      // services InvoicingService/PurchasingService/PayrollService attendent mais que le
-      // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
-      ensureExtraDocumentSequences(companyId);
-      // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
-      ensureJournal(companyId, "DP", "Journal des dépenses");
-      // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
-      AccountRefs refs = AccountRefs.load(companyId, accountRepository);
-
-      // d. Clients retail (8)
-      List<ThirdPartyResponse> clients = createDemoClients(companyId, refs.clientsAccountId);
-      // e. Fournisseurs (5)
-      List<ThirdPartyResponse> suppliers = createDemoSuppliers(companyId, refs.suppliersAccountId);
-      // f. Employés (4)
-      List<EmployeeResponse> employees = createDemoEmployees(companyId, refs.personnelAccountId);
-      // g. Banque
-      createDemoBankAccount(companyId, refs.banqueAccountId);
-      // h. Entrepôt + 8 articles + stock initial (postStockMove IN)
-      Warehouse warehouse =
-          inventoryService.createWarehouse(
-              companyId, new CreateWarehouseRequest("Boutique Pétion-Ville"));
-      List<ItemResponse> items = createDemoItems(companyId, warehouse);
-
-      totalCreated =
-          1 /* company */
-              + 1 /* user */
-              + 1 /* ucr */
-              + AccountFixture.all().size()
-              + 5
-              + 2 /* journaux + exercices */
-              + 14 /* séquences (10 + 4 extras) */
-              + clients.size()
-              + suppliers.size()
-              + employees.size()
-              + 1 /* bankAccount */
-              + 1 /* warehouse */
-              + items.size() /* items */
-              + items.size() /* stock moves IN */;
-
-      // i. 12 mois d'opérations sur FY2025-2026
-      int monthlyOps = generateMonthlyOperations(companyId, clients, suppliers, employees, items);
-      totalCreated += monthlyOps;
-
-      LOG.info(
-          "V9 — Boutik Lakay seed terminé pour companyId={} : {} enregistrements créés",
-          companyId,
-          totalCreated);
+      return self.seedBusinessData(companyId, ownerId);
     } catch (RuntimeException ex) {
       // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
       // On logue ERROR mais on ne propage pas l'exception pour ne pas casser le démarrage.
@@ -291,6 +272,80 @@ public class RetailCommerceSeeder implements CompanySeeder {
           "V9 — Échec du seed Boutik Lakay (companyId={}) : {}", companyId, ex.getMessage(), ex);
       return 1; // au moins la company a été créée
     }
+  }
+
+  /**
+   * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+   * (COA, journaux, exercices, séquences, clients, fournisseurs, employés, banque, items, 12 mois
+   * d'opérations).
+   *
+   * <p><b>DOIT être appelée via le proxy Spring</b> (jamais directement via {@code this.}) pour que
+   * l'annotation {@code @Transactional} soit appliquée. C'est pourquoi {@link #seed()} utilise
+   * {@code self.seedBusinessData(...)} avec self-injection.
+   *
+   * <p>La transaction s'ouvre APRÈS que {@code DemoTenantContext.of()} ait positionné le ThreadLocal
+   * → le {@code TenantRlsConnectionCustomizer} intercepte le {@code setAutoCommit(false)} et
+   * applique {@code SET LOCAL app.current_tenant = companyId} → tous les INSERT sur tables
+   * RLS-protégées passent la policy RLS.
+   *
+   * @param companyId identifiant de la company démo (tenant)
+   * @param ownerId identifiant de l'user owner (passé pour transparence du contexte tenant — non
+   *     utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
+   * @return nombre d'enregistrements créés
+   */
+  @Transactional
+  public int seedBusinessData(UUID companyId, UUID ownerId) {
+    // a, b, c — bootstraps (COA + journaux/exercices + séquences)
+    coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
+    fiscalYearBootstrap.bootstrap(companyId);
+    numberingBootstrap.bootstrap(companyId);
+    // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
+    // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+    // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
+    ensureExtraDocumentSequences(companyId);
+    // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
+    ensureJournal(companyId, "DP", "Journal des dépenses");
+    // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
+    AccountRefs refs = AccountRefs.load(companyId, accountRepository);
+
+    // d. Clients retail (8)
+    List<ThirdPartyResponse> clients = createDemoClients(companyId, refs.clientsAccountId);
+    // e. Fournisseurs (5)
+    List<ThirdPartyResponse> suppliers = createDemoSuppliers(companyId, refs.suppliersAccountId);
+    // f. Employés (4)
+    List<EmployeeResponse> employees = createDemoEmployees(companyId, refs.personnelAccountId);
+    // g. Banque
+    createDemoBankAccount(companyId, refs.banqueAccountId);
+    // h. Entrepôt + 8 articles + stock initial (postStockMove IN)
+    Warehouse warehouse =
+        inventoryService.createWarehouse(
+            companyId, new CreateWarehouseRequest("Boutique Pétion-Ville"));
+    List<ItemResponse> items = createDemoItems(companyId, warehouse);
+
+    int totalCreated =
+        1 /* company */
+            + 1 /* user */
+            + 1 /* ucr */
+            + AccountFixture.all().size()
+            + 5
+            + 2 /* journaux + exercices */
+            + 14 /* séquences (10 + 4 extras) */
+            + clients.size()
+            + suppliers.size()
+            + employees.size()
+            + 1 /* bankAccount */
+            + 1 /* warehouse */
+            + items.size() /* items */
+            + items.size() /* stock moves IN */;
+
+    // i. 12 mois d'opérations sur FY2025-2026
+    int monthlyOps = generateMonthlyOperations(companyId, clients, suppliers, employees, items);
+    totalCreated += monthlyOps;
+
+    LOG.info(
+        "V9 — Boutik Lakay seed terminé pour companyId={} : {} enregistrements créés",
+        companyId,
+        totalCreated);
     return totalCreated;
   }
 
@@ -793,10 +848,10 @@ public class RetailCommerceSeeder implements CompanySeeder {
     EmployeeResponse emp = employees.get((month.getMonthValue() + seq) % employees.size());
     int nLines = 1 + (seq % 2); // 1, 2
     String[][] cats = {
-      {"TRANSPORT", "Transport taxi/tap-tap déplacements clients"},
-      {"FOURNITURES", "Fournitures de bureau — papier, stylos, cartouches"},
-      {"ENTRETIEN", "Petit entretien boutique"},
-      {"TELECOM", "Crédit téléphonique et data"}
+      {"TRAVEL", "Transport taxi/tap-tap déplacements clients"},
+      {"SUPPLIES", "Fournitures de bureau — papier, stylos, cartouches"},
+      {"SUPPLIES", "Petit entretien boutique"},
+      {"SUPPLIES", "Crédit téléphonique et data"}
     };
     List<CreateExpenseReportRequest.LineDto> lines = new ArrayList<>(nLines);
     for (int i = 0; i < nLines; i++) {

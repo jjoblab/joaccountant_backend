@@ -68,6 +68,8 @@ import jo.accountant.timebilling.entity.BillingType;
 import jo.accountant.timebilling.service.TimeBillingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -169,6 +171,21 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
   private final BankReconciliationService bankReconciliationService;
   private final TimeBillingService timeBillingService;
 
+  /**
+   * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+   *
+   * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID, UUID)} depuis {@link #seed()} en
+   * traversant le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData}
+   * sera effectivement appliquée (une méthode appelée directement via {@code this.} ne passe pas
+   * par le proxy → pas de transaction → pas de {@code SET LOCAL app.current_tenant}).
+   *
+   * <p>{@code @Lazy} évite une dépendance circulaire à l'initialisation (le bean s'injecte
+   * lui-même avant la fin de sa propre construction).
+   */
+  @Autowired
+  @Lazy
+  private ProfessionalServicesSeeder self;
+
   public ProfessionalServicesSeeder(
       CompanyRepository companyRepository,
       UserRepository userRepository,
@@ -227,9 +244,20 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
    * Crée la Company + users (owner consultant + manager approbateur) + toutes les données métier.
    *
    * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
+   *
+   * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+   * les users (owner + manager) sont créés via les méthodes {@code @Transactional} par défaut des
+   * repositories Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables
+   * non RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
+   * métier (RLS-protégées) sont créées via {@link #seedBusinessData(UUID, UUID, UUID)}, appelée à
+   * travers le proxy Spring self-injecté — la transaction s'ouvre APRÈS que
+   * {@code DemoTenantContext.of()} ait positionné le ThreadLocal, et le
+   * {@code TenantRlsConnectionCustomizer} intercepte le {@code setAutoCommit(false)} pour
+   * appliquer {@code SET LOCAL app.current_tenant = companyId} au bon moment. Les INSERT sur
+   * {@code journal_entry}/{@code third_party}/{@code sales_invoice}/{@code purchase_invoice}/
+   * {@code expense_report}/{@code journal_line} passent alors la policy RLS.
    */
   @Override
-  @Transactional
   @SuppressWarnings(
       "try") // DemoTenantContext utilisé pour close() automatique, pas référencé dans le corps
   public int seed() {
@@ -243,7 +271,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
       return 0;
     }
 
-    // ── 2. Création de la Company ──
+    // ── 2. Création de la Company ── (hors DemoTenantContext — table companies non RLS-protégée)
     Company company = createCompany();
     final UUID companyId = company.getId();
     LOG.info(
@@ -252,6 +280,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
         company.getNif());
 
     // ── 3 + 4. Users (owner consultant + manager approbateur) + UserCompanyRole ──
+    // (tables users/ucr non RLS-protégées)
     UUID ownerId =
         ensureUser(
             companyId, OWNER_EMAIL, OWNER_PASSWORD, OWNER_FULL_NAME, OWNER_LOCALE, UserRole.OWNER);
@@ -271,61 +300,12 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
         MANAGER_EMAIL);
 
     // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
-    int totalCreated;
+    // La transaction @Transactional est ouverte par self.seedBusinessData() via le proxy Spring,
+    // APRÈS que DemoTenantContext.of() ait positionné le ThreadLocal. Le
+    // TenantRlsConnectionCustomizer intercepte setAutoCommit(false) au début de cette méthode
+    // et applique SET LOCAL app.current_tenant = companyId.
     try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
-      // a, b, c — bootstraps (COA + journaux/exercices + séquences)
-      coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
-      fiscalYearBootstrap.bootstrap(companyId);
-      numberingBootstrap.bootstrap(companyId);
-      // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
-      // services InvoicingService/PurchasingService/PayrollService attendent mais que le
-      // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
-      ensureExtraDocumentSequences(companyId);
-      // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
-      ensureJournal(companyId, "DP", "Journal des dépenses");
-      // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
-      AccountRefs refs = AccountRefs.load(companyId, accountRepository);
-
-      // f. 12 Clients pro (banques, télécom, institutions, grandes entreprises)
-      List<ThirdPartyResponse> clients = createDemoClients(companyId, refs.clientsAccountId);
-      // g. 4 Fournisseurs (abonnements logiciels, fournitures, etc.)
-      List<ThirdPartyResponse> suppliers = createDemoSuppliers(companyId, refs.suppliersAccountId);
-      // h. 8 Employés (4 consultants + 1 manager + 1 admin + 2 partners)
-      List<EmployeeResponse> employees = createDemoEmployees(companyId, refs.personnelAccountId);
-      // i. Banque
-      createDemoBankAccount(companyId, refs.banqueAccountId);
-      // j. 6 Projets TIME_AND_MATERIALS
-      List<ProjectResponse> projects = createDemoProjects(companyId, clients);
-      // k. 8 BillableRates (6 par projet + 1 ressource + 1 défaut)
-      createDemoBillableRates(companyId, projects, ownerId);
-
-      totalCreated =
-          1 /* company */
-              + 2 /* users (owner + manager) */
-              + 2 /* ucrs */
-              + AccountFixture.all().size()
-              + 5
-              + 2 /* journaux + exercices */
-              + 14 /* séquences (10 + 4 extras) */
-              + 1 /* journal DP */
-              + clients.size()
-              + suppliers.size()
-              + employees.size()
-              + 1 /* bankAccount */
-              + projects.size()
-              + 8 /* billable rates */;
-
-      // l. 12 mois d'opérations sur FY2025-2026 (time-billing + factures + achats + notes de frais
-      // + paie)
-      int monthlyOps =
-          generateMonthlyOperations(
-              companyId, ownerId, managerId, clients, suppliers, employees, projects);
-      totalCreated += monthlyOps;
-
-      LOG.info(
-          "V9 — Moïse & Associés seed terminé pour companyId={} : {} enregistrements créés",
-          companyId,
-          totalCreated);
+      return self.seedBusinessData(companyId, ownerId, managerId);
     } catch (RuntimeException ex) {
       // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
       LOG.error(
@@ -335,6 +315,84 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
           ex);
       return 1; // au moins la company a été créée
     }
+  }
+
+  /**
+   * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+   * (COA, journaux, exercices, séquences, clients pro, fournisseurs, employés, banque, projets,
+   * billable rates, 12 mois d'opérations time-billing).
+   *
+   * <p><b>DOIT être appelée via le proxy Spring</b> (jamais directement via {@code this.}) pour que
+   * l'annotation {@code @Transactional} soit appliquée. C'est pourquoi {@link #seed()} utilise
+   * {@code self.seedBusinessData(...)} avec self-injection.
+   *
+   * <p>La transaction s'ouvre APRÈS que {@code DemoTenantContext.of()} ait positionné le
+   * ThreadLocal → le {@code TenantRlsConnectionCustomizer} intercepte le
+   * {@code setAutoCommit(false)} et applique {@code SET LOCAL app.current_tenant = companyId} →
+   * tous les INSERT sur tables RLS-protégées passent la policy RLS.
+   *
+   * @param companyId identifiant de la company démo (tenant)
+   * @param ownerId identifiant de l'user owner (consultant — utilisé pour createDemoBillableRates
+   *     et generateMonthlyOperations)
+   * @param managerId identifiant du manager approbateur (utilisé pour approveEntry dans les
+   *     timesheets — règle anti-auto-approbation)
+   * @return nombre d'enregistrements créés
+   */
+  @Transactional
+  public int seedBusinessData(UUID companyId, UUID ownerId, UUID managerId) {
+    // a, b, c — bootstraps (COA + journaux/exercices + séquences)
+    coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
+    fiscalYearBootstrap.bootstrap(companyId);
+    numberingBootstrap.bootstrap(companyId);
+    // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
+    // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+    // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
+    ensureExtraDocumentSequences(companyId);
+    // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
+    ensureJournal(companyId, "DP", "Journal des dépenses");
+    // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
+    AccountRefs refs = AccountRefs.load(companyId, accountRepository);
+
+    // f. 12 Clients pro (banques, télécom, institutions, grandes entreprises)
+    List<ThirdPartyResponse> clients = createDemoClients(companyId, refs.clientsAccountId);
+    // g. 4 Fournisseurs (abonnements logiciels, fournitures, etc.)
+    List<ThirdPartyResponse> suppliers = createDemoSuppliers(companyId, refs.suppliersAccountId);
+    // h. 8 Employés (4 consultants + 1 manager + 1 admin + 2 partners)
+    List<EmployeeResponse> employees = createDemoEmployees(companyId, refs.personnelAccountId);
+    // i. Banque
+    createDemoBankAccount(companyId, refs.banqueAccountId);
+    // j. 6 Projets TIME_AND_MATERIALS
+    List<ProjectResponse> projects = createDemoProjects(companyId, clients);
+    // k. 8 BillableRates (6 par projet + 1 ressource + 1 défaut)
+    createDemoBillableRates(companyId, projects, ownerId);
+
+    int totalCreated =
+        1 /* company */
+            + 2 /* users (owner + manager) */
+            + 2 /* ucrs */
+            + AccountFixture.all().size()
+            + 5
+            + 2 /* journaux + exercices */
+            + 14 /* séquences (10 + 4 extras) */
+            + 1 /* journal DP */
+            + clients.size()
+            + suppliers.size()
+            + employees.size()
+            + 1 /* bankAccount */
+            + projects.size()
+            + 8 /* billable rates */;
+
+    // l. 12 mois d'opérations sur FY2025-2026 (time-billing + factures + achats + notes de frais
+    // + paie)
+    int monthlyOps =
+        generateMonthlyOperations(
+            companyId, ownerId, managerId, clients, suppliers, employees, projects);
+    totalCreated += monthlyOps;
+
+    LOG.info(
+        "V9 — Moïse & Associés seed terminé pour companyId={} : {} enregistrements créés",
+        companyId,
+        totalCreated);
     return totalCreated;
   }
 
@@ -1002,10 +1060,10 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     EmployeeResponse emp = employees.get((month.getMonthValue() + seq) % employees.size());
     int nLines = 1 + (seq % 2); // 1, 2
     String[][] cats = {
-      {"TRANSPORT", "Transport taxi/tap-tap déplacements clients"},
-      {"REPAS", "Repas clients — déjeuners d'affaires"},
-      {"FOURNITURES", "Fournitures de bureau — papier, cartouches"},
-      {"TELECOM", "Crédit téléphonique et data pro"}
+      {"TRAVEL", "Transport taxi/tap-tap déplacements clients"},
+      {"MEALS", "Repas clients — déjeuners d'affaires"},
+      {"SUPPLIES", "Fournitures de bureau — papier, cartouches"},
+      {"SUPPLIES", "Crédit téléphonique et data pro"}
     };
     List<CreateExpenseReportRequest.LineDto> lines = new ArrayList<>(nLines);
     for (int i = 0; i < nLines; i++) {
