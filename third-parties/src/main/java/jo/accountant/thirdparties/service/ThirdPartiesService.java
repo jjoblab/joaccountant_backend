@@ -99,6 +99,25 @@ public class ThirdPartiesService {
     /**
      * Crée un tiers. Si le compte collectif a {@code isCollective = true}, un compte dédié
      * de niveau 4 est automatiquement généré sous le compte collectif.
+     *
+     * <p><b>V8.3</b> : si {@code req.collectiveAccountId()} est {@code null}, le service
+     * résout automatiquement un compte collectif par défaut selon le {@code type} du tiers,
+     * en cherchant le premier compte collectif dont le code commence par le préfixe
+     * SYSCOHADA conventionnel :
+     * <ul>
+     *   <li>CLIENT → "411" (Créances clients)</li>
+     *   <li>SUPPLIER → "401" (Fournisseurs)</li>
+     *   <li>DONOR → "470" (Comptes transitoires / donateurs)</li>
+     *   <li>EMPLOYEE → "421" (Personnel — rémunérations dues)</li>
+     *   <li>OTHER → premier compte collectif disponible (tous codes confondus)</li>
+     * </ul>
+     * Si aucun compte collectif n'existe pour ce type, une erreur 422
+     * {@code COLLECTIVE_ACCOUNT_REQUIRED} est levée avec un message explicite.
+     *
+     * <p>Motivation : corrige le bug rapporté dans fff.txt — le formulaire mobile
+     * ThirdPartyEditorFragment envoyait {@code collectiveAccountId=null} et le backend
+     * renvoyait 422. L'auto-résolution évite d'imposer au mobile de charger la liste
+     * des comptes collectifs.
      */
     @Transactional
     public ThirdPartyResponse createThirdParty(UUID companyId, CreateThirdPartyRequest req) {
@@ -106,15 +125,21 @@ public class ThirdPartiesService {
             throw new ValidationException("NAME_REQUIRED", "Le nom du tiers est requis");
         }
 
-        Account collectiveAccount = accountRepository.findById(req.collectiveAccountId())
-            .orElseThrow(() -> new NotFoundException("Account", req.collectiveAccountId()));
-        if (!collectiveAccount.getCompanyId().equals(companyId)) {
-            throw new NotFoundException("Account", req.collectiveAccountId());
-        }
-        if (!collectiveAccount.isCollective()) {
-            throw new ValidationException("ACCOUNT_NOT_COLLECTIVE",
-                "Le compte " + collectiveAccount.getCode() + " n'est pas collectif (isCollective=false). "
-                + "Utiliser un compte collectif pour rattacher un tiers.");
+        Account collectiveAccount;
+        if (req.collectiveAccountId() != null) {
+            collectiveAccount = accountRepository.findById(req.collectiveAccountId())
+                .orElseThrow(() -> new NotFoundException("Account", req.collectiveAccountId()));
+            if (!collectiveAccount.getCompanyId().equals(companyId)) {
+                throw new NotFoundException("Account", req.collectiveAccountId());
+            }
+            if (!collectiveAccount.isCollective()) {
+                throw new ValidationException("ACCOUNT_NOT_COLLECTIVE",
+                    "Le compte " + collectiveAccount.getCode() + " n'est pas collectif (isCollective=false). "
+                    + "Utiliser un compte collectif pour rattacher un tiers.");
+            }
+        } else {
+            // V8.3 — auto-résolution d'un compte collectif par défaut selon le type.
+            collectiveAccount = findDefaultCollectiveAccount(companyId, req.type());
         }
 
         ThirdParty tp = new ThirdParty();
@@ -144,6 +169,69 @@ public class ThirdPartiesService {
         ThirdParty saved = thirdPartyRepository.save(tp);
         events.publishEvent(new ThirdPartyCreatedEvent(saved, TenantContext.getUserId()));
         return toResponse(saved, collectiveAccount, null);
+    }
+
+    /**
+     * V8.3 — Résout un compte collectif par défaut pour un type de tiers donné.
+     *
+     * <p>Stratégie :
+     * <ol>
+     *   <li>Charger tous les comptes collectifs actifs de l'entreprise (typiquement
+     *       quelques dizaines — pas de souci de perf).</li>
+     *   <li>Filtrer par préfixe de code SYSCOHADA conventionnel selon {@code type}.</li>
+     *   <li>Si aucun ne matche le préfixe, prendre le premier compte collectif actif
+     *       quel que soit le code (fallback — évite l'échec si le plan comptable
+     *       n'est pas strictement SYSCOHADA).</li>
+     *   <li>Si aucun compte collectif n'existe, lever 422
+     *       {@code COLLECTIVE_ACCOUNT_REQUIRED}.</li>
+     * </ol>
+     *
+     * @param companyId identifiant du tenant
+     * @param type type de tiers (CLIENT, SUPPLIER, DONOR, EMPLOYEE, OTHER)
+     * @return le compte collectif par défaut
+     * @throws ValidationException si aucun compte collectif n'existe dans l'entreprise
+     */
+    private Account findDefaultCollectiveAccount(UUID companyId, ThirdPartyType type) {
+        List<Account> all = accountRepository.findByCompanyIdOrderByCode(companyId);
+        // Comptes collectifs actifs uniquement
+        List<Account> collective = all.stream()
+            .filter(Account::isCollective)
+            .filter(Account::isActive)
+            .toList();
+
+        if (collective.isEmpty()) {
+            throw new ValidationException("COLLECTIVE_ACCOUNT_REQUIRED",
+                "Aucun compte collectif (isCollective=true) n'existe pour cette entreprise. "
+                + "Veuillez d'abord créer un compte collectif dans le plan comptable "
+                + "(ex. 411000 - Clients, 401000 - Fournisseurs).");
+        }
+
+        // Préfixe SYSCOHADA conventionnel selon le type
+        String prefix = switch (type) {
+            case CLIENT -> "411";
+            case SUPPLIER -> "401";
+            case DONOR -> "470";
+            case EMPLOYEE -> "421";
+            case OTHER -> null; // Pas de filtre par préfixe pour OTHER
+        };
+
+        if (prefix != null) {
+            String p = prefix;
+            Account match = collective.stream()
+                .filter(a -> a.getCode() != null && a.getCode().startsWith(p))
+                .findFirst()
+                .orElse(null);
+            if (match != null) {
+                LOG.info("[ThirdParties] auto-résolu compte collectif {} ({}) pour type={}",
+                    match.getCode(), match.getLabel(), type);
+                return match;
+            }
+            // Pas de match sur le préfixe → fallback : premier compte collectif actif.
+            LOG.warn("[ThirdParties] aucun compte collectif avec préfixe '{}' pour type={} — "
+                + "fallback sur le premier compte collectif disponible ({})",
+                prefix, type, collective.get(0).getCode());
+        }
+        return collective.get(0);
     }
 
     // --- Liste ---

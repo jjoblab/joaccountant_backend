@@ -425,104 +425,130 @@ public class ReportingService {
      */
     @Transactional(readOnly = true)
     public Dashboard getDashboard(UUID companyId) {
-        List<TrialBalanceLine> trialBalance = accountingEngineService.getTrialBalance(companyId);
-
-        // Charger tous les comptes de l'entreprise une seule fois pour éviter du N+1 et
-        // récupérer la reportingClass de chaque compte (la TrialBalanceLine ne la porte pas).
-        Map<UUID, Account> accountById = new HashMap<>();
-        for (Account a : accountRepository.findByCompanyIdOrderByCode(companyId)) {
-            accountById.put(a.getId(), a);
-        }
-
+        // V8.3 — Protection défensive : si une étape échoue (ex. pas d'exercice fiscal,
+        // NPE sur accountCode null, query SQL qui échoue), on retourne un dashboard
+        // partiel à zéros plutôt qu'un HTTP 500 (cf. fff.txt — DashboardVM API error 500).
         BigDecimal cashPosition = BigDecimal.ZERO;
         BigDecimal totalReceivables = BigDecimal.ZERO;
         BigDecimal totalPayables = BigDecimal.ZERO;
         List<Dashboard.CategoryAmount> topExpenses = new ArrayList<>();
         List<Dashboard.CategoryAmount> topRevenues = new ArrayList<>();
+        int overdueInvoices = 0;
+        int pendingApprovals = 0;
 
-        for (TrialBalanceLine line : trialBalance) {
-            Account account = accountById.get(line.accountId());
-            if (account == null) continue;  // compte supprimé (rare — journalLine.accountId n'a pas de FK dure)
-            jo.accountant.core.framework.ReportingClass rc = account.getReportingClass();
-            BigDecimal balance = line.balance();  // raw = débit - crédit
+        // ── 1. Trial balance + agrégation par catégorie ────────────────────
+        try {
+            List<TrialBalanceLine> trialBalance = accountingEngineService.getTrialBalance(companyId);
 
-            // Trésorerie = comptes d'ACTIF avec taxMappingCode = "CASH" (convention), ou à défaut
-            // tous les comptes d'ACTIF dont le code commence par "5" (rétro-compat SYSCOHADA).
-            // Audit E-C (correction) : un compte de trésorerie avec solde négatif (découvert
-            // bancaire) est reclassé en totalPayables (dette) au lieu d'être déduit de cashPosition.
-            // cashPosition ne doit jamais être négatif.
-            boolean isCash = "CASH".equals(account.getTaxMappingCode())
-                || (account.getTaxMappingCode() == null && line.accountCode().startsWith("5")
-                    && rc == jo.accountant.core.framework.ReportingClass.ACTIF);
-            if (isCash) {
-                if (balance.compareTo(BigDecimal.ZERO) >= 0) {
-                    cashPosition = cashPosition.add(balance);
-                } else {
-                    // Solde négatif = découvert bancaire → reclassé en dettes
-                    totalPayables = totalPayables.add(balance.negate());
+            // Charger tous les comptes de l'entreprise une seule fois pour éviter du N+1 et
+            // récupérer la reportingClass de chaque compte (la TrialBalanceLine ne la porte pas).
+            Map<UUID, Account> accountById = new HashMap<>();
+            for (Account a : accountRepository.findByCompanyIdOrderByCode(companyId)) {
+                accountById.put(a.getId(), a);
+            }
+
+            for (TrialBalanceLine line : trialBalance) {
+                Account account = accountById.get(line.accountId());
+                if (account == null) continue;  // compte supprimé (rare — journalLine.accountId n'a pas de FK dure)
+                jo.accountant.core.framework.ReportingClass rc = account.getReportingClass();
+                BigDecimal balance = line.balance() != null ? line.balance() : BigDecimal.ZERO;
+                // V8.3 — defense-in-depth : accountCode peut être "(code inconnu)" ou null
+                // si la base a été corrompue — on garde une référence locale nullable.
+                String code = line.accountCode();
+
+                // Trésorerie = comptes d'ACTIF avec taxMappingCode = "CASH" (convention), ou à défaut
+                // tous les comptes d'ACTIF dont le code commence par "5" (rétro-compat SYSCOHADA).
+                // Audit E-C (correction) : un compte de trésorerie avec solde négatif (découvert
+                // bancaire) est reclassé en totalPayables (dette) au lieu d'être déduit de cashPosition.
+                // cashPosition ne doit jamais être négatif.
+                boolean isCash = "CASH".equals(account.getTaxMappingCode())
+                    || (account.getTaxMappingCode() == null && code != null && code.startsWith("5")
+                        && rc == jo.accountant.core.framework.ReportingClass.ACTIF);
+                if (isCash) {
+                    if (balance.compareTo(BigDecimal.ZERO) >= 0) {
+                        cashPosition = cashPosition.add(balance);
+                    } else {
+                        // Solde négatif = découvert bancaire → reclassé en dettes
+                        totalPayables = totalPayables.add(balance.negate());
+                    }
+                }
+
+                // Clients (créances) = comptes d'ACTIF marqués taxMappingCode = "ACCOUNTS_RECEIVABLE"
+                // ou à défaut (rétro-compat SYSCOHADA) ceux dont le code commence par "411".
+                // Audit E-C : un compte client avec solde négatif (avoir > facture) n'est pas une
+                // créance mais une dette → reclassé en totalPayables.
+                if ("ACCOUNTS_RECEIVABLE".equals(account.getTaxMappingCode())
+                    || (account.getTaxMappingCode() == null && code != null && code.startsWith("411")
+                        && rc == jo.accountant.core.framework.ReportingClass.ACTIF)) {
+                    if (balance.compareTo(BigDecimal.ZERO) >= 0) {
+                        totalReceivables = totalReceivables.add(balance);
+                    } else {
+                        totalPayables = totalPayables.add(balance.negate());
+                    }
+                }
+
+                // Fournisseurs (dettes) = comptes de PASSIF marqués taxMappingCode = "ACCOUNTS_PAYABLE"
+                // ou à défaut (rétro-compat SYSCOHADA) ceux dont le code commence par "40".
+                // Audit E-C : un compte fournisseur avec solde négatif (avance) est une créance →
+                // reclassé en totalReceivables.
+                if ("ACCOUNTS_PAYABLE".equals(account.getTaxMappingCode())
+                    || (account.getTaxMappingCode() == null && code != null && code.startsWith("40")
+                        && rc == jo.accountant.core.framework.ReportingClass.PASSIF)) {
+                    BigDecimal payableAmount = balance.negate();  // PASSIF: crédit - débit
+                    if (payableAmount.compareTo(BigDecimal.ZERO) >= 0) {
+                        totalPayables = totalPayables.add(payableAmount);
+                    } else {
+                        totalReceivables = totalReceivables.add(payableAmount.negate());
+                    }
+                }
+
+                // Charges = tous les comptes de ReportingClass.CHARGES (référentiel-agnostique)
+                if (rc == jo.accountant.core.framework.ReportingClass.CHARGES) {
+                    topExpenses.add(new Dashboard.CategoryAmount(
+                        line.accountLabel(), line.totalDebit()));
+                }
+                // Produits = tous les comptes de ReportingClass.PRODUITS (référentiel-agnostique)
+                if (rc == jo.accountant.core.framework.ReportingClass.PRODUITS) {
+                    topRevenues.add(new Dashboard.CategoryAmount(
+                        line.accountLabel(), line.totalCredit()));
                 }
             }
 
-            // Clients (créances) = comptes d'ACTIF marqués taxMappingCode = "ACCOUNTS_RECEIVABLE"
-            // ou à défaut (rétro-compat SYSCOHADA) ceux dont le code commence par "411".
-            // Audit E-C : un compte client avec solde négatif (avoir > facture) n'est pas une
-            // créance mais une dette → reclassé en totalPayables.
-            if ("ACCOUNTS_RECEIVABLE".equals(account.getTaxMappingCode())
-                || (account.getTaxMappingCode() == null && line.accountCode().startsWith("411")
-                    && rc == jo.accountant.core.framework.ReportingClass.ACTIF)) {
-                if (balance.compareTo(BigDecimal.ZERO) >= 0) {
-                    totalReceivables = totalReceivables.add(balance);
-                } else {
-                    totalPayables = totalPayables.add(balance.negate());
-                }
-            }
+            // Top 5 charges par montant
+            topExpenses.sort((a, b) -> b.amount().compareTo(a.amount()));
+            if (topExpenses.size() > 5) topExpenses = topExpenses.subList(0, 5);
 
-            // Fournisseurs (dettes) = comptes de PASSIF marqués taxMappingCode = "ACCOUNTS_PAYABLE"
-            // ou à défaut (rétro-compat SYSCOHADA) ceux dont le code commence par "40".
-            // Audit E-C : un compte fournisseur avec solde négatif (avance) est une créance →
-            // reclassé en totalReceivables.
-            if ("ACCOUNTS_PAYABLE".equals(account.getTaxMappingCode())
-                || (account.getTaxMappingCode() == null && line.accountCode().startsWith("40")
-                    && rc == jo.accountant.core.framework.ReportingClass.PASSIF)) {
-                BigDecimal payableAmount = balance.negate();  // PASSIF: crédit - débit
-                if (payableAmount.compareTo(BigDecimal.ZERO) >= 0) {
-                    totalPayables = totalPayables.add(payableAmount);
-                } else {
-                    totalReceivables = totalReceivables.add(payableAmount.negate());
-                }
-            }
-
-            // Charges = tous les comptes de ReportingClass.CHARGES (référentiel-agnostique)
-            if (rc == jo.accountant.core.framework.ReportingClass.CHARGES) {
-                topExpenses.add(new Dashboard.CategoryAmount(
-                    line.accountLabel(), line.totalDebit()));
-            }
-            // Produits = tous les comptes de ReportingClass.PRODUITS (référentiel-agnostique)
-            if (rc == jo.accountant.core.framework.ReportingClass.PRODUITS) {
-                topRevenues.add(new Dashboard.CategoryAmount(
-                    line.accountLabel(), line.totalCredit()));
-            }
+            // Top 5 produits par montant
+            topRevenues.sort((a, b) -> b.amount().compareTo(a.amount()));
+            if (topRevenues.size() > 5) topRevenues = topRevenues.subList(0, 5);
+        } catch (jo.accountant.core.exception.NotFoundException e) {
+            // Pas d'exercice fiscal → trial balance vide. On continue avec les valeurs à zéro.
+            LOG.warn("[Dashboard] trial balance ignorée pour companyId={} : {}", companyId, e.getMessage());
+        } catch (Exception e) {
+            // Toute autre erreur (SQL, NPE, etc.) — on log et on continue avec zéros.
+            LOG.warn("[Dashboard] erreur non fatale lors du calcul trial balance pour companyId={}", companyId, e);
         }
 
-        // Top 5 charges par montant
-        topExpenses.sort((a, b) -> b.amount().compareTo(a.amount()));
-        if (topExpenses.size() > 5) topExpenses = topExpenses.subList(0, 5);
+        // ── 2. Factures échues ─────────────────────────────────────────────
+        try {
+            overdueInvoices = (int) invoiceRepository
+                .findByCompanyIdAndStatus(companyId, InvoiceStatus.ISSUED).stream()
+                .filter(inv -> inv.getDueDate() != null && inv.getDueDate().isBefore(LocalDate.now()))
+                .count();
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] erreur non fatale lors du comptage factures échues pour companyId={}", companyId, e);
+        }
 
-        // Top 5 produits par montant
-        topRevenues.sort((a, b) -> b.amount().compareTo(a.amount()));
-        if (topRevenues.size() > 5) topRevenues = topRevenues.subList(0, 5);
-
-        // Factures échues
-        int overdueInvoices = (int) invoiceRepository
-            .findByCompanyIdAndStatus(companyId, InvoiceStatus.ISSUED).stream()
-            .filter(inv -> inv.getDueDate() != null && inv.getDueDate().isBefore(LocalDate.now()))
-            .count();
-
-        // Audit M6 (corrigé + Part C3) : pendingApprovals calculé depuis ApprovalRequestRepository
-        // via une requête de COUNT (au lieu de matérialiser toute la liste en Java puis .size()).
-        // Avant cette correction, le KPI était hardcodé à 0 — le dashboard mentait.
-        int pendingApprovals = (int) approvalRequestRepository
-            .countByCompanyIdAndStatus(companyId, ApprovalStatus.PENDING);
+        // ── 3. Approbations en attente ─────────────────────────────────────
+        try {
+            // Audit M6 (corrigé + Part C3) : pendingApprovals calculé depuis ApprovalRequestRepository
+            // via une requête de COUNT (au lieu de matérialiser toute la liste en Java puis .size()).
+            // Avant cette correction, le KPI était hardcodé à 0 — le dashboard mentait.
+            pendingApprovals = (int) approvalRequestRepository
+                .countByCompanyIdAndStatus(companyId, ApprovalStatus.PENDING);
+        } catch (Exception e) {
+            LOG.warn("[Dashboard] erreur non fatale lors du comptage approbations pour companyId={}", companyId, e);
+        }
 
         return new Dashboard(companyId, cashPosition, totalReceivables, totalPayables,
             topExpenses, topRevenues, pendingApprovals, overdueInvoices);

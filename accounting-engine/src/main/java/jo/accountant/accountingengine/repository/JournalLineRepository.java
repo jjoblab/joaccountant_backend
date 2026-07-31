@@ -177,6 +177,12 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
      * Avant : chargeait toutes les lignes via {@link #findAllPostedBetweenDates} puis
      * agrégeait en Java. Maintenant : 1 requête SQL GROUP BY.
      *
+     * <p><b>V8.3</b> — Correction du pattern {@code :param is null OR col >= :param} qui
+     * pose problème avec Hibernate 6 + PostgreSQL (« could not determine data type of
+     * parameter » → HTTP 500 sur dashboard, cf. fff.txt). On utilise
+     * {@code COALESCE(:param, col) <= col} / {@code COALESCE(:param, col) >= col} qui
+     * fournit à Hibernate le type du paramètre via la colonne.
+     *
      * @param companyId identifiant de l'entreprise (sécurité multi-tenant)
      * @param from      date de début (inclusive), null = pas de borne basse
      * @param to        date de fin (inclusive), null = pas de borne haute
@@ -188,8 +194,8 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
            "where l.companyId = :companyId " +
            "and l.journalEntryId in (" +
            "  select e.id from JournalEntry e where e.status = jo.accountant.accountingengine.entity.JournalEntryStatus.POSTED" +
-           "  and (:from is null or e.entryDate >= :from)" +
-           "  and (:to is null or e.entryDate <= :to)" +
+           "  and (COALESCE(:from, e.entryDate) <= e.entryDate)" +
+           "  and (COALESCE(:to, e.entryDate) >= e.entryDate)" +
            ") " +
            "group by l.accountId")
     List<AccountAggregate> aggregateByAccountBetweenDates(@Param("companyId") UUID companyId,

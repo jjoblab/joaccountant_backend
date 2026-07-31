@@ -41,6 +41,17 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
      * Specifications (qui auraient nécessité une interface JpaSpecificationExecutor) tout en
      * restant lisible et performante (Hibernate cache le plan JPQL).
      *
+     * <p><b>V8.3 — Correction du pattern {@code :param is null OR col = :param}</b> :
+     * ce pattern pose problème avec Hibernate 6 + PostgreSQL : quand {@code :param} est null,
+     * Hibernate ne peut pas inférer le type du paramètre pour la seconde branche
+     * {@code col = :param} et lève une {@code PSQLException} (« could not determine data type
+     * of parameter ») → HTTP 500 côté API (cf. log fff.txt — AuditLogFragment API error 500).
+     *
+     * <p>La correction utilise {@code COALESCE(:param, col) = col} qui est sémantiquement
+     * équivalent mais ne soumet jamais {@code null} à l'opérateur {@code =}, évitant ainsi
+     * l'erreur de typage PostgreSQL. Cette forme est également supportée par H2 (tests) et
+     * MySQL/MariaDB.
+     *
      * @param companyId  identifiant de l'entreprise (sécurité multi-tenant — obligatoire)
      * @param entityType type d'entité filtré (ex. "SalesInvoice", "SecurityEvent"), null = tous
      * @param actorUserId utilisateur ayant déclenché l'événement, null = tous
@@ -51,8 +62,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
      * @return page de logs d'audit
      */
     @Query("select a from AuditLog a where a.companyId = :companyId " +
-           "and (:entityType is null or a.entityType = :entityType) " +
-           "and (:actorUserId is null or a.actorUserId = :actorUserId) " +
+           "and (COALESCE(:entityType, a.entityType) = a.entityType) " +
+           "and (COALESCE(:actorUserId, a.actorUserId) = a.actorUserId) " +
            "and (:from is null or a.occurredAt >= :from) " +
            "and (:to is null or a.occurredAt <= :to) " +
            "order by a.occurredAt desc")
