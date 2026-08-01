@@ -30,5 +30,8 @@ public enum DocumentType {
     DONATION_RECEIPT,
     // Restructuration 2026-07-24 (suite) — 4 nouveaux modules bonus
     PURCHASE_INVOICE,
-    PAYSLIP
+    PAYSLIP,
+    // v2.7.0 (2026-08-02) — Séquences pour les immobilisations et articles de stock
+    ASSET,
+    INVENTORY_ITEM
 }
