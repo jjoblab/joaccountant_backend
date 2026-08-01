@@ -57,7 +57,15 @@ public class DevLauncher {
         // haïtiennes au démarrage. Cela permet de tester l'app mobile immédiatement sans
         // avoir à créer manuellement une entreprise. Les démos sont idempotentes (is_demo=true).
         SpringApplication app = new SpringApplication(JoAccountantDevApp.class);
-        app.setAdditionalProfiles("dev", "demo");
+        // v2.7.0 (2026-08-02) : le profil "demo" peut être désactivé via SKIP_DEMO=true
+        // pour économiser de la RAM sur les machines contraintes (4 GB).
+        boolean skipDemo = Boolean.parseBoolean(System.getenv().getOrDefault("SKIP_DEMO", "false"));
+        if (skipDemo) {
+            app.setAdditionalProfiles("dev");
+            System.out.println("[DevLauncher] SKIP_DEMO=true → profil 'demo' désactivé");
+        } else {
+            app.setAdditionalProfiles("dev", "demo");
+        }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[DevLauncher] Shutting down embedded PostgreSQL...");

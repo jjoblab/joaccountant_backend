@@ -140,7 +140,7 @@ otel:
     # Attributs additionnels (environnement, version) — ajoutés à chaque span
     attributes:
       deployment.environment: ${SPRING_PROFILES_ACTIVE:default}
-      service.version: ${APP_VERSION:2.1.0}
+      service.version: ${APP_VERSION:8.3.1}
   traces:
     sampler:
       # ParentBased(TraceIdRatioBased) : échantillonnage à 10% pour éviter le bruit en prod.

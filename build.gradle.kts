@@ -29,7 +29,7 @@ plugins {
 
 allprojects {
     group = "jo.accountant"
-    version = "2.1.0"
+    version = "8.3.1"
 
     repositories {
         mavenCentral()
