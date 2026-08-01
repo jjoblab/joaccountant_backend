@@ -14,6 +14,16 @@ import org.springframework.stereotype.Component;
  * certaines {@link OrganizationNature} » — auparavant il n'existait aucune validation
  * croisée (rien n'empêchait {@code SARL + ONG}).
  *
+ * <p><b>V2.6.0 — Domaine {@link OrganizationNature} réduit à 2 valeurs</b> ({@code FOR_PROFIT},
+ * {@code NON_PROFIT}). Les branches {@code PUBLIC_SECTOR}/{@code COOPERATIVE} ont été
+ * retirées de l'enum (voir {@code V90__simplify_organization_nature.sql}). Ce validateur
+ * reste correct : {@code LegalForm.OTHER} accepte désormais {@link OrganizationNature#values()}
+ * qui ne contient plus que les 2 valeurs valides.
+ *
+ * <p><b>Dead code (audit `wizard-audit`)</b> : ce validateur est injecté dans {@code CompanyService}
+ * mais jamais appelé. Conservé pour câblage futur (wire dans {@code applyWizardStep2} ou
+ * {@code createCompany} quand le métier le demandera).
+ *
  * <p>Règles :
  * <ul>
  *   <li>{@code SOLE_PROPRIETORSHIP}, {@code SARL}, {@code SA}, {@code SAS} ⟹

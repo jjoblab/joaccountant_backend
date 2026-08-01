@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import jo.accountant.auth.dto.CompanyUserResponse;
 import jo.accountant.auth.dto.InviteUserRequest;
 import jo.accountant.auth.dto.UpdateUserRoleRequest;
 import jo.accountant.auth.entity.UserCompanyRole;
@@ -47,32 +48,35 @@ public class UserCompanyRoleController {
         this.roleChecker = roleChecker;
     }
 
-    @Operation(summary = "Invite a user to this company",
-        description = "Sends an invitation email via NotificationChannelPort. " +
-                      "The invited user has no access until they accept. " +
-                      "OWNER role cannot be assigned via invitation.")
+    @Operation(summary = "Invite a user to this company (V2.6.0 — wizard refonte)",
+        description = "Sends an invitation email via NotificationChannelPort. The invited user has no access " +
+                      "until they accept. OWNER role cannot be assigned via invitation. " +
+                      "V2.6.0 : if the email does not match an existing account, a new user is created on-the-fly " +
+                      "with a random temp password (the invitee will use the forgot-password flow to set their own). " +
+                      "In that case, `fullName` is required. Requires ADMIN role (OWNER > ADMIN, so ADMIN is the minimum).")
     @ApiResponses({
-        @ApiResponse(responseCode = "201"),
-        @ApiResponse(responseCode = "403", description = "Caller lacks ADMIN/OWNER rights / not in company",
+        @ApiResponse(responseCode = "201", description = "User invited (and created if not existing)",
+            content = @Content(schema = @Schema(implementation = CompanyUserResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Caller lacks ADMIN/OWNER rights / not in company, OR role=OWNER",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-        @ApiResponse(responseCode = "404", description = "Email not registered / company not found",
+        @ApiResponse(responseCode = "404", description = "Company not found",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "409", description = "User already in company",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(responseCode = "422", description = "fullName required for new user / invalid input",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> invite(@CurrentUser UUID callerId,
+    public ResponseEntity<CompanyUserResponse> invite(@CurrentUser UUID callerId,
                                                       @PathVariable UUID companyId,
                                                       @Valid @RequestBody InviteUserRequest req) {
-        roleChecker.ensureRole(companyId, "OWNER");
-        UserCompanyRole saved = userCompanyRoleService.inviteUser(companyId, req.email(), req.role());
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-            "id", saved.getId(),
-            "userId", saved.getUserId(),
-            "companyId", saved.getCompanyId(),
-            "role", saved.getRole(),
-            "invitedAt", saved.getInvitedAt()
-        ));
+        // V2.6.0 — OWNER > ADMIN, so ADMIN is the minimum role required to invite.
+        // (Previously required OWNER — relaxed to ADMIN per wizard refonte spec.)
+        roleChecker.ensureRole(companyId, "ADMIN");
+        UserCompanyRole saved = userCompanyRoleService.inviteUser(
+            companyId, req.email(), req.fullName(), req.role());
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(userCompanyRoleService.toCompanyUserResponse(saved));
     }
 
     @Operation(summary = "Update a user's role in this company")
@@ -126,20 +130,23 @@ public class UserCompanyRoleController {
         );
     }
 
-    @Operation(summary = "List users of this company with their roles")
+    @Operation(summary = "List users of this company with their roles (V2.6.0 — VIEWER allowed)",
+        description = "Returns the list of users (with email + fullName + role + invitedAt + acceptedAt) " +
+                      "for this company. V2.6.0 : access relaxed from ADMIN to VIEWER (a viewer can see " +
+                      "who has access, but cannot invite or change roles). Returns " +
+                      "CompanyUserResponse records.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = CompanyUserResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Caller lacks VIEWER rights / not in company",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
     @GetMapping
-    public List<Map<String, Object>> listUsers(@CurrentUser UUID callerId,
+    public List<CompanyUserResponse> listUsers(@CurrentUser UUID callerId,
                                                 @PathVariable UUID companyId) {
-        roleChecker.ensureRole(companyId, "ADMIN");
-        return userCompanyRoleService.listForCompany(companyId).stream()
-            .map(ucr -> Map.<String, Object>of(
-                "id", ucr.getId(),
-                "userId", ucr.getUserId(),
-                "companyId", ucr.getCompanyId(),
-                "role", ucr.getRole(),
-                "invitedAt", ucr.getInvitedAt(),
-                "acceptedAt", ucr.getAcceptedAt() != null ? ucr.getAcceptedAt() : "null"
-            ))
-            .toList();
+        // V2.6.0 — VIEWER can list users (read-only); previously required ADMIN.
+        roleChecker.ensureRole(companyId, "VIEWER");
+        return userCompanyRoleService.listForCompanyAsResponse(companyId);
     }
 }

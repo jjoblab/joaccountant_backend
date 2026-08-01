@@ -138,10 +138,17 @@ public class CompanyService {
      * et l'utilise pour les requêtes wizard suivantes — pas besoin de re-login ni de fall-back DB.
      *
      * <p>Assigne le rôle OWNER au créateur et le stamp comme createdBy.
+     *
+     * <p><b>V2.6.0 (wizard refonte)</b> — {@code organizationNature} et {@code legalForm}
+     * (nullables) sont désormais passés par le wizard step 1. Si non-null, ils écrasent
+     * les defaults provisoires ({@code FOR_PROFIT} / {@code OTHER}). Si null ou invalide,
+     * on retombe sur les defaults (backward-compatible). Les valeurs invalides lèvent
+     * 422 avec un code d'erreur précis.
      */
     @Transactional
     public CreateCompanyResponse createCompany(UUID creatorUserId, String name,
-                                                String country, String functionalCurrency) {
+                                                String country, String functionalCurrency,
+                                                String organizationNature, String legalForm) {
         validateStep1Inputs(name, country, functionalCurrency);
 
         long current = userCompanyRoleRepository.countByUserId(creatorUserId);
@@ -152,10 +159,13 @@ public class CompanyService {
         company.setName(name.trim());
         company.setCountry(country.toUpperCase());
         company.setFunctionalCurrency(functionalCurrency.toUpperCase());
-        // Defaults provisoires — seront écrasés par les étapes 2 et 3 du wizard.
-        company.setLegalForm(LegalForm.OTHER);
+        // V2.6.0 — organisationNature + legalForm depuis le wizard step 1 (defaults provisoires
+        // conservés si null). Les étapes 2 et 3 du wizard peuvent encore les écraser.
+        company.setOrganizationNature(parseOrganizationNature(organizationNature));
+        company.setLegalForm(parseLegalForm(legalForm));
+        // Les autres champs restent à leurs defaults provisoires — seront écrasés par les
+        // étapes 2 et 3 du wizard.
         company.setSector(Sector.AUTRE);
-        company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
         company.setBusinessTypeCode("CUSTOM");
         company.setPrimaryActivityLabel("");
         company.setAccountingFrameworkId(null);  // positionné à l'étape 3
@@ -714,6 +724,47 @@ public class CompanyService {
         if (functionalCurrency == null || functionalCurrency.length() != 3) {
             throw new ValidationException("FUNCTIONAL_CURRENCY_INVALID",
                 "Functional currency must be an ISO 4217 code (3 letters)");
+        }
+    }
+
+    /**
+     * Parse le champ {@code organizationNature} du payload de création (V2.6.0).
+     *
+     * <p>Accepte les valeurs {@code "FOR_PROFIT"} et {@code "NON_PROFIT"} (case-insensitive,
+     * whitespace-tolerant). {@code null}/blank → {@link OrganizationNature#FOR_PROFIT}
+     * (default provisoire, écrasable par step 2). Valeur hors domaine → 422
+     * {@code ORGANIZATION_NATURE_INVALID}.
+     */
+    private OrganizationNature parseOrganizationNature(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return OrganizationNature.FOR_PROFIT;  // default provisoire
+        }
+        try {
+            return OrganizationNature.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("ORGANIZATION_NATURE_INVALID",
+                "organizationNature must be one of " + java.util.Arrays.toString(OrganizationNature.values())
+                + " — got: " + raw);
+        }
+    }
+
+    /**
+     * Parse le champ {@code legalForm} du payload de création (V2.6.0).
+     *
+     * <p>Accepte les valeurs de l'enum {@link LegalForm} (case-insensitive, whitespace-tolerant).
+     * {@code null}/blank → {@link LegalForm#OTHER} (default provisoire, écrasable par step 2).
+     * Valeur hors domaine → 422 {@code LEGAL_FORM_INVALID}.
+     */
+    private LegalForm parseLegalForm(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return LegalForm.OTHER;  // default provisoire
+        }
+        try {
+            return LegalForm.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("LEGAL_FORM_INVALID",
+                "legalForm must be one of " + java.util.Arrays.toString(LegalForm.values())
+                + " — got: " + raw);
         }
     }
 

@@ -78,7 +78,7 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
     private CompanyWizardResult runWizardForRetailCommerce(UUID userId) {
         TenantContext.setUserId(userId);
         // V8.3 — createCompany retourne désormais un CreateCompanyResponse (record)
-        var created = companyService.createCompany(userId, "Boutique Délice Test", "HT", "HTG");
+        var created = companyService.createCompany(userId, "Boutique Délice Test", "HT", "HTG", null, null);
         UUID companyId = created.company().id();
 
         // Étape 2 — Activité
@@ -248,7 +248,7 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
             TenantContext.setUserId(owner.getId());
             // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
             var created = companyService.createCompany(owner.getId(),
-                "Co Incomplete", "HT", "HTG");
+                "Co Incomplete", "HT", "HTG", null, null);
             UUID companyId = created.company().id();
 
             // Sauter étapes 2 et 3 — directement completeWizard
@@ -265,7 +265,7 @@ class CompleteWizardAtomicIT extends EmbeddedPostgresSupport {
             TenantContext.setUserId(owner.getId());
             // V8.3 — createCompany retourne un CreateCompanyResponse, pas une Company.
             var created = companyService.createCompany(owner.getId(),
-                "Co OutOfOrder", "HT", "HTG");
+                "Co OutOfOrder", "HT", "HTG", null, null);
             UUID companyId = created.company().id();
 
             // Sauter étape 2 — directement étape 3

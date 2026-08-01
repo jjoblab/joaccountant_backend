@@ -123,7 +123,10 @@ public class CompanyController {
                       "acceptés à ce stade. legalForm, sector, accountingFrameworkId et " +
                       "fiscalYearStartMonth doivent être saisis via les étapes 2, 3 et 6 du wizard. " +
                       "§12 : limited to 3 companies per user by default (configurable). " +
-                      "Creator is auto-assigned OWNER role.")
+                      "Creator is auto-assigned OWNER role. " +
+                      "V2.6.0 (wizard refonte) : organizationNature et legalForm (nullables) " +
+                      "sont désormais acceptés optionnellement pour saisir ces infos dès la création " +
+                      "(defaults FOR_PROFIT / OTHER si null).")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Company created",
             content = @Content(schema = @Schema(implementation = CompanyResponse.class),
@@ -135,7 +138,7 @@ public class CompanyController {
                 examples = @ExampleObject(value = """
                     {"type":"https://joaccountant.dev/errors/max_companies_reached","title":"Conflict","status":409,"detail":"You have reached the maximum number of companies (3). Current count: 3. Consider upgrading your subscription to create more.","code":"MAX_COMPANIES_REACHED"}
                     """))),
-        @ApiResponse(responseCode = "422", description = "Invalid input",
+        @ApiResponse(responseCode = "422", description = "Invalid input (incl. V2.6.0 organizationNature/legalForm hors domaine)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -143,7 +146,8 @@ public class CompanyController {
             @CurrentUser java.util.UUID userId,
             @Valid @RequestBody CreateCompanyRequest req) {
         jo.accountant.company.dto.CreateCompanyResponse result =
-            companyService.createCompany(userId, req.name(), req.country(), req.functionalCurrency());
+            companyService.createCompany(userId, req.name(), req.country(), req.functionalCurrency(),
+                req.organizationNature(), req.legalForm());
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 

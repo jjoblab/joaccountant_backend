@@ -24,7 +24,8 @@ import org.hibernate.type.SqlTypes;
  * <p>Restructuration : la modélisation organisationnelle s'articule désormais autour de 5 axes
  * distincts (§4.2 du prompt de restructuration) :
  * <ul>
- *   <li><em>organizationNature</em> — lucratif / non-lucratif / public / coopératif.
+ *   <li><em>organizationNature</em> — lucratif / non-lucratif (V2.6.0 : domaine réduit à 2 valeurs,
+ *       voir {@link OrganizationNature} + migration {@code V90__simplify_organization_nature.sql}).
  *       Filtre les formes juridiques valides (ex. {@code ASSOCIATION}/{@code NGO} ⟹
  *       {@code NON_PROFIT} uniquement).</li>
  *   <li><em>legalForm</em> — juridique pur (SARL, SA, ASSOCIATION...), validée contre la nature.</li>
