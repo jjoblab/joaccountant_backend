@@ -17,7 +17,7 @@ Les démos sont accessibles publiquement (sans login) sur :
 **Profil** : Commerce de détail (alimentation, ménagers, cosmétiques), 4 employés, CA ~6M HTG/an.
 
 **Points clés à montrer** :
-- Multi-taxe TVA 10% + TCA 10% sur livraisons (V67)
+- Multi-taxe TVA 10% + TCA 10% sur livraisons (V78)
 - Stock FIFO avec COGS automatique
 - 13e mois en décembre (Code Travail art. 153)
 - Déclarations DGI mensuelles (TVA + TCA + RS + acompte IS 1%)
@@ -31,7 +31,7 @@ Les démos sont accessibles publiquement (sans login) sur :
 **Points clés à montrer** :
 - Time-billing multi-niveaux (BillableRate projet + ressource)
 - Auto-approbation timesheet bloquée (règle 4 yeux, v7-9)
-- RS 2% retenue par clients + RS 30% non-résidents (V64)
+- RS 2% retenue par clients + RS 30% non-résidents (V75)
 - Multi-taxe TVA + TCA cumulatives sur même facture
 
 **Scénario démo** : « Saisie timesheet → approbation manager → génération facture depuis WIP → RS 2% retenue »

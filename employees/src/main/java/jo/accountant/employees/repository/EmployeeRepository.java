@@ -22,7 +22,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     List<Employee> findByCompanyIdAndStatusOrderByIdAsc(UUID companyId, EmployeeStatus status);
 
     /**
-     * V75 / v8-7 — Liste les employés éligibles au 13e mois pour une année donnée.
+     * V86 / v8-7 — Liste les employés éligibles au 13e mois pour une année donnée.
      *
      * <p>Critères d'éligibilité (Code du Travail Haïti art. 153 + PayrollCalculator) :
      * <ul>

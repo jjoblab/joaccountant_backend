@@ -26,7 +26,7 @@ campagne (pas une écriture par employé, pour limiter le volume).
   `employerContributions` (JSONB — liste des charges patronales), `netPay`,
   `payslipNumber` (via `:document-numbering`, `DocumentType.PAYSLIP`, scopeKey=`"PA"`).
 
-### Structure des lignes `deductions` / `employerContributions` (V40)
+### Structure des lignes `deductions` / `employerContributions` (V51)
 
 Les champs `deductions` (cotisations salariales) et `employerContributions` (cotisations
 patronales) sont des listes JSONB d'objets `DeductionLine`. Chaque ligne a la structure :
@@ -43,7 +43,7 @@ patronales) sont des listes JSONB d'objets `DeductionLine`. Chaque ligne a la st
 Cette structure est **requise pour C. trav. R3243-1** (bulletin de paie doit détailler les
 cotisations par libellé + montant). Elle alimente le bulletin PDF via `:document-generation`.
 
-> **V40** : avant cette version, `DeductionLine` était une structure simplifiée sans `code`
+> **V51** : avant cette version, `DeductionLine` était une structure simplifiée sans `code`
 > ni `label`. Le `PayrollCalculator` enrichit désormais chaque ligne avec le `code` et le
 > `label` de la `ContributionRule` (ou `WithholdingRule`) source.
 
@@ -57,11 +57,11 @@ cotisations par libellé + montant). Elle alimente le bulletin PDF via `:documen
 3. **Calcul brut→net via `WithholdingRule`** du module `:tax` dont
    `applicableThirdPartyTypes` contient `"EMPLOYEE"`. Le calcul est simple au MVP :
    `deduction = grossSalary × rate / 100`. Le net = `grossSalary - sum(deductions)`.
-   **V40 — audit v4.7 §4.1 #3** : si une `ContributionRule` est configurée pour l'entreprise,
+   **V51 — audit v4.7 §4.1 #3** : si une `ContributionRule` est configurée pour l'entreprise,
    le service délègue à **`PayrollCalculator`** qui applique les cotisations par tranches
    (PMSS, CSG abattue, Tranche A/B, charges patronales détaillées par régime
    `FR_GENERAL`/`FR_CADRE`/`FR_NON_CADRE`/`HT_GENERAL`). Les heures sup (+25 % / +50 %),
-   les absences et les congés payés (V49 sur `Employee`) sont intégrés au calcul du brut.
+   les absences et les congés payés (V60 sur `Employee`) sont intégrés au calcul du brut.
    Fallback sur `WithholdingRule` (legacy) si aucune `ContributionRule` n'est configurée.
 4. **Charges patronales** — un taux global configurable via
    `?employerContributionRate=14` à l'appel `calculate` (legacy). Si des `ContributionRule`
@@ -155,7 +155,7 @@ cotisations par libellé + montant). Elle alimente le bulletin PDF via `:documen
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V27__payroll.sql` — tables `payroll_run` et `payslip`.
+- `src/main/resources/db/migration/V38__payroll.sql` — tables `payroll_run` et `payslip`.
   CHECK sur `status` et `period`. Contrainte unique `(company_id, period_year, period_month)`.
   `deductions` et `employer_contributions` en JSONB.
 

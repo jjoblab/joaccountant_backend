@@ -111,13 +111,13 @@ rend l'action définitive — pas par l'utilisateur final.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V6_001__approval_workflow.sql` — tables `approval_rule`
+- `src/main/resources/db/migration/V14__approval_workflow.sql` — tables `approval_rule`
   et `approval_request`. UNIQUE INDEX partiel `uc_approval_rule_active` sur
   `(company_id, action_type) WHERE active = TRUE`. CHECK sur `action_type` (3 valeurs),
   `status` (4 valeurs), `threshold_amount >= 0`, `min_approvals >= 1`. CHECK
   `chk_approval_request_decision` : si `status != 'PENDING'` alors `decided_by` et
   `decided_at` sont requis.
-- `src/main/resources/db/migration/V21_001__approval_count.sql` — Fix S1-FIN : ajout des
+- `src/main/resources/db/migration/V43__approval_count.sql` — Fix S1-FIN : ajout des
   colonnes `approval_count` (INT, default 0) et `approver_user_ids` (JSONB) sur
   `approval_request`, pour supporter le multi-approbateurs (`minApprovals > 1`).
 

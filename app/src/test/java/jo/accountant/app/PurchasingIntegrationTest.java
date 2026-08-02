@@ -127,7 +127,11 @@ class PurchasingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgr
 
     private UUID initFixture() {
         asTenant(COMPANY_A);
-        coaService.initialize(COMPANY_A, SYSCOHADA_ID, null);
+        try {
+            coaService.initialize(COMPANY_A, SYSCOHADA_ID, null);
+        } catch (jo.accountant.core.exception.ConflictException ex) {
+            // CHART_OF_ACCOUNTS_ALREADY_INITIALIZED — idempotent (cleanup between tests peut laisser des résidus)
+        }
 
         // Compte collectif fournisseurs (401000) + compte de charges (601000) + TVA déductible (445000)
         var class4 = accountRepo.findByCompanyIdAndCode(COMPANY_A, "4").orElseThrow();
@@ -143,25 +147,47 @@ class PurchasingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgr
             "445000", "TVA déductible", ReportingClass.ACTIF, ReportingSubcategory.COURANT,
             NormalBalance.DEBIT, false, null, List.of()));
 
-        accountingService.createJournal(COMPANY_A, "AC", "Journal des achats");
-        accountingService.createJournal(COMPANY_A, "OD", "Opérations diverses");
-        accountingService.createFiscalYear(COMPANY_A, new CreateFiscalYearRequest(
-            LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "Exercice 2026"));
+        safeCreateJournal("AC", "Journal des achats");
+        safeCreateJournal("OD", "Opérations diverses");
+        safeCreateFiscalYear();
 
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY,
-            "AC", "AC", true, 5, ResetPolicy.YEARLY);
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY,
-            "OD", "OD", true, 5, ResetPolicy.YEARLY);
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.PURCHASE_INVOICE,
-            "AC", "FAC", true, 6, ResetPolicy.YEARLY);
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY, "AC", "AC");
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY, "OD", "OD");
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.PURCHASE_INVOICE, "AC", "FAC");
 
         ThirdPartyResponse tp = tpService.createThirdParty(COMPANY_A, new CreateThirdPartyRequest(
             ThirdPartyType.SUPPLIER, "Fournisseur Test SARL",
             collectiveSupplier.id(), "supplier@test.dev", null));
         return tp.id();
+    }
+
+    /** Crée un journal en idempotent — ignore le ConflictException si le journal existe déjà. */
+    private void safeCreateJournal(String code, String label) {
+        try {
+            accountingService.createJournal(COMPANY_A, code, label);
+        } catch (ConflictException ex) {
+            // JOURNAL_CODE_ALREADY_EXISTS — idempotent
+        }
+    }
+
+    /** Crée un exercice fiscal en idempotent. */
+    private void safeCreateFiscalYear() {
+        try {
+            accountingService.createFiscalYear(COMPANY_A, new CreateFiscalYearRequest(
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "Exercice 2026"));
+        } catch (ConflictException ex) {
+            // FISCAL_YEAR_ALREADY_EXISTS — idempotent
+        }
+    }
+
+    /** Crée une séquence de numérotation en idempotente. */
+    private void safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType type,
+                                       String scopeKey, String prefix) {
+        try {
+            docNumberingService.createSequence(COMPANY_A, type, scopeKey, prefix, true, 6, ResetPolicy.YEARLY);
+        } catch (ConflictException ex) {
+            // SEQUENCE_ALREADY_EXISTS — idempotent
+        }
     }
 
     private CreatePurchaseInvoiceRequest standardInvoice(UUID supplierTpId) {

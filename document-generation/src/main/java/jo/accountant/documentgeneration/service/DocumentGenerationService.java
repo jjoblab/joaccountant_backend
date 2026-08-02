@@ -18,7 +18,7 @@ import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
 import jo.accountant.documentgeneration.dto.GeneratedDocumentResponse;
 import jo.accountant.documentgeneration.dto.TemplateResponse;
 import jo.accountant.documentgeneration.entity.DocumentTemplate;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.entity.GeneratedDocument;
 import jo.accountant.documentgeneration.event.DocumentGeneratedEvent;
 import jo.accountant.documentgeneration.repository.DocumentTemplateRepository;
@@ -114,7 +114,7 @@ public class DocumentGenerationService {
      * @return le document généré avec storageKey + checksum
      */
     @Transactional
-    public GeneratedDocumentResponse generateDocument(UUID companyId, DocumentType documentType,
+    public GeneratedDocumentResponse generateDocument(UUID companyId, GeneratedDocumentType documentType,
                                                        UUID resourceId, Map<String, Object> variables) {
         if (resourceId == null) {
             throw new ValidationException("RESOURCE_ID_REQUIRED", "resourceId est requis");

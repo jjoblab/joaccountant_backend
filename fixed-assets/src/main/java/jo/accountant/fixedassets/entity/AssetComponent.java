@@ -11,15 +11,15 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Composant d'une immobilisation (Finding #11 — IAS 16 amortissement par composant).
+ * Composant d'une immobilisation (IAS 16 amortissement par composant).
  *
  * <p>IAS 16 §43 impose que chaque partie d'une immobilisation ayant une durée de vie utile
  * différente soit comptabilisée et amortie séparément. Exemple typique : un bâtiment se
  * décompose en :
  * <ul>
- *   <li><b>Structure</b> — durée de vie 50 ans, amortissement linéaire</li>
- *   <li><b>Toiture</b> — durée de vie 20 ans, amortissement linéaire</li>
- *   <li><b>Installations techniques</b> — durée de vie 10 ans, amortissement linéaire</li>
+ * <li><b>Structure</b> — durée de vie 50 ans, amortissement linéaire</li>
+ * <li><b>Toiture</b> — durée de vie 20 ans, amortissement linéaire</li>
+ * <li><b>Installations techniques</b> — durée de vie 10 ans, amortissement linéaire</li>
  * </ul>
  *
  * <p>Chaque composant a son propre coût d'acquisition, sa propre durée de vie et sa propre
@@ -40,57 +40,57 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  */
 @Entity
 @Table(name = "asset_component",
-    uniqueConstraints = @UniqueConstraint(name = "uc_asset_component_asset_code",
-        columnNames = {"asset_id", "code"}))
+ uniqueConstraints = @UniqueConstraint(name = "uc_asset_component_asset_code",
+ columnNames = {"asset_id", "code"}))
 public class AssetComponent extends TenantAwareEntity {
 
-    /** Immobilisation parente (FK logique vers asset.id). */
-    @Column(name = "asset_id", nullable = false)
-    private UUID assetId;
+ /** Immobilisation parente (FK logique vers asset.id). */
+ @Column(name = "asset_id", nullable = false)
+ private UUID assetId;
 
-    /** Code court du composant (ex. "STRUCT", "TOIT", "INSTAL"). Unique par asset. */
-    @Column(name = "code", nullable = false, length = 50)
-    private String code;
+ /** Code court du composant (ex. "STRUCT", "TOIT", "INSTAL"). Unique par asset. */
+ @Column(name = "code", nullable = false, length = 50)
+ private String code;
 
-    @Column(name = "label", nullable = false, length = 200)
-    private String label;
+ @Column(name = "label", nullable = false, length = 200)
+ private String label;
 
-    /** Coût d'acquisition du composant (en devise fonctionnelle). */
-    @Column(name = "acquisition_cost", nullable = false, precision = 19, scale = 4)
-    private BigDecimal acquisitionCost;
+ /** Coût d'acquisition du composant (en devise fonctionnelle). */
+ @Column(name = "acquisition_cost", nullable = false, precision = 19, scale = 4)
+ private BigDecimal acquisitionCost;
 
-    /** Durée de vie utile en années. Convertie en mois (×12) pour l'échéancier. */
-    @Column(name = "useful_life_years", nullable = false)
-    private int usefulLifeYears;
+ /** Durée de vie utile en années. Convertie en mois (×12) pour l'échéancier. */
+ @Column(name = "useful_life_years", nullable = false)
+ private int usefulLifeYears;
 
-    /** Valeur résiduelle du composant (défaut 0). */
-    @Column(name = "residual_value", nullable = false, precision = 19, scale = 4)
-    private BigDecimal residualValue = BigDecimal.ZERO;
+ /** Valeur résiduelle du composant (défaut 0). */
+ @Column(name = "residual_value", nullable = false, precision = 19, scale = 4)
+ private BigDecimal residualValue = BigDecimal.ZERO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "depreciation_method", nullable = false, length = 25)
-    private DepreciationMethod depreciationMethod = DepreciationMethod.STRAIGHT_LINE;
+ @Enumerated(EnumType.STRING)
+ @Column(name = "depreciation_method", nullable = false, length = 25)
+ private DepreciationMethod depreciationMethod = DepreciationMethod.STRAIGHT_LINE;
 
-    public UUID getAssetId() { return assetId; }
-    public void setAssetId(UUID assetId) { this.assetId = assetId; }
+ public UUID getAssetId() { return assetId; }
+ public void setAssetId(UUID assetId) { this.assetId = assetId; }
 
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+ public String getCode() { return code; }
+ public void setCode(String code) { this.code = code; }
 
-    public String getLabel() { return label; }
-    public void setLabel(String label) { this.label = label; }
+ public String getLabel() { return label; }
+ public void setLabel(String label) { this.label = label; }
 
-    public BigDecimal getAcquisitionCost() { return acquisitionCost; }
-    public void setAcquisitionCost(BigDecimal acquisitionCost) { this.acquisitionCost = acquisitionCost; }
+ public BigDecimal getAcquisitionCost() { return acquisitionCost; }
+ public void setAcquisitionCost(BigDecimal acquisitionCost) { this.acquisitionCost = acquisitionCost; }
 
-    public int getUsefulLifeYears() { return usefulLifeYears; }
-    public void setUsefulLifeYears(int usefulLifeYears) { this.usefulLifeYears = usefulLifeYears; }
+ public int getUsefulLifeYears() { return usefulLifeYears; }
+ public void setUsefulLifeYears(int usefulLifeYears) { this.usefulLifeYears = usefulLifeYears; }
 
-    public BigDecimal getResidualValue() { return residualValue; }
-    public void setResidualValue(BigDecimal residualValue) { this.residualValue = residualValue; }
+ public BigDecimal getResidualValue() { return residualValue; }
+ public void setResidualValue(BigDecimal residualValue) { this.residualValue = residualValue; }
 
-    public DepreciationMethod getDepreciationMethod() { return depreciationMethod; }
-    public void setDepreciationMethod(DepreciationMethod depreciationMethod) {
-        this.depreciationMethod = depreciationMethod;
-    }
+ public DepreciationMethod getDepreciationMethod() { return depreciationMethod; }
+ public void setDepreciationMethod(DepreciationMethod depreciationMethod) {
+ this.depreciationMethod = depreciationMethod;
+ }
 }

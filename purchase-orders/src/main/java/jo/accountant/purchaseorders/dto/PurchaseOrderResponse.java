@@ -8,29 +8,29 @@ import java.util.UUID;
 import jo.accountant.purchaseorders.entity.PurchaseOrderStatus;
 
 /**
- * Réponse d'une commande fournisseur (Finding #10).
+ * Réponse d'une commande fournisseur.
  */
 public record PurchaseOrderResponse(
-    UUID id,
-    UUID companyId,
-    UUID supplierId,
-    String supplierName,
-    String orderNumber,
-    LocalDate orderDate,
-    PurchaseOrderStatus status,
-    String currency,
-    BigDecimal totalAmount,
-    List<LineResponse> lines,
-    Instant createdAt,
-    Instant updatedAt
+ UUID id,
+ UUID companyId,
+ UUID supplierId,
+ String supplierName,
+ String orderNumber,
+ LocalDate orderDate,
+ PurchaseOrderStatus status,
+ String currency,
+ BigDecimal totalAmount,
+ List<LineResponse> lines,
+ Instant createdAt,
+ Instant updatedAt
 ) {
-    public record LineResponse(
-        UUID id,
-        UUID itemId,
-        String description,
-        BigDecimal quantity,
-        BigDecimal unitPrice,
-        BigDecimal receivedQuantity,
-        BigDecimal lineTotal
-    ) {}
+ public record LineResponse(
+ UUID id,
+ UUID itemId,
+ String description,
+ BigDecimal quantity,
+ BigDecimal unitPrice,
+ BigDecimal receivedQuantity,
+ BigDecimal lineTotal
+ ) {}
 }

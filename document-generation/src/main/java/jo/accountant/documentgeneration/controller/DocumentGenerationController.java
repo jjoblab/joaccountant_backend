@@ -15,7 +15,7 @@ import jo.accountant.core.security.RoleChecker;
 import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
 import jo.accountant.documentgeneration.dto.GeneratedDocumentResponse;
 import jo.accountant.documentgeneration.dto.TemplateResponse;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -92,7 +92,7 @@ public class DocumentGenerationController {
     public ResponseEntity<GeneratedDocumentResponse> generateDocument(
         @PathVariable UUID companyId,
         @CurrentUser UUID userId,
-        @RequestParam DocumentType documentType,
+        @RequestParam GeneratedDocumentType documentType,
         @RequestParam UUID resourceId,
         @RequestBody(required = false) Map<String, Object> variables) {
         roleChecker.ensureRole(companyId, "BOOKKEEPER");

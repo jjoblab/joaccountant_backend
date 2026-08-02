@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * V78 — v7-6 : Taux OFATMA Accidents par secteur d'activité (Loi OFATMA Haïti).
+ * V89 — v7-6 : Taux OFATMA Accidents par secteur d'activité (Loi OFATMA Haïti).
  *
  * <p>Le taux OFATMA Accidents varie de 0,5% à 6% selon le secteur d'activité de l'entreprise
  * (les secteurs à risque élevé comme la construction paient plus que les secteurs à faible
@@ -19,7 +19,7 @@ import java.util.UUID;
  * résolu par {@code PayrollCalculator.resolveOfatmaAccidentRate} lors du calcul de paie.
  *
  * <p>Si le sector_code est null/blank/inconnu, le taux par défaut 2,00% est utilisé (règle
- * OFATMA_HT_ACCIDENT existante en V57).
+ * OFATMA_HT_ACCIDENT existante en V68).
  */
 @Entity
 @Table(name = "ofatma_sector_rate")

@@ -3,7 +3,7 @@ package jo.accountant.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * R-01 (lot-A-securite) — DTO pour {@code POST /api/v1/auth/login/mfa}.
+ * (lot-A-securite) — DTO pour {@code POST /api/v1/auth/login/mfa}.
  *
  * <p>Remplace les {@code @RequestParam} précédents qui exposaient le
  * {@code mfaChallengeToken} dans la query string (et donc dans les logs nginx/Tomcat,
@@ -17,11 +17,11 @@ import jakarta.validation.constraints.NotBlank;
  * métier côté DTO.
  *
  * @param mfaChallengeToken JWT court (5 min TTL) délivré par {@code POST /api/v1/auth/login}
- *                          quand l'utilisateur a activé la MFA. Non vide.
- * @param code              code TOTP 6 chiffres saisi par l'utilisateur depuis son app
- *                          authenticator (Google Authenticator, Authy, etc.).
+ * quand l'utilisateur a activé la MFA. Non vide.
+ * @param code code TOTP 6 chiffres saisi par l'utilisateur depuis son app
+ * authenticator (Google Authenticator, Authy, etc.).
  */
 public record MfaLoginRequest(
-    @NotBlank String mfaChallengeToken,
-    int code
+ @NotBlank String mfaChallengeToken,
+ int code
 ) {}

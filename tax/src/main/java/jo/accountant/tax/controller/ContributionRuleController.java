@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/tax/contribution-rules")
-@Tag(name = "Tax", description = "Règles fiscales + TVA (débits/encaissements, V44) + cotisations (V40)")
+@Tag(name = "Tax", description = "Règles fiscales + TVA (débits/encaissements, V55) + cotisations (V51)")
 public class ContributionRuleController {
 
     private final ContributionRuleRepository repository;

@@ -70,7 +70,7 @@ demo-data/
 │       ├── HaitianProducts.java           ← 30 produits retail (alimentation, ménagers, cosmétiques)
 │       └── ExchangeRateFixtures.java      ← taux BRH HTG/USD 2024-2026 mensuels
 ├── src/main/resources/db/migration/
-│   └── V83__demo_data_module.sql          ← table demo_seed_history + colonne is_demo
+│   └── V94__demo_data_module.sql          ← table demo_seed_history + colonne is_demo
 └── README.md                              ← ce fichier
 ```
 

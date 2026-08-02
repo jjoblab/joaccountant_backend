@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Création d'une société (wizard étape 1 — restructuration 2026-07-24).
+ * Création d'une société (wizard étape 1 — ).
  *
  * <p><strong>Changement cassant</strong> (documenté dans {@code ENDPOINTS_CHANGELOG.md} et
  * {@code MOBILE_SYNC_2026-07-24_business-type-restructuring.md}) : les champs
@@ -30,16 +30,16 @@ import jakarta.validation.constraints.Size;
  * un enum sérialisé.
  *
  * <ul>
- *   <li>{@code organizationNature} ∈ {"FOR_PROFIT", "NON_PROFIT"} (V90 — domaine réduit).</li>
- *   <li>{@code legalForm} ∈ {"SOLE_PROPRIETORSHIP","SARL","SA","SAS","NGO","ASSOCIATION","OTHER"}.</li>
+ * <li>{@code organizationNature} ∈ {"FOR_PROFIT", "NON_PROFIT"} (V101 — domaine réduit).</li>
+ * <li>{@code legalForm} ∈ {"SOLE_PROPRIETORSHIP","SARL","SA","SAS","NGO","ASSOCIATION","OTHER"}.</li>
  * </ul>
  */
 public record CreateCompanyRequest(
-    @NotBlank String name,
-    @NotBlank @Size(min = 2, max = 2) String country,
-    @NotBlank @Size(min = 3, max = 3) String functionalCurrency,
-    /** Nullable — "FOR_PROFIT" ou "NON_PROFIT". Default "FOR_PROFIT" si null. */
-    String organizationNature,
-    /** Nullable — ex. "SARL", "SA", "NGO", "ASSOCIATION", "OTHER". Default "OTHER" si null. */
-    String legalForm
+ @NotBlank String name,
+ @NotBlank @Size(min = 2, max = 2) String country,
+ @NotBlank @Size(min = 3, max = 3) String functionalCurrency,
+ /** Nullable — "FOR_PROFIT" ou "NON_PROFIT". Default "FOR_PROFIT" si null. */
+ String organizationNature,
+ /** Nullable — ex. "SARL", "SA", "NGO", "ASSOCIATION", "OTHER". Default "OTHER" si null. */
+ String legalForm
 ) {}

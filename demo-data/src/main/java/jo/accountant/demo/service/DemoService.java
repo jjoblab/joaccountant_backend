@@ -656,7 +656,7 @@ public class DemoService {
     return switch (segment) {
       case "RETAIL_COMMERCE" ->
           List.of(
-              "Multi-taxe TVA 10% + TCA 10% sur livraisons (V67)",
+              "Multi-taxe TVA 10% + TCA 10% sur livraisons (V78)",
               "Stock FIFO avec COGS automatique",
               "13e mois en décembre (Code Travail art. 153)",
               "Déclarations DGI mensuelles complètes (TVA+TCA+RS+acompte IS)");
@@ -664,8 +664,8 @@ public class DemoService {
           List.of(
               "Time-billing multi-niveaux (BillableRate projet+ressource)",
               "Auto-approbation timesheet bloquée (règle 4 yeux, v7-9)",
-              "RS 2% retenue par clients + RS 30% non-résidents (V64)",
-              "Multi-taxe TVA+TCA cumulatives sur même ligne (V67)");
+              "RS 2% retenue par clients + RS 30% non-résidents (V75)",
+              "Multi-taxe TVA+TCA cumulatives sur même ligne (V78)");
       case "NGO_HUMANITARIAN" ->
           List.of(
               "4 bailleurs (USAID/EU/BM/CRS) + formats structurés (USAID SF-425, EU PRAG, BM)",

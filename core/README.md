@@ -13,7 +13,7 @@ Il définit notamment :
 
 - les **données de référence** des 6 référentiels comptables supportés (`IFRS_FULL`,
   `IFRS_SME`, `SYSCOHADA_REVISED`, `PCG_FRANCE`, `PCN_HAITI`, `PCGR_CANADA`) via l'entité
-  `AccountingFramework` et la migration `V1_002__core_seeds.sql` ;
+  `AccountingFramework` et la migration `V3__core_seeds.sql` ;
 - les **devises ISO 4217** (`Currency` — HTG/USD/EUR/XOF/XAF/CAD/JPY) avec leur nombre de
   décimales (`decimals`) qui devrait piloter tous les arrondis (voir point d'attention M14) ;
 - le **multi-tenant** via `TenantAwareEntity`, `TenantContext` (ThreadLocal), un
@@ -62,7 +62,7 @@ Il définit notamment :
    queryable hors contexte tenant).
 3. Une erreur métier prévisible ne renvoie **jamais** 500 — elle lève une sous-classe de
    `BusinessException` mappée par `GlobalExceptionHandler`.
-4. Les 6 référentiels sont seedés en V1_002 et ne sont pas éditables par les utilisateurs.
+4. Les 6 référentiels sont seedés en V3 et ne sont pas éditables par les utilisateurs.
 
 ### Cycle de vie des objets
 
@@ -97,12 +97,12 @@ Tous les autres modules (`:auth`, `:company`, `:audit-trail`, `:chart-of-account
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V1_001__core_audit_log.sql` — table `audit_log` (la SEULE
+- `src/main/resources/db/migration/V2__core_audit_log.sql` — table `audit_log` (la SEULE
   entité du projet qui n'est PAS `TenantAwareEntity` ; `company_id` est nullable pour survivre
   à la suppression d'un tenant).
-- `src/main/resources/db/migration/V1_002__core_seeds.sql` — création des tables
+- `src/main/resources/db/migration/V3__core_seeds.sql` — création des tables
   `accounting_framework` et `currency`, et seed des 6 référentiels + 7 devises.
-- `src/main/resources/db/migration/V20_001__exchange_rate.sql` — table `exchange_rate`
+- `src/main/resources/db/migration/V42__exchange_rate.sql` — table `exchange_rate`
   (Vague 2 item 2.5 — multi-devises actif). Contrainte unique sur
   `(company_id, from_currency, to_currency, as_of_date)`.
 

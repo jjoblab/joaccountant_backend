@@ -15,7 +15,7 @@ package jo.accountant.chartofaccounts.entity;
  *       (ex. immobilisations, capitaux permanents, emprunts LT)</li>
  *   <li>{@link #N_A} — non applicable (ex. comptes de produits/charges qui ne se prêtent
  *       pas à la distinction courant/non-courant, ou comptes de regroupement)</li>
- *   <li>{@link #CTA} — V74 — v7-3 : Cumulative Translation Adjustment (IAS 21). Écart de
+ *   <li>{@link #CTA} — V85 — v7-3 : Cumulative Translation Adjustment (IAS 21). Écart de
  *       conversion isolé en capitaux propres lorsque le bilan est présenté dans une devise
  *       différente de la devise fonctionnelle. Compte 108 PCN/SYSCOHADA.</li>
  * </ul>
@@ -24,5 +24,5 @@ public enum ReportingSubcategory {
     COURANT,
     NON_COURANT,
     N_A,
-    CTA  // V74 — v7-3 : Cumulative Translation Adjustment (IAS 21)
+    CTA  // V85 — v7-3 : Cumulative Translation Adjustment (IAS 21)
 }

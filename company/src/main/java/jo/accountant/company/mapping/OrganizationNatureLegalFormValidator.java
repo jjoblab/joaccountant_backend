@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>V2.6.0 — Domaine {@link OrganizationNature} réduit à 2 valeurs</b> ({@code FOR_PROFIT},
  * {@code NON_PROFIT}). Les branches {@code PUBLIC_SECTOR}/{@code COOPERATIVE} ont été
- * retirées de l'enum (voir {@code V90__simplify_organization_nature.sql}). Ce validateur
+ * retirées de l'enum (voir {@code V101__simplify_organization_nature.sql}). Ce validateur
  * reste correct : {@code LegalForm.OTHER} accepte désormais {@link OrganizationNature#values()}
  * qui ne contient plus que les 2 valeurs valides.
  *

@@ -45,7 +45,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p><b>Seed strategy</b>: the PDF templates render correctly with empty data (zero runs / zero
  * payslips → all totals are "0", line lists are empty). The {@code cnss-return} endpoint
  * specifically aggregates payslip deductions/employerContributions matching codes
- * {@code CNSS_HT* / OFATMA_HT* / AST_HT*} (V57 ContributionRule) — seeding a realistic payslip
+ * {@code CNSS_HT* / OFATMA_HT* / AST_HT*} (V68 ContributionRule) — seeding a realistic payslip
  * with that JSONB structure is non-trivial and out of scope for this integration test (the
  * endpoint + PDF rendering is what we want to verify, not the JSONB aggregation logic which is
  * covered by the existing {@code PayrollIntegrationTest}). The empty-data PDF is sufficient to
@@ -129,7 +129,7 @@ class PayrollPdfIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgr
     // ======================================================================
     //
     // NOTE — the cnss-return endpoint aggregates payslip deductions matching codes
-    // CNSS_HT* / OFATMA_HT* / AST_HT* (V57 ContributionRule). Seeding a realistic payslip
+    // CNSS_HT* / OFATMA_HT* / AST_HT* (V68 ContributionRule). Seeding a realistic payslip
     // with that JSONB structure is non-trivial — the existing PayrollIntegrationTest covers
     // the full cycle (create employee → create run → calculate → approve → payslips with
     // deductions). For this PDF integration test, we verify that the endpoint + PDF

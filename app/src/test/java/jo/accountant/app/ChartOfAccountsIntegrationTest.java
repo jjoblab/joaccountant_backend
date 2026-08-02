@@ -69,7 +69,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ActiveProfiles("test")
 class ChartOfAccountsIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSupport {
 
-    /** IDs stables des référentiels (cf. V1_002__core_seeds.sql). */
+    /** IDs stables des référentiels (cf. V3__core_seeds.sql). */
     private static final UUID SYSCOHADA_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID IFRS_FULL_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID PCN_HAITI_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");

@@ -32,7 +32,7 @@ public class GeneratedDocument extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 25)
-    private DocumentType documentType;
+    private GeneratedDocumentType documentType;
 
     /** ID de l'entité cible (ex. ID d'une facture, d'un reçu de don, etc.). */
     @Column(name = "resource_id", nullable = false)
@@ -52,8 +52,8 @@ public class GeneratedDocument extends TenantAwareEntity {
     @Column(name = "checksum", nullable = false, length = 64)
     private String checksum;
 
-    public DocumentType getDocumentType() { return documentType; }
-    public void setDocumentType(DocumentType documentType) { this.documentType = documentType; }
+    public GeneratedDocumentType getDocumentType() { return documentType; }
+    public void setDocumentType(GeneratedDocumentType documentType) { this.documentType = documentType; }
 
     public UUID getResourceId() { return resourceId; }
     public void setResourceId(UUID resourceId) { this.resourceId = resourceId; }

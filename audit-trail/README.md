@@ -70,9 +70,9 @@ modules métier qui **publient** des `AuditEvent` (ou des événements implémen
 
 ## Tables / migrations Flyway
 
-- `core/src/main/resources/db/migration/V1_001__core_audit_log.sql` — table `audit_log` et
+- `core/src/main/resources/db/migration/V2__core_audit_log.sql` — table `audit_log` et
   3 index : `(company_id, entity_type, entity_id)`, `occurred_at`, `correlation_id`. La table
-  est créée dans le module `:core` (pas dans `:audit-trail`) car la migration V1_001 est
+  est créée dans le module `:core` (pas dans `:audit-trail`) car la migration V2 est
   antérieure à la séparation des modules dans le cycle de build.
 
 ## Points d'attention (hérités de l'audit)

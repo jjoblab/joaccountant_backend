@@ -22,7 +22,7 @@ package jo.accountant.fundsgrants.entity;
  * </ul>
  *
  * <p>Codé en dur dans la contrainte CHECK de la table {@code donor_report_line}
- * (migration V69).
+ * (migration V80).
  */
 public enum CostCategory {
     PERSONNEL,

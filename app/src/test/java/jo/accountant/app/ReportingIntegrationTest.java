@@ -27,7 +27,7 @@ import jo.accountant.core.framework.ReportingClass;
 import jo.accountant.core.port.NotificationChannelPort;
 import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.repository.DocumentTemplateRepository;
 import jo.accountant.documentgeneration.repository.GeneratedDocumentRepository;
 import jo.accountant.documentnumbering.entity.ResetPolicy;
@@ -148,9 +148,9 @@ class ReportingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
 
         // Templates pour document-generation
         docGenService.createTemplate(COMPANY_A, new CreateTemplateRequest(
-            DocumentType.BALANCE_SHEET, "<h1>Bilan</h1><p>Total actif: <span th:text=\"${totalAssets}\"></span></p>", true));
+            GeneratedDocumentType.BALANCE_SHEET, "<h1>Bilan</h1><p>Total actif: <span th:text=\"${totalAssets}\"></span></p>", true));
         docGenService.createTemplate(COMPANY_A, new CreateTemplateRequest(
-            DocumentType.INCOME_STATEMENT, "<h1>Compte de résultat</h1><p>Résultat: <span th:text=\"${netResult}\"></span></p>", true));
+            GeneratedDocumentType.INCOME_STATEMENT, "<h1>Compte de résultat</h1><p>Résultat: <span th:text=\"${netResult}\"></span></p>", true));
 
         // Poster une écriture
         postEntry("521 D 5000, 701000 C 5000");

@@ -27,7 +27,7 @@ Pour un avoir (`CREDIT_NOTE`), débit/crédit sont inversés.
   via `:document-numbering` à l'émission), `issueDate`, `dueDate`, `currency`, `subtotal`
   (HT), `taxAmount` (TVA), `totalAmount` (TTC), `paidAmount` (cumulé), `creditNoteForInvoiceId`
   (si avoir — référence la facture corrigée), `journalEntryId` (ID de l'écriture comptable),
-  `isReverseCharge` (**V45** — autoliquidation intra-UE B2B, art. 283 2 nonies CGI ; défaut
+  `isReverseCharge` (**V56** — autoliquidation intra-UE B2B, art. 283 2 nonies CGI ; défaut
   `false`. Si `true`, l'écriture crédite le compte 447 « TDA autoliquidation »
   (`taxMappingCode="VAT_REVERSE_CHARGE"`, fallback `4447`/`447`) au lieu du 443, et la
   facture porte la mention « Autoliquidation »).
@@ -70,7 +70,7 @@ Pour un avoir (`CREDIT_NOTE`), débit/crédit sont inversés.
     module) génère un XML Factur-X profil **BASICWL** (Cross Industry Invoice D16B, conforme
     **EN 16931**) pour conformité Loi 2023-314 (facturation électronique B2B obligatoire en
     France depuis le 1er septembre 2026). Le XML contient `SellerTradeParty` +
-    `BuyerTradeParty` (SIRET, TVA intracommunautaire — depuis les champs V42),
+    `BuyerTradeParty` (SIRET, TVA intracommunautaire — depuis les champs V53),
     `ApplicableTradeTax` par taux de TVA, et `SpecifiedTradeSettlementHeaderMonetarySummation`.
     Exposé via `GET /invoices/{id}/factur-x`. L'embarquement PDF/A-3 (`/factur-x-pdf`)
     n'est pas encore activé — retourne 501 tant que `openpdf`/`iText` n'est pas ajouté au
@@ -96,11 +96,11 @@ Pour un avoir (`CREDIT_NOTE`), débit/crédit sont inversés.
 | GET | `/api/v1/companies/{companyId}/invoicing/invoices?fiscalYearId=&page=&size=` | **Paginé (Finding #3)** — retourne une `Page<InvoiceResponse>`. `?page=0&size=20` (défaut, `size` capped à 200). `?fiscalYearId=` filtre par exercice via `resolveFiscalYear`. | — |
 | GET | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}` | Récupère une facture par ID (deep-linking mobile). | 404 |
 | POST | `/api/v1/companies/{companyId}/invoicing/invoices` | Crée une facture DRAFT. Corps : `{thirdPartyId, type?, currency?, issueDate?, dueDate?, lines: [...]}` | 404 `ThirdParty`, 422 `ITEM_AND_TIMESHEET_EXCLUSIVE` |
-| POST | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/issue` | Émet une facture (DRAFT → ISSUED) + génère écriture. Si `isReverseCharge=true` (V45), crédite le compte 447 (autoliquidation) au lieu de 443. | 404, 409 `INVOICE_NOT_DRAFT`, 422 `SALES_ACCOUNT_NOT_FOUND`/`VAT_ACCOUNT_NOT_FOUND`/`VAT_REVERSE_CHARGE_ACCOUNT_NOT_FOUND`/`JOURNAL_VT_NOT_FOUND`/`PERIOD_NOT_FOUND`/`PERIOD_LOCKED` |
+| POST | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/issue` | Émet une facture (DRAFT → ISSUED) + génère écriture. Si `isReverseCharge=true` (V56), crédite le compte 447 (autoliquidation) au lieu de 443. | 404, 409 `INVOICE_NOT_DRAFT`, 422 `SALES_ACCOUNT_NOT_FOUND`/`VAT_ACCOUNT_NOT_FOUND`/`VAT_REVERSE_CHARGE_ACCOUNT_NOT_FOUND`/`JOURNAL_VT_NOT_FOUND`/`PERIOD_NOT_FOUND`/`PERIOD_LOCKED` |
 | POST | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/record-payment` | Enregistre un règlement | 404, 409 `INVOICE_NOT_ISSUED`/`INVOICE_VOID`, 422 `PAYMENT_AMOUNT_INVALID` |
 | POST | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/credit-note` | Crée un avoir pour une facture | 404, 422 |
 | GET | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/pdf` | Génère le PDF de la facture | 404 |
-| GET | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/factur-x` | **V45 — audit v4.7 §4.1 Finding #5** — Génère le XML Factur-X (CII D16B, profil BASICWL, EN 16931). Loi 2023-314. Content-Type `application/xml`. | 404 |
+| GET | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/factur-x` | **V56 — audit v4.7 §4.1 Finding #5** — Génère le XML Factur-X (CII D16B, profil BASICWL, EN 16931). Loi 2023-314. Content-Type `application/xml`. | 404 |
 | GET | `/api/v1/companies/{companyId}/invoicing/invoices/{invoiceId}/factur-x-pdf` | **TODO** — PDF/A-3 avec XML Factur-X embarqué comme `EmbeddedFile` (`AFRelationship=/Data`). **Retourne 501 Not Implemented** tant que `openpdf`/`iText` n'est pas bundlé (header `X-Error-Reason: PDF_A3_FACTURX_DEPENDENCY_MISSING`). | 404, 501 |
 
 ## Relations avec les autres modules
@@ -133,10 +133,10 @@ Pour un avoir (`CREDIT_NOTE`), débit/crédit sont inversés.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V14_001__invoicing.sql` — tables `sales_invoice` et
+- `src/main/resources/db/migration/V36__invoicing.sql` — tables `sales_invoice` et
   `invoice_line`. CHECK sur `type` (2 valeurs), `status` (5 valeurs), `total_amount >= 0`.
   Index sur `(company_id, status)`, `(company_id, third_party_id)`, `(invoice_id)`.
-- `src/main/resources/db/migration/V45__sales_invoice_reverse_charge.sql` — **V45 — Finding #7**.
+- `src/main/resources/db/migration/V56__sales_invoice_reverse_charge.sql` — **V56 — Finding #7**.
   Ajoute la colonne `is_reverse_charge BOOLEAN NOT NULL DEFAULT FALSE` sur `sales_invoice`.
   Positionnée à TRUE à l'émission quand le tiers client ET l'entreprise émettrice disposent
   tous deux d'un numéro de TVA intracommunautaire (Article 283, 2 nonies du CGI). L'écriture

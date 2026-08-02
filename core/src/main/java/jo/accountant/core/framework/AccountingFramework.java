@@ -15,7 +15,7 @@ import org.hibernate.type.SqlTypes;
  * Données de référence décrivant chaque référentiel comptable supporté (§4).
  *
  * <p>Seed-only — non modifiable par les utilisateurs. Chargé par la migration
- * {@code V1_002__core_seeds.sql}.
+ * {@code V3__core_seeds.sql}.
  *
  * <p>N'EST PAS une {@link jo.accountant.core.tenant.TenantAwareEntity} — les référentiels sont des
  * données de référence globales partagées par tous les tenants.

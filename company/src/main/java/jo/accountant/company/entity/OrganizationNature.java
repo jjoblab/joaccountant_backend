@@ -19,7 +19,7 @@ package jo.accountant.company.entity;
  *
  * <p>Les anciennes valeurs {@code PUBLIC_SECTOR} et {@code COOPERATIVE} ont été retirées
  * car (a) aucun seed {@code BusinessType} ne les utilisait et (b) le wizard refonte ne
- * propose que 2 choix à l'utilisateur. La migration Flyway {@code V90__simplify_organization_nature.sql}
+ * propose que 2 choix à l'utilisateur. La migration Flyway {@code V101__simplify_organization_nature.sql}
  * re-saupoudre les éventuelles lignes existantes vers {@code FOR_PROFIT} (safe default)
  * et remplace les contraintes {@code CHECK} ({@code chk_companies_organization_nature}
  * et {@code chk_business_type_nature}) pour n'accepter que ces 2 valeurs.

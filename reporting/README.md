@@ -10,7 +10,7 @@ pour les 6 référentiels — il utilise `reportingClass` et `taxMappingCode` de
 pour classifier (audit M4), jamais le code du référentiel.
 
 C'est un module d'**orchestration** : il ne persiste aucune donnée propre (la migration
-V19_001 est vide — `SELECT 1`). Il délègue :
+V41 est vide — `SELECT 1`). Il délègue :
 - Les exports PDF à `:document-generation` (bilan, compte de résultat, grand livre,
   rapport bailleur).
 - Les exports CSV à son propre service (grand livre, balance générale).
@@ -194,7 +194,7 @@ reporting dédiés dans le tableau ci-dessus. C'est volontaire au MVP :
   et `stock_movement_register` via le gate `INVENTORY` ; immobilisations pour `SCHOOL` →
   `fixed_assets_register`) sont déjà couvertes par les statements sectoriels existants quand
   le module correspondant est activé. `HOSPITAL` active `INVENTORY` par défaut (correction
-  V23 — stocks de médicaments/consommables).
+  V34 — stocks de médicaments/consommables).
 - Les rapports réglementaires spécifiques (ex. déclaration d'agrément sanitaire, livret
   scolaire) sont hors périmètre v1 — à cadrer dans un futur prompt dédié une fois le socle
   validé en production.
@@ -248,7 +248,7 @@ reporting dédiés dans le tableau ci-dessus. C'est volontaire au MVP :
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V19_001__reporting.sql` — **vide** (`SELECT 1`). Le
+- `src/main/resources/db/migration/V41__reporting.sql` — **vide** (`SELECT 1`). Le
   module ne persiste aucune donnée propre. Les PDF générés sont stockés via
   `:document-generation` (table `generated_document`). Les exports CSV sont générés à la
   volée et renvoyés directement dans la réponse HTTP.

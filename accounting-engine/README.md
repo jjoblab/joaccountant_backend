@@ -46,9 +46,9 @@ métier `invoicing`, `fixed-assets`, `inventory`, `funds-grants`).
 ### Règles métier clés
 
 1. **Équilibre débit = crédit** vérifié à 3 niveaux : applicatif à la création, applicatif au
-   postage, et **trigger DB statement-level (V36)** `trg_journal_entry_balance_ins` / `_upd` /
+   postage, et **trigger DB statement-level (V47)** `trg_journal_entry_balance_ins` / `_upd` /
    `_del` (3 triggers `FOR EACH STATEMENT` avec transition tables — complexité O(N) au lieu
-   de O(N²)). Le trigger original (V7_002) était `FOR EACH ROW` et exécutait un `SELECT SUM`
+   de O(N²)). Le trigger original (V16) était `FOR EACH ROW` et exécutait un `SELECT SUM`
    par ligne — sur une écriture de 500 lignes (paie), cela faisait 500 `SUM` queries × scan
    moyen ~250 lignes = 125K lignes lues (latence >10s). Le nouveau trigger ne fait qu'un seul
    `SUM` par `journal_entry_id` distinct touché par la statement.
@@ -136,7 +136,7 @@ La résolution de l'exercice fiscal à utiliser pour les endpoints de données e
 **centralisée** dans `AccountingEngineService.resolveFiscalYear(companyId, fiscalYearId)`.
 C'est le **§2 Option A** du prompt de stabilisation : **résolution par requête, sans état
 partagé**. Aucune colonne shared-state n'est lue par les endpoints de données — la colonne
-`active_fiscal_year_id` (V32) est conservée uniquement pour rétro-compatibilité avec les
+`active_fiscal_year_id` (V43) est conservée uniquement pour rétro-compatibilité avec les
 endpoints dépréciés `POST /fiscal-years/{id}/activate` et `GET /fiscal-years/active`.
 
 ### Algorithme de résolution (ordre strict)
@@ -161,7 +161,7 @@ L'Option B (colonne `active_fiscal_year_id` mutable via `POST /activate`) a ét�
 - **Simplicité côté mobile** : un sélecteur d'exercice dans l'UI qui transmet
   `?fiscalYearId=` est plus prévisible que demuter un état serveur.
 - **Pas de migration de données** : on n'a pas besoin de backfiller `active_fiscal_year_id`
-  pour les sociétés existantes (la colonne V32 reste nullable et peut être `NULL` pour
+  pour les sociétés existantes (la colonne V43 reste nullable et peut être `NULL` pour
   toutes les entreprises — les endpoints de données n'en ont pas besoin).
 
 ### Endpoints consommateurs du paramètre `?fiscalYearId=`
@@ -238,20 +238,20 @@ directement depuis le code applicatif — préférer `resolveFiscalYear(companyI
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V7_002__accounting_engine.sql` — tables `fiscal_year`,
+- `src/main/resources/db/migration/V16__accounting_engine.sql` — tables `fiscal_year`,
   `fiscal_period`, `journal`, `journal_entry`, `journal_line`,
   `journal_line_analytical_tag`. Contraintes CHECK sur `status` (4 valeurs pour
   `journal_entry`, 3 pour `fiscal_year`, 2 pour `fiscal_period`), `source_module` (6
   valeurs), `chk_jl_debit_credit` (≥ 0), `chk_jl_exclusive` (mutuellement exclusifs),
   `chk_jlat_percentage` (0 < p ≤ 100). Unique `(company_id, idempotency_key)` sur
   `journal_entry`. **Trigger DB original `check_journal_entry_balance`** (FOR EACH ROW,
-  remplacé en V36).
-- `src/main/resources/db/migration/V7_003__accounting_engine_trigger_post.sql` — activation
-  du trigger original (V7_002) — désormais remplacé par V36.
-- `src/main/resources/db/migration/V28__accounting_engine_source_module_expansion.sql` —
+  remplacé en V47).
+- `src/main/resources/db/migration/V17__accounting_engine_trigger_post.sql` — activation
+  du trigger original (V16) — désormais remplacé par V47.
+- `src/main/resources/db/migration/V39__accounting_engine_source_module_expansion.sql` —
   élargit le CHECK `source_module` pour accepter les nouveaux modules `PURCHASING`,
   `EXPENSES`, `PAYROLL`, `FX_OPERATIONS`.
-- `src/main/resources/db/migration/V36__audit_perf_indexes_and_stmt_trigger.sql` —
+- `src/main/resources/db/migration/V47__audit_perf_indexes_and_stmt_trigger.sql` —
   **audit v4.7 §7.2 #4 + §7.3 (session 18)**. Remplace le trigger `FOR EACH ROW` par 3
   triggers `FOR EACH STATEMENT` (un par événement `INSERT`/`UPDATE`/`DELETE`) utilisant les
   transition tables `new_rows`/`old_rows`. La fonction `check_journal_entry_balance_stmt()`
@@ -265,11 +265,11 @@ directement depuis le code applicatif — préférer `resolveFiscalYear(companyI
   `audit_log (entity_type, entity_id, occurred_at DESC)`, `audit_log (actor_user_id,
   occurred_at DESC) WHERE actor_user_id IS NOT NULL`, `audit_log (action, occurred_at DESC)
   WHERE entity_type='SecurityEvent'`.
-- `src/main/resources/db/migration/V38__audit_perf_indexes_complement.sql` — **audit v4.7
+- `src/main/resources/db/migration/V49__audit_perf_indexes_complement.sql` — **audit v4.7
   §7.3 (session 19)**. Index composites complémentaires : `tb_timesheet_entry (company_id,
   resource_user_id, entry_date)`, `account (company_id, reporting_class, active)`,
   `account (parent_id) WHERE company_id IS NOT NULL`.
-- `src/main/resources/db/migration/V51__postgres_rls.sql` — **V51 (session 25) — PostgreSQL
+- `src/main/resources/db/migration/V62__postgres_rls.sql` — **V62 (session 25) — PostgreSQL
   Row-Level Security**. Active RLS + policy `tenant_isolation` + `FORCE ROW LEVEL SECURITY`
   sur 6 tables financières à fort impact réglementaire : `journal_line`, `journal_entry`,
   `sales_invoice`, `purchase_invoice`, `third_party`, `expense_report`. La policy filtre par
@@ -280,7 +280,7 @@ directement depuis le code applicatif — préférer `resolveFiscalYear(companyI
   RLS reste "armed but inactive" (la GUC vaut NULL → policy FALSE → toutes les lignes
   filtrées). Le rôle Flyway doit disposer de `BYPASSRLS` pour que les migrations futures
   puissent `INSERT`/`UPDATE` ces tables sans être bloquées par RLS.
-- `company/src/main/resources/db/migration/V32__company_active_fiscal_year.sql` — **suite 4**
+- `company/src/main/resources/db/migration/V43__company_active_fiscal_year.sql` — **suite 4**
   (migration du module `:company`, mais documentée ici car elle porte l'état que
   `resolveFiscalYear` remplace). Ajoute la colonne nullable `active_fiscal_year_id` (UUID)
   sur `companies`. Depuis la suite 4, **cette colonne n'est plus lue par les endpoints de
@@ -291,9 +291,9 @@ directement depuis le code applicatif — préférer `resolveFiscalYear(companyI
   migration côté `:accounting-engine` — la résolution per-request ne nécessite pas de
   persistance.
 
-### PostgreSQL Row-Level Security (V51 — defense in depth)
+### PostgreSQL Row-Level Security (V62 — defense in depth)
 
-Le module `:accounting-engine` héberge la migration **V51__postgres_rls.sql** qui active RLS
+Le module `:accounting-engine` héberge la migration **V62__postgres_rls.sql** qui active RLS
 sur 6 tables financières critiques (`journal_line`, `journal_entry`, `sales_invoice`,
 `purchase_invoice`, `third_party`, `expense_report`). Voir la section « Tables / migrations
 Flyway » ci-dessus pour le détail. RLS est une **deuxième ligne de défense** en plus du filtre
@@ -330,11 +330,11 @@ retourne FALSE et aucune ligne n'est visible.
   `"reversal-" + originalId` (déterministe). Un retry renvoie l'écriture existante (409
   Conflict si la clé est déjà utilisée — breaking pour un client qui s'appuyait sur
   l'ancien comportement buggy).
-- ⚠️ **M3 — Trigger DB incomplet** : `check_journal_entry_balance_stmt` (V36) ne vérifie
+- ⚠️ **M3 — Trigger DB incomplet** : `check_journal_entry_balance_stmt` (V47) ne vérifie
   l'équilibre QUE sur les écritures POSTED. Une écriture peut être postée via SQL direct en
   violant l'invariant (le trigger laisse passer), mais en usage API normal la vérification
   applicative au postage empêche cela. Pas d'impact direct sur un client mobile conforme.
-  **Amélioration V36 (session 18)** : le trigger est désormais `FOR EACH STATEMENT` avec
+  **Amélioration V47 (session 18)** : le trigger est désormais `FOR EACH STATEMENT` avec
   transition tables (3 triggers séparés `INSERT`/`UPDATE`/`DELETE`). Complexité O(N) au lieu
   de O(N²) — sur une écriture de 500 lignes, 1 `SUM` au lieu de 500.
 - ⚠️ **M12 — `approverEmails = List.of()` chez les modules métier** : `invoicing`,

@@ -121,7 +121,7 @@ la facture fournisseur, mais ce chaînage n'est pas implémenté).
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V11_001__inventory.sql` — tables `warehouse`, `item`,
+- `src/main/resources/db/migration/V22__inventory.sql` — tables `warehouse`, `item`,
   `stock_valuation_layer`, `stock_move`. Unique `(company_id, sku)` sur `item`. CHECK sur
   `costing_method` (2 valeurs), `direction` (3 valeurs), `quantity > 0`. Index sur
   `(company_id, item_id)` et `(warehouse_id, item_id)` pour `stock_valuation_layer`.
@@ -187,4 +187,4 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `INVENTORY` (voir `V3_003__business_type.sql`).
+`business_type_module` inclut `INVENTORY` (voir `V8__business_type.sql`).

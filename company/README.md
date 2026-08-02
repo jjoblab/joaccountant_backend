@@ -115,7 +115,7 @@ Cette restructuration corrige deux bugs documentés :
    `:bank-reconciliation`, `:purchasing`, `:fx-operations`) appellent `moduleAccessGuard.ensureEnabled(companyId, ModuleCode.XXX)`
    en tête. 403 `MODULE_NOT_ENABLED` si non activé. Les modules always-on (`:invoicing`,
    `:expenses`, `:employees`, `:payroll`) ne sont pas concernés. `:fx-operations` est
-   désormais sectoriel depuis la stabilisation 2026-07-25 (suite 4 §3) — voir V33 pour le
+   désormais sectoriel depuis la stabilisation 2026-07-25 (suite 4 §3) — voir V44 pour le
    mapping par défaut.
 9. **Anti-fuite d'existence** — `getCompanyForUser` lève 404 (pas 403) si l'utilisateur n'a
    pas accès, pour ne pas révéler l'existence de la société (§3.9).
@@ -140,7 +140,7 @@ Cette restructuration corrige deux bugs documentés :
 | GET | `/api/v1/companies` | Liste les sociétés accessibles à l'utilisateur courant | — |
 | POST | `/api/v1/companies` | Crée une société (wizard step 1 — identité uniquement) — créateur auto-OWNER | 409 `MAX_COMPANIES_REACHED`, 422 `COMPANY_NAME_REQUIRED`/`COUNTRY_INVALID`/`FUNCTIONAL_CURRENCY_INVALID` |
 | GET | `/api/v1/companies/{companyId}` | Récupère une société (404 si pas accès) | 404 `Company` |
-| PATCH | `/api/v1/companies/{companyId}/legal` | **V42 — audit v4.7 §4.2** — Met à jour les champs légaux `siret`/`vatNumber`/`nif`/`address` (ADMIN seulement). Editable après `wizardCompleted=true` car relève de la conformité réglementaire (mentions légales factures CGI art. 289 + Factur-X). Sémantique : seuls les champs non-nuls sont écrasés ; une chaîne `blank` efface le champ. Publie `CompanyLegalFieldsUpdatedEvent` pour audit-trail (audit `LEGAL_FIELDS_UPDATED`, PII masquée). | 403 `INSUFFICIENT_ROLE`, 404, 422 pattern mismatch (SIRET 14 chiffres, VAT `[A-Z]{2}[0-9A-Z]+`, etc.) |
+| PATCH | `/api/v1/companies/{companyId}/legal` | **V53 — audit v4.7 §4.2** — Met à jour les champs légaux `siret`/`vatNumber`/`nif`/`address` (ADMIN seulement). Editable après `wizardCompleted=true` car relève de la conformité réglementaire (mentions légales factures CGI art. 289 + Factur-X). Sémantique : seuls les champs non-nuls sont écrasés ; une chaîne `blank` efface le champ. Publie `CompanyLegalFieldsUpdatedEvent` pour audit-trail (audit `LEGAL_FIELDS_UPDATED`, PII masquée). | 403 `INSUFFICIENT_ROLE`, 404, 422 pattern mismatch (SIRET 14 chiffres, VAT `[A-Z]{2}[0-9A-Z]+`, etc.) |
 | PATCH | `/api/v1/companies/{companyId}/wizard/{step}` | Met à jour une étape du wizard (1-9) | 404, 409 `WIZARD_ALREADY_COMPLETED`/`WIZARD_STEP_OUT_OF_ORDER`, 422 `INVALID_WIZARD_STEP`/`LEGAL_FORM_INVALID`/`LEGAL_FORM_NATURE_MISMATCH`/`SECTOR_INVALID`/`ORGANIZATION_NATURE_INVALID`/`BUSINESS_TYPE_CODE_REQUIRED`/`BUSINESS_TYPE_NOT_FOUND`/`ACCOUNTING_FRAMEWORK_ID_INVALID`/`ACCOUNTING_FRAMEWORK_NOT_FOUND`/`FISCAL_YEAR_START_INVALID`/`REQUIRED_FIELD_MISSING` |
 | POST | `/api/v1/companies/{companyId}/wizard/complete` | Finalise le wizard, active les modules sectoriels | 404, 409 `WIZARD_ALREADY_COMPLETED`/`WIZARD_STEP_INCOMPLETE` |
 | GET | `/api/v1/companies/{companyId}/modules` | Liste les modules activés pour cette société | — |
@@ -180,31 +180,31 @@ Cette restructuration corrige deux bugs documentés :
 
 - **Publie** : `CompanyCreatedEvent` (à la création), `CompanyWizardCompletedEvent` (à la
   complétion du wizard — déclenche notamment l'initialisation du plan comptable via
-  `:chart-of-accounts`), `CompanyLegalFieldsUpdatedEvent` (**V42** — à chaque
+  `:chart-of-accounts`), `CompanyLegalFieldsUpdatedEvent` (**V53** — à chaque
   `PATCH /companies/{id}/legal`, audit `LEGAL_FIELDS_UPDATED` avec oldValue/newValue JSON
   + PII masquée).
 - **Consomme** : aucun.
 
 ## Tables / migrations Flyway
 
-- `V3_001__company_companies.sql` — table `companies`. CHECK sur `legal_form`, `sector`,
+- `V6__company_companies.sql` — table `companies`. CHECK sur `legal_form`, `sector`,
   `fiscal_year_start_month`, `country`, `functional_currency`. FK vers
   `accounting_framework(id)`.
-- `V3_002__company_modules.sql` — table `company_module`. Contrainte unique
+- `V7__company_modules.sql` — table `company_module`. Contrainte unique
   `(company_id, module_code)`. FK différée `user_company_role.company_id → companies(id)`.
-- `V3_003__business_type.sql` — tables `business_type`, `business_type_module`,
+- `V8__business_type.sql` — tables `business_type`, `business_type_module`,
   `business_type_required_field` + seed des 7 types métier de base + mappings modules +
   champs requis (numéro d'agrément pour école, licence sanitaire pour hôpital, etc.).
-- `V3_004__company_business_type_columns.sql` — ajout des colonnes `organization_nature`,
+- `V9__company_business_type_columns.sql` — ajout des colonnes `organization_nature`,
   `business_type_code`, `primary_activity_label`, `extra_attributes` (JSONB) sur `companies`
   + contraintes CHECK + FK vers `business_type(code)`.
-- `V3_005__company_backfill_business_type.sql` — backfill des lignes existantes (renommage
+- `V10__company_backfill_business_type.sql` — backfill des lignes existantes (renommage
   `ONG` → `ONG_HUMANITAIRE`, `MIXTE` → `AUTRE` ; mapping ancien `sector` →
   `business_type_code` par défaut ; `organization_nature` déduite de `legal_form`) +
   élargissement du CHECK sur `sector` (10 valeurs) + `business_type_code NOT NULL`.
-- `V3_006__company_drop_framework_not_null.sql` — `accounting_framework_id` devient
+- `V11__company_drop_framework_not_null.sql` — `accounting_framework_id` devient
   nullable (positionné à l'étape 6 du wizard, plus à l'étape 1).
-- `V23__business_type_catalog_expansion.sql` — **restructuration 2026-07-24 (suite — Partie A)** :
+- `V34__business_type_catalog_expansion.sql` — **restructuration 2026-07-24 (suite — Partie A)** :
   - Élargit le CHECK `chk_btm_module_code` pour autoriser `PURCHASING`, `EXPENSES`,
     `EMPLOYEES`, `PAYROLL` (préalable aux INSERT ci-dessous).
   - Ajoute 3 nouveaux types métier COMMERCE : `WHOLESALE_COMMERCE`, `MIXED_COMMERCE`,
@@ -213,24 +213,24 @@ Cette restructuration corrige deux bugs documentés :
     médicaments/consommables).
   - Ajoute `PURCHASING` sur `RETAIL_COMMERCE`, `PROFESSIONAL_SERVICES`, `NGO_HUMANITARIAN`,
     `ACCOUNTING_FIRM`, `SCHOOL`, `HOSPITAL` (cohérence — tout le monde achète quelque chose).
-- `V32__company_active_fiscal_year.sql` — **stabilisation 2026-07-25 (suite 4)** : ajoute la
+- `V43__company_active_fiscal_year.sql` — **stabilisation 2026-07-25 (suite 4)** : ajoute la
   colonne nullable `active_fiscal_year_id` (UUID) sur `companies`. Cette colonne n'est plus
   lue par les endpoints de données depuis la suite 4 — la résolution de l'exercice fiscal
   passe désormais par `AccountingEngineService.resolveFiscalYear(companyId, fiscalYearId)`
   (per-request, sans shared state). Conservée pour rétro-compatibilité avec les endpoints
   dépréciés `POST /fiscal-years/{id}/activate` et `GET /fiscal-years/active`.
-- `V33__fx_operations_module.sql` — **stabilisation 2026-07-25 (suite 4 §3)** : élargit le
+- `V44__fx_operations_module.sql` — **stabilisation 2026-07-25 (suite 4 §3)** : élargit le
   CHECK `chk_btm_module_code` pour autoriser `FX_OPERATIONS` (le 23<sup>e</sup> code de
   l'enum `ModuleCode`) et mappe `FX_OPERATIONS` par défaut sur 6 types métier :
   `RETAIL_COMMERCE`, `WHOLESALE_COMMERCE`, `MIXED_COMMERCE`, `ECOMMERCE`, `NGO_HUMANITARIAN`,
   `HOSPITAL`. Pour les autres types métier, le module s'active via le feature toggle
   `POST /api/v1/companies/{companyId}/modules/FX_OPERATIONS/activate`.
-- `V34__business_type_catalog_expansion_service.sql` — **stabilisation 2026-07-25 (suite 4)** :
+- `V45__business_type_catalog_expansion_service.sql` — **stabilisation 2026-07-25 (suite 4)** :
   ajoute 3 nouveaux types métier SERVICE : `IT_CONSULTING`, `CREATIVE_AGENCY`,
   `MAINTENANCE_SERVICES` (mêmes modules que `PROFESSIONAL_SERVICES` — distinction
   descriptive/UX seulement). Aucun `BusinessTypeRequiredField` ajouté pour ces 3 types
   au MVP (étape 7 du wizard accepte un payload vide).
-- `V42__company_thirdparty_legal_fields.sql` — **audit v4.7 §4.2 (session 7)**. Ajoute les
+- `V53__company_thirdparty_legal_fields.sql` — **audit v4.7 §4.2 (session 7)**. Ajoute les
   colonnes légales `siret` (VARCHAR 14, pattern 14 chiffres), `vat_number` (VARCHAR 20,
   pattern `[A-Z]{2}[0-9A-Z]+`), `nif` (VARCHAR 30, NIF/Numéro d'identification fiscale) et
   `address` (TEXT) sur `companies` **et** sur `third_party` (migration partagée avec le
@@ -238,7 +238,7 @@ Cette restructuration corrige deux bugs documentés :
   (CGI art. 289) et le Factur-X (`SellerTradeParty` / `BuyerTradeParty`). Exposés via
   `PATCH /companies/{id}/legal` et `ThirdPartyResponse`.
 
-## CompanyResponse DTO (V42)
+## CompanyResponse DTO (V53)
 
 La réponse `CompanyResponse` expose désormais les champs légaux (audit v4.7 §4.2) :
 
@@ -271,9 +271,9 @@ Ces champs sont éditables après `wizardCompleted=true` (conformité réglement
 `CompanyLegalFieldsUpdatedEvent` → trace d'audit `LEGAL_FIELDS_UPDATED` avec old/new JSON
 (PII masquée).
 
-## Catalogue de types métier — extensions SERVICE (V34)
+## Catalogue de types métier — extensions SERVICE (V45)
 
-Au-delà des 3 variantes COMMERCE ajoutées en V23 (`WHOLESALE_COMMERCE`, `MIXED_COMMERCE`,
+Au-delà des 3 variantes COMMERCE ajoutées en V34 (`WHOLESALE_COMMERCE`, `MIXED_COMMERCE`,
 `ECOMMERCE`), la vague 2026-07-25 (suite 4) enrichit le secteur `SERVICE` avec 3 nouveaux
 types métier. Ils ont tous `defaultOrganizationNature = FOR_PROFIT`,
 `defaultSector = SERVICE`, et le **même mapping modules que `PROFESSIONAL_SERVICES`**
@@ -286,7 +286,7 @@ types métier. Ils ont tous `defaultOrganizationNature = FOR_PROFIT`,
 | `MAINTENANCE_SERVICES` | Services de maintenance et réparation | `FOR_PROFIT` | `SERVICE` | `TIME_BILLING`, `FIXED_ASSETS`, `BANK_RECONCILIATION`, `TAX`, `PURCHASING` | — |
 
 Le catalogue de types métier actifs passe donc de **10 à 13 entrées** (hors `CUSTOM`) :
-7 d'origine (V3_003) + 3 COMMERCE (V23) + 3 SERVICE (V34) + `CUSTOM`. Les 3 nouvelles
+7 d'origine (V8) + 3 COMMERCE (V34) + 3 SERVICE (V45) + `CUSTOM`. Les 3 nouvelles
 entrées sont visibles via `GET /api/v1/business-types` (sans filtre) et via
 `GET /api/v1/business-types?sector=SERVICE` (filtre sectoriel — renvoie les 4 types SERVICE
 : `PROFESSIONAL_SERVICES`, `IT_CONSULTING`, `CREATIVE_AGENCY`, `MAINTENANCE_SERVICES`).
@@ -307,7 +307,7 @@ mobile détaillé.
   200/201 et reçoit désormais 403. Le gate `:fx-operations` a été ajouté par la
   stabilisation 2026-07-25 (suite 4 §3). Voir `ENDPOINTS_CHANGELOG.md` pour le détail par
   endpoint.
-- ⚠️ **`Sector` élargi à 10 valeurs, `MIXTE` retiré** — backfill automatique en V3_005
+- ⚠️ **`Sector` élargi à 10 valeurs, `MIXTE` retiré** — backfill automatique en V10
   (`MIXTE` → `AUTRE`, `ONG` → `ONG_HUMANITAIRE`).
 - ✅ **`CUSTOM` remplace `MIXTE`** et active réellement la sélection manuelle de modules
   à l'étape 8 du wizard (correction du bug documenté).

@@ -96,7 +96,7 @@ Le framework se compose de 7 fichiers dans `invoicing/src/main/java/jo/accountan
 | Fichier | Rôle |
 |---------|------|
 | `ElectronicSignatureService.java` | Interface — `sign(byte[], DocumentType, UUID)` et `verify(byte[])`. |
-| `DocumentType.java` | Enum : INVOICE, CREDIT_NOTE, PAYSHP, FINANCIAL_STATEMENT. |
+| `SignableDocumentType.java` | Enum : INVOICE, CREDIT_NOTE, PAYSLIP, FINANCIAL_STATEMENT. |
 | `SignatureResult.java` | Record : signedBytes, certificateSerialNumber, certificateIssuer, signedAt, tsaTimestamp, signatureAlgorithm. |
 | `NoOpElectronicSignatureService.java` | Implémentation par défaut (dev/test) — retourne le document non signé. |
 | `XAdESSignatureService.java` | Squelette XAdES (désactivé par défaut) — TODO intégration xades4j. |

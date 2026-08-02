@@ -13,7 +13,7 @@ package jo.accountant.fundsgrants.entity;
  * </ul>
  *
  * <p>Codé en dur dans la contrainte CHECK de la table {@code donor_report_line}
- * (migration V69) — toute extension doit passer par une migration complémentaire.
+ * (migration V80) — toute extension doit passer par une migration complémentaire.
  */
 public enum DonorType {
     USAID,

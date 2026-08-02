@@ -6,17 +6,17 @@ import java.util.UUID;
 import jo.accountant.fixedassets.entity.DepreciationMethod;
 
 /**
- * Réponse d'un composant d'immobilisation (Finding #11 — IAS 16).
+ * Réponse d'un composant d'immobilisation (IAS 16).
  */
 public record AssetComponentResponse(
-    UUID id,
-    UUID assetId,
-    String code,
-    String label,
-    BigDecimal acquisitionCost,
-    int usefulLifeYears,
-    BigDecimal residualValue,
-    DepreciationMethod depreciationMethod,
-    Instant createdAt,
-    Instant updatedAt
+ UUID id,
+ UUID assetId,
+ String code,
+ String label,
+ BigDecimal acquisitionCost,
+ int usefulLifeYears,
+ BigDecimal residualValue,
+ DepreciationMethod depreciationMethod,
+ Instant createdAt,
+ Instant updatedAt
 ) {}

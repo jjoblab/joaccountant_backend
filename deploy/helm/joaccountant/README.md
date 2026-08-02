@@ -63,7 +63,7 @@ env:
 secrets:
   dbPassword: "<your-db-password>"
   jwtSecret: "<your-jwt-secret-at-least-256-bits-long>"
-  # Audit v4.7 §6.3 — clé de chiffrement AES-256-GCM pour les secrets TOTP MFA (V41)
+  # Audit v4.7 §6.3 — clé de chiffrement AES-256-GCM pour les secrets TOTP MFA (V52)
   mfaEncryptionKey: "<32-char-secret-from-Vault>"
 
 persistence:
@@ -158,21 +158,21 @@ La stratégie `RollingUpdate` avec `maxSurge=1, maxUnavailable=0` garantit le **
 
 Le backend v5.2 introduit 3 schémas DB additionnels à considérer pour le sizing :
 
-- **Spring Batch** (V52) — tables `BATCH_*` (8 tables : job_instance, job_execution,
+- **Spring Batch** (V63) — tables `BATCH_*` (8 tables : job_instance, job_execution,
   job_execution_params, step_execution, step_execution_context, job_execution_context).
   Volume attendu : 1 ligne par exécution de Job (lancés via `BatchController`). Pour 1 an
   d'exploitation avec ~12 campagnes de paie + 4 clôtures d'exercice : ~16 lignes. Négligeable.
-- **RLS PostgreSQL** (V51) — `ENABLE ROW LEVEL SECURITY` + `FORCE` sur 6 tables financières.
+- **RLS PostgreSQL** (V62) — `ENABLE ROW LEVEL SECURITY` + `FORCE` sur 6 tables financières.
   Pas de table additionnelle — la policy est attachée à la table existante. Aucun impact
   sizing, mais le rôle Flyway doit disposer de `BYPASSRLS`.
-- **MFA** (V41) — table `mfa_secret` (1 ligne par utilisateur ayant activé la MFA).
+- **MFA** (V52) — table `mfa_secret` (1 ligne par utilisateur ayant activé la MFA).
   Volume attendu : ~10-100 lignes pour une PME. Négligeable.
 
 ## Secrets additionnels (v5.x)
 
 Outre `DB_PASSWORD` et `APP_JWT_SECRET`, le chart doit fournir (via ConfigMap/Secret) :
 
-- `APP_MFA_ENCRYPTION_KEY` (V41) — clé AES-256-GCM (32 caractères) pour chiffrer les
+- `APP_MFA_ENCRYPTION_KEY` (V52) — clé AES-256-GCM (32 caractères) pour chiffrer les
   secrets TOTP MFA en base. **À externaliser dans Vault/KMS en prod** (ne JAMAIS committer
   en clair dans le chart). Si non positionné, fallback sur une valeur dev-only
   (`dev-only-mfa-key-please-override-32-chars`) — refuser le démarrage en profil prod.

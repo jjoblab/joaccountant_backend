@@ -92,7 +92,7 @@ transition qui rend le document définitif — jamais à l'état brouillon.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V4_001__document_numbering.sql` — tables
+- `src/main/resources/db/migration/V12__document_numbering.sql` — tables
   `document_sequence_config` et `document_sequence_counter`. Contrainte unique
   `(company_id, document_type, scope_key)` sur la config ; `(sequence_config_id, period_key)`
   sur le compteur. CHECK sur `document_type`, `reset_policy`, `padding` (1-12),

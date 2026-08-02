@@ -358,6 +358,10 @@ class ArchUnitTest {
     void invoicingEntitiesAreTenantAware() {
         classes().that().resideInAPackage("jo.accountant.invoicing.entity..")
             .and().areAnnotatedWith(jakarta.persistence.Entity.class)
+            // InvoiceLineTax est une entité enfant d'InvoiceLine (accès via InvoiceLine IDs,
+            // déjà company-scoped). Pas de colonne companyId propre — l'isolation tenant est
+            // garantie par le parent. Exemption légitime.
+            .and().doNotHaveSimpleName("InvoiceLineTax")
             .should().beAssignableTo(jo.accountant.core.tenant.TenantAwareEntity.class)
             .check(classes);
     }
@@ -426,6 +430,10 @@ class ArchUnitTest {
     void taxEntitiesExist() {
         classes().that().resideInAPackage("jo.accountant.tax.entity..")
             .and().areAnnotatedWith(jakarta.persistence.Entity.class)
+            // TaxCreditCarriedForward n'est pas une "règle" mais un enregistrement de crédit
+            // fiscal reporté (TVA/RS/TCA). La convention "ends with Rule" pré-dates cette
+            // entité introduite en V70 (Lot B R-23). Exemption légitime.
+            .and().doNotHaveSimpleName("TaxCreditCarriedForward")
             .should().haveSimpleNameEndingWith("Rule")
             .check(classes);
     }
@@ -504,6 +512,10 @@ class ArchUnitTest {
     void payrollEntitiesAreTenantAware() {
         classes().that().resideInAPackage("jo.accountant.payroll.entity..")
             .and().areAnnotatedWith(jakarta.persistence.Entity.class)
+            // OfatmaSectorRate est une table de référence globale (taux sectoriels OFATMA
+            // Haïti — applicables à toutes les entreprises du pays). Pas company-scoped.
+            // Exemption légitime — similaire à CorporateTaxRule (tax) qui est aussi global.
+            .and().doNotHaveSimpleName("OfatmaSectorRate")
             .should().beAssignableTo(jo.accountant.core.tenant.TenantAwareEntity.class)
             .check(classes);
     }
@@ -622,14 +634,28 @@ class ArchUnitTest {
         // Predicate pour filtrer les méthodes findBy*/countBy*
         // Exempte les méthodes contenant "CompanyIdIsNull" — elles cherchent les templates globaux
         // (companyId=null, partagés entre tenants) — cas légitime sans paramètre companyId.
+        // Exempte aussi les repositories de tables de référence globales (CorporateTaxRule,
+        // OfatmaSectorRate) et les méthodes de lookup par ID parent (InvoiceLineTax par
+        // InvoiceLine, Payslip par PayrollRun) — l'isolation tenant est garantie par le parent.
         com.tngtech.archunit.base.DescribedPredicate<com.tngtech.archunit.core.domain.JavaMethod> isFindByOrCountBy =
             new com.tngtech.archunit.base.DescribedPredicate<com.tngtech.archunit.core.domain.JavaMethod>(
-                "is findBy* or countBy* (excluding CompanyIdIsNull methods)") {
+                "is findBy* or countBy* (excluding exempted methods)") {
                 @Override
                 public boolean test(com.tngtech.archunit.core.domain.JavaMethod method) {
                     String name = method.getName();
-                    return (name.startsWith("findBy") || name.startsWith("countBy"))
-                        && !name.contains("CompanyIdIsNull");  // exemption : templates globaux
+                    if (!(name.startsWith("findBy") || name.startsWith("countBy"))) return false;
+                    // Exemption 1 : templates globaux (companyId=null)
+                    if (name.contains("CompanyIdIsNull")) return false;
+                    // Exemption 2 : tables de référence globales (non company-scoped)
+                    String ownerName = method.getOwner().getSimpleName();
+                    if ("CorporateTaxRuleRepository".equals(ownerName)) return false;  // règles IS par pays
+                    if ("OfatmaSectorRateRepository".equals(ownerName)) return false;  // taux OFATMA Haïti
+                    // Exemption 3 : entités enfants accédées via ID parent (déjà company-scoped)
+                    if ("InvoiceLineTaxRepository".equals(ownerName)
+                        && name.startsWith("findByInvoiceLineId")) return false;  // child of InvoiceLine
+                    if ("PayslipRepository".equals(ownerName)
+                        && name.startsWith("findByRunIdIn")) return false;  // child of PayrollRun
+                    return true;
                 }
             };
 
@@ -660,6 +686,116 @@ class ArchUnitTest {
             .and(isFindByOrCountBy)
             .should(haveUuidParam)
             .because("audit v4.7 §5.1 Finding #1 — repositories on TenantAwareEntity must scope queries by companyId to prevent IDOR");
+
+        rule.check(classes);
+    }
+
+    /**
+     * Rule 11 — Tâche 6 du prompt {@code PROMPT_AGENT_IA_CORRECTIONS-1.md}.
+     *
+     * <p>Garde-fou anti-régression : toute méthode publique annotée {@code @GetMapping}/
+     * {@code @PostMapping}/{@code @PutMapping}/{@code @PatchMapping}/{@code @DeleteMapping}
+     * dans une classe se terminant par {@code Controller} et dont le {@code @RequestMapping}
+     * de classe contient {@code {companyId}} doit appeler une méthode de {@link jo.accountant.core.security.RoleChecker}
+     * quelque part dans son corps.
+     *
+     * <p>Ceci empêche qu'un futur module reproduise l'anomalie critique corrigée en Tâche 1
+     * (un contrôleur company-scoped sans {@code roleChecker.ensureRole} → faille multi-tenant
+     * où n'importe quel utilisateur authentifié peut lire/écrire les données d'une autre entreprise).
+     *
+     * <p><b>Implémentation</b> : inspecte les appels de méthode dans le corps de chaque endpoint
+     * via {@code JavaMethod.getCallsFromSelf()}. On vérifie qu'au moins un appel cible une méthode
+     * déclarée sur {@code RoleChecker} (typiquement {@code ensureRole}). Cette approche couvre
+     * aussi les appels indirects via le pattern {@code roleChecker.ensureRole(...)} injecté par
+     * constructeur.
+     *
+     * <p><b>Exemptions</b> : les contrôleurs non company-scoped (pas de {@code {companyId}} dans
+     * le {@code @RequestMapping} de classe) ne sont pas concernés — ils ne manipulent pas de
+     * données tenant-spécifiques (ex: {@code /api/v1/auth/login}, {@code /api/v1/demos}).
+     */
+    @Test
+    @DisplayName("Rule 11 — Tous les endpoints company-scoped doivent appeler RoleChecker (anti-régression Task 1)")
+    void companyScopedEndpointsMustCallRoleChecker() {
+        // Predicate : classe dont le nom finit par "Controller" ET dont le @RequestMapping de classe
+        // contient "{companyId}" dans sa valeur (path).
+        com.tngtech.archunit.base.DescribedPredicate<com.tngtech.archunit.core.domain.JavaClass> isCompanyScopedController =
+            new com.tngtech.archunit.base.DescribedPredicate<com.tngtech.archunit.core.domain.JavaClass>(
+                "is a @RestController with class-level @RequestMapping containing {companyId}") {
+                @Override
+                public boolean test(com.tngtech.archunit.core.domain.JavaClass clazz) {
+                    if (!clazz.getSimpleName().endsWith("Controller")) return false;
+                    // Look for @RequestMapping annotation on the class itself
+                    return clazz.getAnnotations().stream()
+                        .filter(a -> a.getRawType().getName().equals(
+                            org.springframework.web.bind.annotation.RequestMapping.class.getName()))
+                        .anyMatch(a -> {
+                            // The annotation's "value" property contains the path array
+                            Object value = a.tryGetExplicitlyDeclaredProperty("value").orElse(null);
+                            if (value == null) {
+                                value = a.tryGetExplicitlyDeclaredProperty("path").orElse(null);
+                            }
+                            if (value instanceof Object[] arr) {
+                                for (Object v : arr) {
+                                    if (v != null && v.toString().contains("{companyId}")) {
+                                        return true;
+                                    }
+                                }
+                            } else if (value != null && value.toString().contains("{companyId}")) {
+                                return true;
+                            }
+                            return false;
+                        });
+                }
+            };
+
+        // ArchCondition : la méthode doit appeler au moins une méthode de RoleChecker dans son corps.
+        // Exception : méthodes explicites d'acceptation d'invitation (l'utilisateur invité n'a
+        // PAS encore de rôle sur la company — c'est justement l'invitation qu'il accepte — donc
+        // roleChecker.ensureRole échouerait. La sécurité est garantie par callerId.equals(userId)
+        // vérifié dans la méthode).
+        com.tngtech.archunit.lang.ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> callsRoleChecker =
+            new com.tngtech.archunit.lang.ArchCondition<com.tngtech.archunit.core.domain.JavaMethod>(
+                "call a method on RoleChecker (typically ensureRole)") {
+                @Override
+                public void check(com.tngtech.archunit.core.domain.JavaMethod method,
+                                    com.tngtech.archunit.lang.ConditionEvents events) {
+                    // Exemption : acceptInvitation — cas où l'utilisateur n'a pas encore de rôle
+                    // (il est en train d'accepter l'invitation qui lui donnera ce rôle).
+                    // La sécurité est garantie par callerId.equals(userId) dans le corps.
+                    if ("acceptInvitation".equals(method.getName())) {
+                        return;  // exemption légitime
+                    }
+                    boolean callsRoleChecker = method.getCallsFromSelf().stream()
+                        .anyMatch(call -> {
+                            com.tngtech.archunit.core.domain.JavaClass targetOwner = call.getTargetOwner();
+                            return targetOwner != null
+                                && "jo.accountant.core.security.RoleChecker".equals(targetOwner.getName());
+                        });
+                    if (!callsRoleChecker) {
+                        events.add(com.tngtech.archunit.lang.SimpleConditionEvent.violated(
+                            method,
+                            "Endpoint " + method.getFullName() + " does not call RoleChecker. "
+                            + "All company-scoped endpoints (in classes with @RequestMapping containing {companyId}) "
+                            + "MUST call roleChecker.ensureRole(...) as their first statement to enforce multi-tenant "
+                            + "isolation (cf. Task 1 of PROMPT_AGENT_IA_CORRECTIONS-1.md — PurchaseOrdersController "
+                            + "vulnerability fixed). Exception: methods named 'acceptInvitation' where the user "
+                            + "does not yet have a role on the company (security enforced via callerId.equals(userId))."));
+                    }
+                }
+            };
+
+        com.tngtech.archunit.lang.ArchRule rule = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+            .that().areAnnotatedWith(org.springframework.web.bind.annotation.GetMapping.class)
+            .or().areAnnotatedWith(org.springframework.web.bind.annotation.PostMapping.class)
+            .or().areAnnotatedWith(org.springframework.web.bind.annotation.PutMapping.class)
+            .or().areAnnotatedWith(org.springframework.web.bind.annotation.PatchMapping.class)
+            .or().areAnnotatedWith(org.springframework.web.bind.annotation.DeleteMapping.class)
+            .and().areDeclaredInClassesThat(isCompanyScopedController)
+            .should(callsRoleChecker)
+            .because("Task 1 du prompt — tout endpoint company-scoped doit appeler RoleChecker.ensureRole "
+                + "pour vérifier (1) que l'utilisateur a un rôle suffisant et (2) que la company ciblée "
+                + "fait partie de celles auxquelles il a accès (claim JWT 'companies'). Sans cet appel, "
+                + "n'importe quel utilisateur authentifié peut accéder aux données d'une autre entreprise.");
 
         rule.check(classes);
     }

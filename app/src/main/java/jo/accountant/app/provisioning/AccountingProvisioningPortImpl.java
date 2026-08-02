@@ -224,7 +224,7 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
     // ── 5. Règles TVA par défaut ────────────────────────────────────────────────
 
     private int createDefaultTaxRules(Company company, String vatModeStr) {
-        // Seeds globaux V55 couvrent déjà Haïti (TVA_HT_10, TCA_HT_2/5/10) — pas besoin
+        // Seeds globaux V66 couvrent déjà Haïti (TVA_HT_10, TCA_HT_2/5/10) — pas besoin
         // de créer des règles pour HT. Pour la France, créer une TVA standard 20% sans
         // comptes (ils seront résolus au premier usage). Pour les autres pays, no-op.
         if (!"FR".equalsIgnoreCase(company.getCountry())) {

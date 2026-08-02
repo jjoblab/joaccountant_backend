@@ -123,7 +123,7 @@ class Phase1IntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSu
         Company company = companyRepository.findById(created.company().id()).orElseThrow();
 
         // Étape 2 — Activité + type métier (fusionne anciennes étapes 3+4+5+7+8).
-        // Champs spécifiques au type métier (extraAttributes) selon V3_003 seeds.
+        // Champs spécifiques au type métier (extraAttributes) selon V8 seeds.
         java.util.Map<String, Object> extraAttrs = switch (businessTypeCode) {
             case "NGO_HUMANITARIAN" -> java.util.Map.of("donor_reporting_currency", "USD");
             case "SCHOOL" -> java.util.Map.of("ministry_approval_number", "MIN-1234");

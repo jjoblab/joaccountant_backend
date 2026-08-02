@@ -54,7 +54,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/admin/batch")
-@Tag(name = "Batch Admin", description = "Jobs Spring Batch (paie + clôture annuelle) — V52")
+@Tag(name = "Batch Admin", description = "Jobs Spring Batch (paie + clôture annuelle) — V63")
 public class BatchController {
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchController.class);

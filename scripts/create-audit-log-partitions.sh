@@ -8,7 +8,7 @@
 # Cron recommandé :
 #   25 23 * * * /opt/joaccountant/scripts/create-audit-log-partitions.sh >> /var/log/joaccountant/create-partitions.log 2>&1
 #
-# Prérequis : la fonction create_audit_log_partition() doit exister (migration V62).
+# Prérequis : la fonction create_audit_log_partition() doit exister (migration V73).
 # =====================================================================
 
 set -euo pipefail

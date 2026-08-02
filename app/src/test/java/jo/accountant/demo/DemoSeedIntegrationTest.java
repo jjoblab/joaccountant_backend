@@ -55,7 +55,7 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p><b>Tolérance aux bugs non-RLS</b> — Les seeders démo ont des bugs pré-existants non liés au RLS
  * (ex. catégories de notes de frais en français {@code TRANSPORT/FOURNITURES/...} qui violent la
- * contrainte {@code chk_el_category} V25 n'autorisant que {@code TRAVEL/MEALS/SUPPLIES/OTHER}).
+ * contrainte {@code chk_el_category} V36 n'autorisant que {@code TRAVEL/MEALS/SUPPLIES/OTHER}).
  * Ces bugs causent un rollback de la transaction {@code seedBusinessData} ("Transaction silently
  * rolled back because it has been marked as rollback-only") mais ne sont PAS des erreurs RLS. Le
  * test les tolère tant qu'aucune erreur RLS n'est émise — l'objectif du test est de vérifier le fix

@@ -8,7 +8,7 @@ Le module `:chart-of-accounts` est le référentiel de comptes d'une entreprise.
 **always-on** (activé pour tous les types métier via `BusinessTypeModuleService.alwaysOnModules()`) et
 porte la structure sur laquelle tous les autres modules comptables s'appuient.
 
-Il supporte les **6 référentiels** seedés en V1_002 :
+Il supporte les **6 référentiels** seedés en V3 :
 - **MANDATED** (`SYSCOHADA_REVISED`, `PCG_FRANCE`, `PCN_HAITI`, `PCGR_CANADA`) — les classes
   de niveau 1 sont issues du `mandatedClassSeed` du référentiel.
 - **FREE** (`IFRS_FULL`, `IFRS_SME`) — un gabarit de numérotation (`AccountNumberingTemplate`)
@@ -100,7 +100,7 @@ Produits/Charges par rapport à SYSCOHADA).
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V5_001__chart_of_accounts.sql` — tables `account` et
+- `src/main/resources/db/migration/V13__chart_of_accounts.sql` — tables `account` et
   `account_numbering_template`. Contraintes CHECK sur `level` (1-4), `reporting_class` (5
   valeurs), `reporting_subcategory`, `normal_balance`. 4 index dont `path` pour la recherche
   hiérarchique.

@@ -95,7 +95,7 @@ Le pattern architectural est le même que `:audit-trail` — `:notifications` s'
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V17_001__notifications.sql` — tables
+- `src/main/resources/db/migration/V39__notifications.sql` — tables
   `notification_template`, `notification`, `notification_preference`, `alert_rule`. CHECK
   sur `channel` (2 valeurs), `status` (3 valeurs), `alert_type` (5 valeurs). Index sur
   `(recipient_user_id, status)` et `(company_id, alert_type)`.

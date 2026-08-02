@@ -6,7 +6,7 @@ import jo.accountant.payroll.entity.OfatmaSectorRate;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * V78 — v7-6 : Repository des taux OFATMA Accidents par secteur.
+ * V89 — v7-6 : Repository des taux OFATMA Accidents par secteur.
  *
  * <p>Les taux sont des données de référence (peu de modifications — environ 1× par an
  * lors d'une mise à jour OFATMA). Pas de cache applicatif dédié — le cache Hibernate L2

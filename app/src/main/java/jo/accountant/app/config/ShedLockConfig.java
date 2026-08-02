@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
  * configurable (au cas où l'instance leader crash).
  *
  * <p><b>Backend</b> : JdbcTemplateLockProvider utilise la DataSource principale (PostgreSQL).
- * La table {@code shedlock} est créée par la migration Flyway V37 — ShedLock ne crée PAS la
+ * La table {@code shedlock} est créée par la migration Flyway V48 — ShedLock ne crée PAS la
  * table automatiquement en production (sécurité : on ne laisse pas une lib créer des tables).
  *
  * <p><b>Usage</b> : annoter chaque méthode {@code @Scheduled} avec
@@ -46,7 +46,7 @@ public class ShedLockConfig {
     /**
      * Provider ShedLock basé sur JdbcTemplate + DataSource principale (PostgreSQL).
      *
-     * <p>Utilise la table {@code shedlock} (créée par migration V37). Le schéma est :
+     * <p>Utilise la table {@code shedlock} (créée par migration V48). Le schéma est :
      * <pre>
      * CREATE TABLE shedlock (
      *     name VARCHAR(64) NOT NULL PRIMARY KEY,

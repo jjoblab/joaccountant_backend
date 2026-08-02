@@ -96,7 +96,7 @@ trésorerie en comptabilité correspond au solde du relevé bancaire.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V15_001__bank_reconciliation.sql` — tables
+- `src/main/resources/db/migration/V37__bank_reconciliation.sql` — tables
   `bank_account`, `bank_statement_import`, `bank_statement_line`. FK
   `bank_account.treasury_account_id → account(id)`. CHECK sur `format` (2 valeurs). Index
   sur `(company_id, bank_account_id)` et `(bank_account_id, line_date)`.
@@ -138,4 +138,4 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `BANK_RECONCILIATION` (voir `V3_003__business_type.sql`).
+`business_type_module` inclut `BANK_RECONCILIATION` (voir `V8__business_type.sql`).

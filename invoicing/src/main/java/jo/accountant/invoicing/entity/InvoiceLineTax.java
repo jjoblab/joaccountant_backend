@@ -17,12 +17,12 @@ import java.util.UUID;
  *
  * <p><b>Contexte fiscal Haïti</b> (lot-G validation-pme-expert — P0 BLOQUANT) : sur une facture
  * de prestation de services en Haïti, la <b>TVA 10%</b> (Code Fiscal art. 191) et la <b>TCA 10%</b>
- * (Code Fiscal art. 196) sont <b>cumulatives</b> sur la même ligne. Avant V67, {@code InvoiceLine}
+ * (Code Fiscal art. 196) sont <b>cumulatives</b> sur la même ligne. Avant V78, {@code InvoiceLine}
  * ne portait qu'un seul champ {@code taxRate} → une seule taxe par ligne → les cabinets de services
  * (PME2 Moïse &amp; Associés) et commerces mixtes (PME1 Boutik Lakay livraison) ne pouvaient pas
  * éditer de factures conformes.
  *
- * <p>V67 introduit la table {@code invoice_line_tax} : chaque {@link InvoiceLine} peut porter
+ * <p>V78 introduit la table {@code invoice_line_tax} : chaque {@link InvoiceLine} peut porter
  * <b>N taxes</b> (TVA + TCA + autres taxes sur chiffre d'affaires + accises). Le champ
  * {@code InvoiceLine.taxRate} est <b>conservé</b> pour la rétro-compatibilité :
  * <ul>

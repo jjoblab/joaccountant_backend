@@ -9,7 +9,7 @@ Le module `:fx-operations` permet à une entreprise de gérer ses opérations en
 étrangères. Il est **sectoriel** (stabilisation 2026-07-25 suite 4 §3) : son utilisation
 exige que le module `FX_OPERATIONS` soit activé pour la société (vérifié en tête de chaque
 endpoint via `ModuleAccessGuard.ensureEnabled(companyId, ModuleCode.FX_OPERATIONS)`). Le
-module est auto-activé à la complétion du wizard pour 6 types métier (V33 — voir ci-dessous) ;
+module est auto-activé à la complétion du wizard pour 6 types métier (V44 — voir ci-dessous) ;
 pour les autres types métier, l'activation se fait via le feature toggle
 `POST /api/v1/companies/{companyId}/modules/FX_OPERATIONS/activate`. Il réutilise
 `ExchangeRateService` du module `:core` pour la conversion des montants.
@@ -73,7 +73,7 @@ Chaque opération génère automatiquement une écriture comptable avec gain/per
 > mentionné dans le contrat mobile concerne `GET /api/v1/business-types?sector=SERVICE`
 > (filtrage du catalogue de types métier à l'étape 4 du wizard), pas ce module.
 
-## Activation (stabilisation :company §7 + V33)
+## Activation (stabilisation :company §7 + V44)
 
 Le module `:fx-operations` est **sectoriel** : son utilisation exige que le module
 `FX_OPERATIONS` soit activé pour la société. Le check se fait en tête de chaque endpoint
@@ -86,10 +86,10 @@ Le message indique explicitement que l'activation peut se faire via
 `POST /api/v1/companies/{id}/wizard/complete` pour les sociétés dont le type métier mappe
 `FX_OPERATIONS` par défaut.
 
-### Mapping par défaut (V33)
+### Mapping par défaut (V44)
 
 Le module `FX_OPERATIONS` est **auto-activé** à la complétion du wizard pour les 6 types
-métier suivants (mapping `business_type_module` ajouté par V33 — voir ci-dessous) :
+métier suivants (mapping `business_type_module` ajouté par V44 — voir ci-dessous) :
 
 | Type métier | Raison du mapping par défaut |
 |---|---|
@@ -126,10 +126,10 @@ par défaut. L'administrateur doit l'activer explicitement via
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V31__fx_operations.sql` — table `fx_operation`.
+- `src/main/resources/db/migration/V42__fx_operations.sql` — table `fx_operation`.
   CHECK sur `type` (BUY/SELL/REVALUATION) et `status` (POSTED/REVERSED).
   Index sur `(company_id, operation_date)`.
-- `company/src/main/resources/db/migration/V33__fx_operations_module.sql` — **suite 4 §3**
+- `company/src/main/resources/db/migration/V44__fx_operations_module.sql` — **suite 4 §3**
   (migration du module `:company`, documentée ici car elle porte le mapping par défaut
   `business_type_module` du module `FX_OPERATIONS`). Élargit le CHECK
   `chk_btm_module_code` pour autoriser `FX_OPERATIONS` (le 23<sup>e</sup> code de l'enum
@@ -150,7 +150,7 @@ par défaut. L'administrateur doit l'activer explicitement via
 - ⚠️ **`403 MODULE_NOT_ENABLED` depuis la suite 4** — tout client mobile qui appelait les
   endpoints `:fx-operations` sans module activé recevait 200/201 (module always-on avant la
   suite 4) et reçoit désormais 403. Pour activer le module sur une société existante (type
-  métier hors mapping par défaut V33), appeler
+  métier hors mapping par défaut V44), appeler
   `POST /api/v1/companies/{companyId}/modules/FX_OPERATIONS/activate` avec un rôle ADMIN.
 
 ## Tests

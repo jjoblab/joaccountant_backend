@@ -87,7 +87,7 @@ variables fournies par l'appelant (`:invoicing`, `:funds-grants`, `:reporting`).
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V13_001__document_generation.sql` — tables
+- `src/main/resources/db/migration/V35__document_generation.sql` — tables
   `document_template` et `generated_document`. Unique `(company_id, document_type,
   resource_id)` sur `generated_document` (immuabilité). `content_hash` CHAR(64) pour
   SHA-256. CHECK sur `document_type` (7 valeurs).

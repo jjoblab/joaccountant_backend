@@ -1,16 +1,16 @@
 package jo.accountant.core.tax;
 
 /**
- * Type de barème d'une règle de retenue à la source — Finding #14.
+ * Type de barème d'une règle de retenue à la source — .
  *
  * <ul>
- *   <li>{@link #FLAT} — taux unique appliqué à toute la base (comportement historique avant
- *       V46, rétro-compatible). Le champ {@code rate} de {@code WithholdingRule} est utilisé.</li>
- *   <li>{@link #PROGRESSIVE} — barème progressif par tranches, stocké dans
- *       {@code bracketsJson} au format
- *       {@code [{"threshold":0,"rate":0},{"threshold":50000,"rate":10},{"threshold":100000,"rate":15}]}.
- *       La retenue est calculée par tranches successives (voir
- *       {@code PurchasingService.calculateSupplierWithholding}).</li>
+ * <li>{@link #FLAT} — taux unique appliqué à toute la base (comportement historique avant
+ * V57, rétro-compatible). Le champ {@code rate} de {@code WithholdingRule} est utilisé.</li>
+ * <li>{@link #PROGRESSIVE} — barème progressif par tranches, stocké dans
+ * {@code bracketsJson} au format
+ * {@code [{"threshold":0,"rate":0},{"threshold":50000,"rate":10},{"threshold":100000,"rate":15}]}.
+ * La retenue est calculée par tranches successives (voir
+ * {@code PurchasingService.calculateSupplierWithholding}).</li>
  * </ul>
  *
  * <p>Le défaut est {@link #FLAT} pour conserver le comportement historique des règles
@@ -22,8 +22,8 @@ package jo.accountant.core.tax;
  * dépendance circulaire Gradle.
  */
 public enum WithholdingBracketType {
-    /** Taux unique appliqué à toute la base (comportement historique). */
-    FLAT,
-    /** Barème progressif par tranches (stored in {@code bracketsJson}). */
-    PROGRESSIVE
+ /** Taux unique appliqué à toute la base (comportement historique). */
+ FLAT,
+ /** Barème progressif par tranches (stored in {@code bracketsJson}). */
+ PROGRESSIVE
 }

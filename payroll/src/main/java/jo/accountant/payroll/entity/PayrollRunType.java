@@ -1,7 +1,7 @@
 package jo.accountant.payroll.entity;
 
 /**
- * V75 — v7-4 : Type de campagne de paie.
+ * V86 — v7-4 : Type de campagne de paie.
  *
  * <p>Distingue les campagnes mensuelles régulières des campagnes spéciales (13e mois).
  *

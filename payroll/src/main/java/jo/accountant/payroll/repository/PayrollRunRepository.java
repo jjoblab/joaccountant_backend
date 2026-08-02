@@ -14,7 +14,7 @@ public interface PayrollRunRepository extends JpaRepository<PayrollRun, UUID> {
     Optional<PayrollRun> findByCompanyIdAndPeriodYearAndPeriodMonth(UUID companyId, int year, int month);
 
     /**
-     * V75 — v7-4 : Recherche par (company, year, month, runType). Permet de co-exister
+     * V86 — v7-4 : Recherche par (company, year, month, runType). Permet de co-exister
      * une campagne REGULAR et THIRTEENTH_MONTH en décembre de la même année.
      */
     Optional<PayrollRun> findByCompanyIdAndPeriodYearAndPeriodMonthAndRunType(

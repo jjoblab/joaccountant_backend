@@ -164,19 +164,19 @@ class PayrollCalculatorTest {
     }
 
     @Test
-    @DisplayName("V79 — v7-7 : prorata 5 absences / 26 → base × 21/26 (Code Travail Haïti)")
+    @DisplayName("V90 — v7-7 : prorata 5 absences / 26 → base × 21/26 (Code Travail Haïti)")
     void calculate_absenceProRata() {
         Employee emp = new Employee();
         emp.setBaseSalary(new BigDecimal("3000.00"));
         emp.setAbsenceDays(new BigDecimal("5"));   // 5 jours d'absence
-        // V79 — v7-7 : baseProRata = 3000 × (26 - 5) / 26 = 3000 × 21 / 26 = 2423.0769
+        // V90 — v7-7 : baseProRata = 3000 × (26 - 5) / 26 = 3000 × 21 / 26 = 2423.0769
         var result = calculator.calculate(companyId, employeeId, emp, List.of());
         assertThat(result.baseProRata()).isEqualByComparingTo(new BigDecimal("2423.0769"));
         assertThat(result.grossSalary()).isEqualByComparingTo(new BigDecimal("2423.0769"));
     }
 
     @Test
-    @DisplayName("V79 — v7-7 : 26 jours d'absence → baseProRata = 0")
+    @DisplayName("V90 — v7-7 : 26 jours d'absence → baseProRata = 0")
     void calculate_fullAbsenceZeroBaseProRata() {
         Employee emp = new Employee();
         emp.setBaseSalary(new BigDecimal("3000.00"));

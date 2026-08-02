@@ -23,11 +23,11 @@ sont créées par `:accounting-engine` (saisie manuelle), `:invoicing` (factures
   `isCollective = true`, un compte dédié de niveau 4 est auto-généré sous le collectif
   (ex. `411000001` pour le client "Boutique Pétion-Ville" sous `411000`). Champs : `type`
   (CLIENT/SUPPLIER/DONOR/EMPLOYEE/OTHER), `name`, `collectiveAccountId`,
-  `dedicatedAccountId`, `active`, `email`, `address`. **V42 (audit v4.7 §4.2)** :
+  `dedicatedAccountId`, `active`, `email`, `address`. **V53 (audit v4.7 §4.2)** :
   `siret` (VARCHAR 14, 14 chiffres), `vatNumber` (VARCHAR 20, pattern `[A-Z]{2}[0-9A-Z]+`),
   `nif` (VARCHAR 30 — numéro d'identification fiscale). Ces champs alimentent les mentions
   légales des factures (CGI art. 289), le Factur-X (`BuyerTradeParty` / `SellerTradeParty`)
-  et l'autoliquidation V45 (détection automatique d'un VAT number des deux côtés).
+  et l'autoliquidation V56 (détection automatique d'un VAT number des deux côtés).
 - `LettrageMatch` — lettrage d'un ensemble de `JournalLine` d'un même tiers. Champs :
   `thirdPartyId`, `matchCode` (séquentiel A, B, C, ...), `status` (FULL/PARTIAL),
   `matchedAmount`, `journalLineIds` (JSONB).
@@ -70,9 +70,9 @@ sont créées par `:accounting-engine` (saisie manuelle), `:invoicing` (factures
 
 | Méthode | Chemin | Description | Codes d'erreur |
 |---|---|---|---|
-| GET | `/api/v1/companies/{companyId}/third-parties?type=&page=&size=` | **Paginé (Finding #3)** — retourne une `Page<ThirdPartyResponse>`. `?type=` filtre par type (CLIENT/SUPPLIER/DONOR/EMPLOYEE/OTHER). `?page=0&size=20` (défaut, `size` capped à 200). La réponse porte désormais `siret`/`vatNumber`/`nif` (V42). | — |
+| GET | `/api/v1/companies/{companyId}/third-parties?type=&page=&size=` | **Paginé (Finding #3)** — retourne une `Page<ThirdPartyResponse>`. `?type=` filtre par type (CLIENT/SUPPLIER/DONOR/EMPLOYEE/OTHER). `?page=0&size=20` (défaut, `size` capped à 200). La réponse porte désormais `siret`/`vatNumber`/`nif` (V53). | — |
 | GET | `/api/v1/companies/{companyId}/third-parties/{thirdPartyId}` | Récupère un tiers par ID (deep-linking mobile). | 404 |
-| POST | `/api/v1/companies/{companyId}/third-parties` | Crée un tiers + auto-génère le compte dédié si collectif. Corps : `{type, name, collectiveAccountId, email?, address?, siret?, vatNumber?, nif?}` (champs V42 optionnels). | 422 `THIRD_PARTY_NAME_REQUIRED`/`COLLECTIVE_ACCOUNT_NOT_FOUND`/`COLLECTIVE_ACCOUNT_NOT_COLLECTIVE`, 409 `DEDICATED_ACCOUNT_CODE_COLLISION` |
+| POST | `/api/v1/companies/{companyId}/third-parties` | Crée un tiers + auto-génère le compte dédié si collectif. Corps : `{type, name, collectiveAccountId, email?, address?, siret?, vatNumber?, nif?}` (champs V53 optionnels). | 422 `THIRD_PARTY_NAME_REQUIRED`/`COLLECTIVE_ACCOUNT_NOT_FOUND`/`COLLECTIVE_ACCOUNT_NOT_COLLECTIVE`, 409 `DEDICATED_ACCOUNT_CODE_COLLISION` |
 | GET | `/api/v1/companies/{companyId}/third-parties/{thirdPartyId}/statement?from=&to=` | Relevé de compte d'un tiers (écritures POSTED + solde lettré/non lettré) | 404 `ThirdParty` |
 | POST | `/api/v1/companies/{companyId}/third-parties/lettrage` | Lettre un ensemble de `JournalLine` d'un même tiers. Rôle `BOOKKEEPER`. | 422 `LINE_ALREADY_LETTERED`/`WRONG_THIRD_PARTY`/`NO_LINES` |
 | DELETE | `/api/v1/companies/{companyId}/third-parties/lettrage/{lettrageId}` | Supprime un lettrage (dé-lettrage). **Rôle ADMIN désormais requis** (audit v4.7 §6.1 — le dé-lettrage est une opération sensible qui peut masquer une fraude). | 404 `LettrageMatch`, 403 `INSUFFICIENT_ROLE` |
@@ -104,16 +104,16 @@ sont créées par `:accounting-engine` (saisie manuelle), `:invoicing` (factures
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V9_001__third_parties.sql` — tables `third_party` et
+- `src/main/resources/db/migration/V19__third_parties.sql` — tables `third_party` et
   `lettrage_match`. Unique `(company_id, dedicated_account_id)` sur `third_party`.
   `lettrage_match.journal_line_ids` stocké en JSONB. Index sur `company_id` et
   `third_party_id`.
-- `src/main/resources/db/migration/V42__company_thirdparty_legal_fields.sql` — **V42 — audit
+- `src/main/resources/db/migration/V53__company_thirdparty_legal_fields.sql` — **V53 — audit
   v4.7 §4.2 (session 7)**. Migration partagée avec le module `:company`. Ajoute sur
   `third_party` : `siret` (VARCHAR 14, pattern 14 chiffres), `vat_number` (VARCHAR 20,
   pattern `[A-Z]{2}[0-9A-Z]+`), `nif` (VARCHAR 30, NIF), `address` (TEXT). Ces champs
   alimentent le Factur-X (`BuyerTradeParty` / `SellerTradeParty`) et la détection
-  d'autoliquidation V45 (VAT number des deux côtés → `isReverseCharge=true`).
+  d'autoliquidation V56 (VAT number des deux côtés → `isReverseCharge=true`).
 
 ## Points d'attention (hérités de l'audit)
 

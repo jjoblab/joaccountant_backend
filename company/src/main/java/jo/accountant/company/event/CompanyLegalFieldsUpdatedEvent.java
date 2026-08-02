@@ -17,36 +17,36 @@ import jo.accountant.core.audit.AuditableAction;
  * masquée par {@link jo.accountant.core.audit.PiiMasker} au moment de la persistance
  * (cf. {@code AuditEventListener}).
  *
- * <p><b>Finding #1 (audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
+ * <p><b>(audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
  * consommation future</b> — il est publié mais n'a pas encore d'abonné métier explicite. La
  * trace est conservée dans l'audit-trail (via {@code AuditEventListener} qui écoute l'interface
  * {@code AuditableAction}). Les consommateurs métier (notifications, workflows, exports
  * réglementaires, KPI temps-réel) seront câblés quand le besoin se matérialisera.
  */
 public record CompanyLegalFieldsUpdatedEvent(
-    UUID companyId,
-    UUID actorUserId,
-    String oldValueJson,
-    String newValueJson,
-    Instant occurredAt
+ UUID companyId,
+ UUID actorUserId,
+ String oldValueJson,
+ String newValueJson,
+ Instant occurredAt
 ) implements AuditableAction {
 
-    public CompanyLegalFieldsUpdatedEvent(UUID companyId, UUID actorUserId,
-                                          String oldValueJson, String newValueJson) {
-        this(companyId, actorUserId, oldValueJson, newValueJson, Instant.now());
-    }
+ public CompanyLegalFieldsUpdatedEvent(UUID companyId, UUID actorUserId,
+ String oldValueJson, String newValueJson) {
+ this(companyId, actorUserId, oldValueJson, newValueJson, Instant.now());
+ }
 
-    @Override
-    public AuditEvent toAuditEvent() {
-        return AuditEvent.of(
-            companyId,
-            actorUserId,
-            "Company",
-            companyId,
-            "LEGAL_FIELDS_UPDATED",
-            oldValueJson,
-            newValueJson,
-            null
-        );
-    }
+ @Override
+ public AuditEvent toAuditEvent() {
+ return AuditEvent.of(
+ companyId,
+ actorUserId,
+ "Company",
+ companyId,
+ "LEGAL_FIELDS_UPDATED",
+ oldValueJson,
+ newValueJson,
+ null
+ );
+ }
 }

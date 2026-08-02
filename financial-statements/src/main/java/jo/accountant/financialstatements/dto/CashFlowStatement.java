@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE) — audit v4.7 §3.1 Finding #5.
+ * Tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE) — audit v4.7 §3.1 .
  *
  * <p>Méthode indirecte : on part du résultat net, on ajuste des éléments non monétaires
  * (amortissements, plus/moins-values de cession), on corrige des variations du BFR, puis on
@@ -14,27 +14,27 @@ import java.util.UUID;
  *
  * <p>Structure :
  * <pre>
- *   Flux de trésorerie des activités d'exploitation
- *     Résultat net
- *     + Amortissements et dépréciations
- *     ± Variation des créances clients
- *     ± Variation des stocks
- *     ± Variation des fournisseurs et autres dettes d'exploitation
- *     = Flux net d'exploitation
+ * Flux de trésorerie des activités d'exploitation
+ * Résultat net
+ * + Amortissements et dépréciations
+ * ± Variation des créances clients
+ * ± Variation des stocks
+ * ± Variation des fournisseurs et autres dettes d'exploitation
+ * = Flux net d'exploitation
  *
- *   Flux de trésorerie des activités d'investissement
- *     − Acquisitions d'immobilisations
- *     + Cessions d'immobilisations (prix de cession)
- *     = Flux net d'investissement
+ * Flux de trésorerie des activités d'investissement
+ * − Acquisitions d'immobilisations
+ * + Cessions d'immobilisations (prix de cession)
+ * = Flux net d'investissement
  *
- *   Flux de trésorerie des activités de financement
- *     + Augmentations de capital
- *     ± Variation des emprunts
- *     − Dividendes versés
- *     = Flux net de financement
+ * Flux de trésorerie des activités de financement
+ * + Augmentations de capital
+ * ± Variation des emprunts
+ * − Dividendes versés
+ * = Flux net de financement
  *
- *   Variation de trésorerie = Flux exploitation + Flux investissement + Flux financement
- *   Trésorerie ouverture + Variation = Trésorerie clôture
+ * Variation de trésorerie = Flux exploitation + Flux investissement + Flux financement
+ * Trésorerie ouverture + Variation = Trésorerie clôture
  * </pre>
  *
  * <p><b>Limitation v4.7.1</b> : la distinction précise entre flux d'investissement et flux de
@@ -45,66 +45,66 @@ import java.util.UUID;
  * À affiner en v4.8 avec un mapping explicite par compte.
  */
 public record CashFlowStatement(
-    UUID companyId,
-    LocalDate from,
-    LocalDate to,
-    BigDecimal netIncome,
-    OperatingFlows operating,
-    InvestingFlows investing,
-    FinancingFlows financing,
-    BigDecimal netCashFlow,           // = operating.total + investing.total + financing.total
-    BigDecimal openingCash,           // trésorerie à la date `from - 1`
-    BigDecimal closingCash,           // trésorerie à la date `to`
-    boolean balanced,                 // closingCash == openingCash + netCashFlow
-    // Task v6-4-presentation-currency — champs de conversion de devise de présentation
-    String presentationCurrency,
-    String functionalCurrency,
-    BigDecimal conversionRate,
-    LocalDate conversionRateDate,
-    String conversionType
+ UUID companyId,
+ LocalDate from,
+ LocalDate to,
+ BigDecimal netIncome,
+ OperatingFlows operating,
+ InvestingFlows investing,
+ FinancingFlows financing,
+ BigDecimal netCashFlow, // = operating.total + investing.total + financing.total
+ BigDecimal openingCash, // trésorerie à la date `from - 1`
+ BigDecimal closingCash, // trésorerie à la date `to`
+ boolean balanced, // closingCash == openingCash + netCashFlow
+ // Task v6-4-presentation-currency — champs de conversion de devise de présentation
+ String presentationCurrency,
+ String functionalCurrency,
+ BigDecimal conversionRate,
+ LocalDate conversionRateDate,
+ String conversionType
 ) {
 
-    /**
-     * Constructeur backward-compat (v5.5) — sans conversion de devise.
-     */
-    public CashFlowStatement(UUID companyId,
-                             LocalDate from,
-                             LocalDate to,
-                             BigDecimal netIncome,
-                             OperatingFlows operating,
-                             InvestingFlows investing,
-                             FinancingFlows financing,
-                             BigDecimal netCashFlow,
-                             BigDecimal openingCash,
-                             BigDecimal closingCash,
-                             boolean balanced) {
-        this(companyId, from, to, netIncome, operating, investing, financing,
-             netCashFlow, openingCash, closingCash, balanced,
-             null, null, null, null, null);
-    }
+ /**
+ * Constructeur backward-compat (v5.5) — sans conversion de devise.
+ */
+ public CashFlowStatement(UUID companyId,
+ LocalDate from,
+ LocalDate to,
+ BigDecimal netIncome,
+ OperatingFlows operating,
+ InvestingFlows investing,
+ FinancingFlows financing,
+ BigDecimal netCashFlow,
+ BigDecimal openingCash,
+ BigDecimal closingCash,
+ boolean balanced) {
+ this(companyId, from, to, netIncome, operating, investing, financing,
+ netCashFlow, openingCash, closingCash, balanced,
+ null, null, null, null, null);
+ }
 
-    public record OperatingFlows(
-        BigDecimal netIncome,
-        BigDecimal depreciationAmortization,  // amortissements et dépréciations (non-monetaries)
-        BigDecimal accountsReceivableVariation,
-        BigDecimal inventoryVariation,
-        BigDecimal accountsPayableVariation,
-        BigDecimal otherWorkingCapitalVariation,
-        BigDecimal total
-    ) {}
+ public record OperatingFlows(
+ BigDecimal netIncome,
+ BigDecimal depreciationAmortization, // amortissements et dépréciations (non-monetaries)
+ BigDecimal accountsReceivableVariation,
+ BigDecimal inventoryVariation,
+ BigDecimal accountsPayableVariation,
+ BigDecimal otherWorkingCapitalVariation,
+ BigDecimal total
+ ) {}
 
-    public record InvestingFlows(
-        BigDecimal fixedAssetsAcquisitions,
-        BigDecimal fixedAssetsDisposals,
-        BigDecimal otherInvestingFlows,
-        BigDecimal total  // négatif en général (acquisitions nettes)
-    ) {}
+ public record InvestingFlows(
+ BigDecimal fixedAssetsAcquisitions,
+ BigDecimal fixedAssetsDisposals,
+ BigDecimal otherInvestingFlows,
+ BigDecimal total // négatif en général (acquisitions nettes)
+ ) {}
 
-    public record FinancingFlows(
-        BigDecimal capitalVariation,
-        BigDecimal loansVariation,
-        BigDecimal dividendsPaid,
-        BigDecimal otherFinancingFlows,
-        BigDecimal total
-    ) {}
+ public record FinancingFlows(
+ BigDecimal capitalVariation,
+ BigDecimal loansVariation,
+ BigDecimal dividendsPaid,
+ BigDecimal otherFinancingFlows,
+ BigDecimal total
+ ) {}
 }

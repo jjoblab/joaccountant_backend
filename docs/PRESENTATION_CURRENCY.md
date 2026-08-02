@@ -145,7 +145,7 @@ GET /api/v1/companies/0192a8d5-1c2d-3e4f-5a6b-7c8d9e0fabcd/financial-statements/
 
 ### Ajouts
 
-- `fx-operations/src/main/resources/db/migration/V70__exchange_rate_snapshot_closing.sql` —
+- `fx-operations/src/main/resources/db/migration/V81__exchange_rate_snapshot_closing.sql` —
   table `exchange_rate_snapshot`
 - `fx-operations/src/main/java/jo/accountant/fxoperations/entity/ExchangeRateSnapshot.java` —
   entité JPA

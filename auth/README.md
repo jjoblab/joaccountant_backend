@@ -30,7 +30,7 @@ du `:core` à chaque requête ultérieure, sans dépendance cyclique vers `:auth
   (30 jours), `revokedAt` (null = actif). Unique sur `token_hash`.
 - `PasswordResetToken` — token à usage unique pour la réinitialisation. `tokenHash`,
   `expiresAt` (1 heure), `usedAt` (null = non consommé).
-- `MfaSecret` — **V41 — audit v4.7 §6.3** : secret TOTP (RFC 6238) d'un utilisateur.
+- `MfaSecret` — **V52 — audit v4.7 §6.3** : secret TOTP (RFC 6238) d'un utilisateur.
   Champs : `userId` (unique — un secret par utilisateur), `secretEncrypted` (Base32 chiffré
   **AES-256-GCM**, clé dans `app.mfa.encryption-key` à externaliser dans Vault/KMS en prod),
   `issuer` (défaut `JOAccountant`), `period` (30 s), `digits` (6), `algorithm` (HmacSHA1),
@@ -42,7 +42,7 @@ du `:core` à chaque requête ultérieure, sans dépendance cyclique vers `:auth
 ### Règles métier clés
 
 1. **Email unique insensible à la casse** via index fonctionnel `uc_users_email_lower`
-   (V2_001) — la contrainte ne peut pas être une `UNIQUE` classique sur expression PostgreSQL.
+   (V4) — la contrainte ne peut pas être une `UNIQUE` classique sur expression PostgreSQL.
 2. **Mot de passe** validé par `PasswordValidator` (≥12 chars, majuscule, minuscule, chiffre,
    spécial) et hashé en **Argon2** (`Argon2PasswordEncoder`).
 3. **Refresh token rotatif** — à chaque `POST /auth/refresh`, l'ancien token est révoqué et un
@@ -89,7 +89,7 @@ du `:core` à chaque requête ultérieure, sans dépendance cyclique vers `:auth
 - `RefreshToken` : `ACTIVE` → `REVOKED` (via logout, rotation, reset password ou détection
   de réutilisation).
 - `PasswordResetToken` : `ISSUED` → `USED` (usedAt renseigné) ou `EXPIRED`.
-- `MfaSecret` (V41) : `PENDING` (`enabledAt=null`) → `ENABLED` (`enabledAt=now()` après
+- `MfaSecret` (V52) : `PENDING` (`enabledAt=null`) → `ENABLED` (`enabledAt=now()` après
   validation du premier code) → éventuellement `DISABLED` (suppression du secret via
   `POST /auth/mfa/disable`). Les codes de récupération sont consommés unitairement
   (`usedAt` renseigné).
@@ -105,12 +105,12 @@ du `:core` à chaque requête ultérieure, sans dépendance cyclique vers `:auth
 | POST | `/api/v1/auth/logout` | Révoque le refresh token courant (idempotent) | — |
 | POST | `/api/v1/auth/forgot-password` | Initie un reset password (anti-énumération : toujours 202) | — |
 | POST | `/api/v1/auth/reset-password` | Consomme un reset token, change le mot de passe, révoque toutes les sessions | 403 `RESET_TOKEN_INVALID`/`RESET_TOKEN_ALREADY_USED`/`RESET_TOKEN_EXPIRED`, 422 weak password |
-| POST | `/api/v1/auth/mfa/setup` | **V41** — Génère un secret TOTP chiffré AES-256-GCM + URL `otpauth://` pour le QR code. `enabledAt` reste null. | — |
-| POST | `/api/v1/auth/mfa/verify?code=` | **V41** — Valide le 1er code TOTP, active la MFA (`enabledAt=now()`), génère **10 codes de récupération** (à afficher 1×). | 403 `MFA_CODE_INVALID` |
-| POST | `/api/v1/auth/mfa/check?code=` | **V41** — Re-vérification d'un code TOTP pour opérations sensibles (retourne `{valid:bool}`). | — |
-| POST | `/api/v1/auth/mfa/recovery-code?code=` | **V41** — Consomme un code de récupération à usage unique (fallback si perte du téléphone). | 403 code invalide/déjà utilisé |
-| POST | `/api/v1/auth/mfa/disable` | **V41** — Désactive la MFA (révoque le secret + les codes). | — |
-| GET | `/api/v1/auth/mfa/status` | **V41** — Retourne `{mfaEnabled, mfaRequired}`. `mfaRequired=true` si l'utilisateur est OWNER/ADMIN (accepté) sur au moins une société. | — |
+| POST | `/api/v1/auth/mfa/setup` | **V52** — Génère un secret TOTP chiffré AES-256-GCM + URL `otpauth://` pour le QR code. `enabledAt` reste null. | — |
+| POST | `/api/v1/auth/mfa/verify?code=` | **V52** — Valide le 1er code TOTP, active la MFA (`enabledAt=now()`), génère **10 codes de récupération** (à afficher 1×). | 403 `MFA_CODE_INVALID` |
+| POST | `/api/v1/auth/mfa/check?code=` | **V52** — Re-vérification d'un code TOTP pour opérations sensibles (retourne `{valid:bool}`). | — |
+| POST | `/api/v1/auth/mfa/recovery-code?code=` | **V52** — Consomme un code de récupération à usage unique (fallback si perte du téléphone). | 403 code invalide/déjà utilisé |
+| POST | `/api/v1/auth/mfa/disable` | **V52** — Désactive la MFA (révoque le secret + les codes). | — |
+| GET | `/api/v1/auth/mfa/status` | **V52** — Retourne `{mfaEnabled, mfaRequired}`. `mfaRequired=true` si l'utilisateur est OWNER/ADMIN (accepté) sur au moins une société. | — |
 | GET | `/.well-known/jwks.json` | **RFC 7517** — JWKS endpoint pour valider les JWT RS256. **Public** (pas de Bearer). Renvoie `{"keys":[]}` si RS256 non configuré. | — |
 | POST | `/api/v1/companies/{companyId}/users` | Invite un utilisateur existant par email (ADMIN/OWNER requis) | 403 `OWNER_NOT_INVITABLE`/`INSUFFICIENT_ROLE`, 404 `USER_NOT_FOUND`, 409 `USER_ALREADY_IN_COMPANY` |
 | PATCH | `/api/v1/companies/{companyId}/users/{userId}/role` | Modifie le rôle d'un utilisateur (ADMIN/OWNER requis) | 403 `OWNER_NOT_INVITABLE`/`OWNER_ROLE_IMMUTABLE`, 404 not found |
@@ -154,14 +154,14 @@ token TTL = 1 heure à usage unique. `mfaChallengeToken` TTL court (5 min recomm
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V2_001__auth_users.sql` — tables `users`, `refresh_token`,
+- `src/main/resources/db/migration/V4__auth_users.sql` — tables `users`, `refresh_token`,
   `password_reset_token`. Index fonctionnel unique `uc_users_email_lower` (insensible à la
   casse). FK `refresh_token.user_id → users(id) ON DELETE CASCADE`.
-- `src/main/resources/db/migration/V2_002__auth_user_company_role.sql` — table
+- `src/main/resources/db/migration/V5__auth_user_company_role.sql` — table
   `user_company_role`. Contrainte unique `(user_id, company_id)`. CHECK sur `role` ∈ les 6
-  valeurs. La FK vers `companies(id)` est ajoutée dans `V3_002` (la table companies n'existe
-  pas encore au moment de V2_002 — dépendance cyclique résolue par FK différée).
-- `src/main/resources/db/migration/V41__mfa_secret.sql` — **V41 — audit v4.7 §6.3**. Crée la
+  valeurs. La FK vers `companies(id)` est ajoutée dans `V7` (la table companies n'existe
+  pas encore au moment de V5 — dépendance cyclique résolue par FK différée).
+- `src/main/resources/db/migration/V52__mfa_secret.sql` — **V52 — audit v4.7 §6.3**. Crée la
   table `mfa_secret` (un secret TOTP par `user_id`, chiffré AES-256-GCM). Colonnes : `id`,
   `user_id` (UNIQUE), `secret_encrypted` (VARCHAR 500), `issuer`, `period` (CHECK 10-300,
   défaut 30), `digits` (CHECK ∈ {6, 8}, défaut 6), `algorithm` (CHECK ∈ {HmacSHA1, HmacSHA256,

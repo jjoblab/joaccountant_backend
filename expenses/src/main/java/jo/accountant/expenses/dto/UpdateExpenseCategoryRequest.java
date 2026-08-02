@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 
 /**
  * Corps de requête pour {@code PUT /api/v1/companies/{companyId}/expenses/categories/{categoryId}}
- * (Finding #12 — CRUD endpoints).
+ * (CRUD endpoints).
  *
  * <p>Modifie les plafonds journaliers/mensuels d'une catégorie existante. Le code n'est
  * PAS modifiable (il est référencé par les lignes de notes de frais existantes via la
@@ -22,13 +22,13 @@ import java.math.BigDecimal;
  * {@code validateCategoryLimits} considère {@code dailyLimit=0} comme un plafond de 0,
  * ce qui bloquerait toute dépense — à éviter). Pour désactiver, préférez {@code null}.
  *
- * @param label         nouveau libellé (null = inchangé)
- * @param dailyLimit    nouveau plafond journalier (null = désactivé / inchangé selon
- *                      la stratégie ci-dessus). Doit être ≥ 0 si fourni.
- * @param monthlyLimit  nouveau plafond mensuel (null = désactivé / inchangé). ≥ 0 si fourni.
+ * @param label nouveau libellé (null = inchangé)
+ * @param dailyLimit nouveau plafond journalier (null = désactivé / inchangé selon
+ * la stratégie ci-dessus). Doit être ≥ 0 si fourni.
+ * @param monthlyLimit nouveau plafond mensuel (null = désactivé / inchangé). ≥ 0 si fourni.
  */
 public record UpdateExpenseCategoryRequest(
-    String label,
-    @PositiveOrZero BigDecimal dailyLimit,
-    @PositiveOrZero BigDecimal monthlyLimit
+ String label,
+ @PositiveOrZero BigDecimal dailyLimit,
+ @PositiveOrZero BigDecimal monthlyLimit
 ) {}

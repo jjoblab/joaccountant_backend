@@ -79,7 +79,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     # FIX v8.2 : désactiver la validation des checksums au démarrage.
-    # Si une migration a été modifiée (ex: V0_000 corrigée pour PG 18), Flyway ne bloquera pas.
+    # Si une migration a été modifiée (ex: V1 corrigée pour PG 18), Flyway ne bloquera pas.
     # En prod réel, remettre à true et utiliser `flyway repair` pour aligner les checksums.
     validate-on-migrate: false
     clean-disabled: false   # Permet de reset en dev (jamais en prod réel)

@@ -18,7 +18,7 @@ package jo.accountant.company.entity;
  * {@code TaxService.resolveCorporateTaxRule()} pour router vers la bonne
  * {@code CorporateTaxRule}.
  *
- * <p>Stocké en base dans la colonne {@code companies.tax_exemption_status} (migration V80).
+ * <p>Stocké en base dans la colonne {@code companies.tax_exemption_status} (migration V91).
  */
 public enum TaxExemptionStatus {
     /** Entreprise standard — IS au taux normal (30% Haïti / 25% France). */

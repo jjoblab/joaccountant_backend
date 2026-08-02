@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * V73 — v7-2 : Statement of Changes in Equity (IAS 1.106).
+ * V84 — v7-2 : Statement of Changes in Equity (IAS 1.106).
  *
  * <p>Tableau de variation des capitaux propres entre deux dates, conforme à IAS 1.
  * Le tableau présente la réconciliation suivante :

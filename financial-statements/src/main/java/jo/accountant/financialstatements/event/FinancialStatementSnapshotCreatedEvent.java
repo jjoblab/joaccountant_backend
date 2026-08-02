@@ -13,39 +13,39 @@ import jo.accountant.financialstatements.entity.FinancialStatementSnapshot;
  * fiscal (les snapshots figés sont la base des états financiers officiels transmis aux
  * administrations).
  *
- * <p><b>Finding #1 (audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
+ * <p><b>(audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
  * consommation future</b> — il est publié mais n'a pas encore d'abonné métier explicite. La
  * trace est conservée dans l'audit-trail (via <code>AuditEventListener</code> qui écoute
  * l'interface <code>AuditableAction</code>). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
- * matérialisera — cf. Finding #1 audit batch 1.
+ * matérialisera — cf. audit batch 1.
  */
 public record FinancialStatementSnapshotCreatedEvent(
-    UUID companyId,
-    UUID actorUserId,
-    UUID snapshotId,
-    String type,
-    UUID periodId,
-    Instant occurredAt
+ UUID companyId,
+ UUID actorUserId,
+ UUID snapshotId,
+ String type,
+ UUID periodId,
+ Instant occurredAt
 ) implements AuditableAction {
 
-    public FinancialStatementSnapshotCreatedEvent(FinancialStatementSnapshot snapshot, UUID actorUserId) {
-        this(
-            snapshot.getCompanyId(),
-            actorUserId,
-            snapshot.getId(),
-            snapshot.getType().name(),
-            snapshot.getPeriodId(),
-            Instant.now()
-        );
-    }
+ public FinancialStatementSnapshotCreatedEvent(FinancialStatementSnapshot snapshot, UUID actorUserId) {
+ this(
+ snapshot.getCompanyId(),
+ actorUserId,
+ snapshot.getId(),
+ snapshot.getType().name(),
+ snapshot.getPeriodId(),
+ Instant.now()
+ );
+ }
 
-    @Override
-    public AuditEvent toAuditEvent() {
-        return AuditEvent.of(
-            companyId, actorUserId, "FinancialStatementSnapshot", snapshotId, "CREATE",
-            null,
-            "{\"type\":\"" + type + "\",\"periodId\":\"" + periodId + "\"}",
-            null);
-    }
+ @Override
+ public AuditEvent toAuditEvent() {
+ return AuditEvent.of(
+ companyId, actorUserId, "FinancialStatementSnapshot", snapshotId, "CREATE",
+ null,
+ "{\"type\":\"" + type + "\",\"periodId\":\"" + periodId + "\"}",
+ null);
+ }
 }

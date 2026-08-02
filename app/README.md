@@ -24,9 +24,9 @@ exécuter les tests d'intégration qui valident l'assemblage des 21 modules mét
   (configurable via `app.jwt.algorithm`), CORS restrictif configurable, CSRF désactivé,
   session `STATELESS`. Headers de sécurité (HSTS, X-Frame-Options, X-Content-Type-Options,
   Referrer-Policy, CSP). Endpoints `permitAll` :
-  - `/api/v1/auth/register`, `/login`, `/login/mfa` (V41), `/refresh`, `/logout`,
+  - `/api/v1/auth/register`, `/login`, `/login/mfa` (V52), `/refresh`, `/logout`,
     `/forgot-password`, `/reset-password`.
-  - `/api/v1/auth/mfa/setup`, `/mfa/verify`, `/mfa/check`, `/mfa/recovery-code` (V41 —
+  - `/api/v1/auth/mfa/setup`, `/mfa/verify`, `/mfa/check`, `/mfa/recovery-code` (V52 —
     l'utilisateur peut être dans l'entre-deux du flow 2-step ; le challenge token est validé
     par `MfaService`).
   - `/.well-known/jwks.json` (RFC 7517 — clé publique, jamais la privée).
@@ -39,7 +39,7 @@ exécuter les tests d'intégration qui valident l'assemblage des 21 modules mét
   - `TenantClaimFilter` (après auth) — extrait `userId` du `sub` JWT et `companyId` du
     path `/api/v1/companies/{companyId}/...`, valide l'appartenance de l'utilisateur à la
     société (404 si pas accès, pas 403 — anti-fuite §3.9).
-- `BatchConfig` — **V52 — Spring Batch 5.x**. Définit 2 Jobs :
+- `BatchConfig` — **V63 — Spring Batch 5.x**. Définit 2 Jobs :
   - `payrollJob` — calcule les `Payslip` d'une campagne via `PayrollCalculator` (chunk de 50
     employés, retry 3× sur `IOException`). À la fin, le `PayrollRun` est mis à jour (totaux
     + `status=CALCULATED`).
@@ -48,7 +48,7 @@ exécuter les tests d'intégration qui valident l'assemblage des 21 modules mét
     (fige bilan + CR). Retry 1× (la clôture est idempotente).
   Les Jobs ne sont PAS auto-démarrés au boot (`spring.batch.job.enabled=false`) — ils sont
   lancés manuellement via `BatchController` (ou par cron ShedLock en production). Schéma
-  DB `BATCH_*` créé par `V52__spring_batch_schema.sql` (extraction standard
+  DB `BATCH_*` créé par `V63__spring_batch_schema.sql` (extraction standard
   `schema-postgresql.sql` de Spring Batch 5.2).
 - `BatchController` — expose 2 endpoints d'administration (rôle ADMIN requis, voir
   « Endpoints exposés » ci-dessous).
@@ -131,7 +131,7 @@ secteur largement non couverte).
 Ce module n'expose pas d'endpoint REST direct métier — il configure l'application et agrège les
 endpoints exposés par les 27 modules métier. Cependant, il expose directement :
 
-- **Spring Batch (V52 — rôle ADMIN requis)** :
+- **Spring Batch (V63 — rôle ADMIN requis)** :
   - `POST /api/v1/companies/{companyId}/admin/batch/payroll?runId=` — lance `payrollJob` sur
     la campagne `runId`. `202 Accepted` + `BatchJobResponse {jobExecutionId, jobName, status,
     exitCode, createdAt}` (le Job est synchrone — au retour, les payslips sont générés et le
@@ -161,7 +161,7 @@ Le module `:app` dépend des **27 modules métier** (`:core`, `:auth`, `:company
 `:bank-reconciliation`, `:funds-grants`, `:notifications`, `:tax`, `:reporting`,
 `:purchasing`, `:expenses`, `:employees`, `:payroll`, `:fx-operations`, `:purchase-orders`)
 + `:test-support` (PostgreSQL embarqué Zonky pour les tests et le mode dev). Dépendances
-additionnelles : `spring-boot-starter-batch` (Jobs V52), `io.opentelemetry` (tracing OTLP).
+additionnelles : `spring-boot-starter-batch` (Jobs V63), `io.opentelemetry` (tracing OTLP).
 
 ### Modules qui dépendent de celui-ci
 
@@ -175,13 +175,13 @@ Aucun — `:app` est la racine du graphe d'exécution.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V0_000__init_extensions.sql` — installation de
+- `src/main/resources/db/migration/V1__init_extensions.sql` — installation de
   l'extension `pgcrypto` et de la fonction PL/pgSQL `uuidv7()` (RFC 9562). Cette fonction
   est utilisée comme `DEFAULT` pour toutes les PK UUID du projet (meilleure localité
   d'index que v4). PostgreSQL < 18 n'expose pas `uuidv7()` nativement.
-- `src/main/resources/db/migration/V37__shedlock_table.sql` — table `shedlock` pour
+- `src/main/resources/db/migration/V48__shedlock_table.sql` — table `shedlock` pour
   ShedLock (verrous distribués multi-instances, audit v4.7 §9).
-- `src/main/resources/db/migration/V52__spring_batch_schema.sql` — **V52**. Schéma Spring
+- `src/main/resources/db/migration/V63__spring_batch_schema.sql` — **V63**. Schéma Spring
   Batch 5.x (PostgreSQL) : tables `BATCH_JOB_INSTANCE`, `BATCH_JOB_EXECUTION`,
   `BATCH_JOB_EXECUTION_PARAMS`, `BATCH_STEP_EXECUTION`, `BATCH_STEP_EXECUTION_CONTEXT`,
   `BATCH_JOB_EXECUTION_CONTEXT`. Extrait de `schema-postgresql.sql` livré avec

@@ -21,7 +21,7 @@ import java.util.UUID;
  * clôture IAS 21 à la {@code conversionRateDate}). Si null, le bilan est en devise fonctionnelle
  * (comportement v5.5 inchangé).
  *
- * <p><b>V74 — v7-3</b> : {@code ctaAmount} (Cumulative Translation Adjustment) est calculé
+ * <p><b>V85 — v7-3</b> : {@code ctaAmount} (Cumulative Translation Adjustment) est calculé
  * lorsque le bilan est converti dans une devise de présentation. Il isole l'écart de
  * conversion en capitaux propres (IAS 21) : CTA = totalAssetsPresentation −
  * totalLiabilitiesPresentation − totalEquityFunctionalConverted. Si pas de conversion,

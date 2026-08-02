@@ -1,7 +1,7 @@
 package jo.accountant.expenses.entity;
 
 /**
- * Statut d'une note de frais (restructuration 2026-07-24 — module :expenses).
+ * Statut d'une note de frais (module :expenses).
  *
  * <p>Cycle de vie : DRAFT → SUBMITTED → APPROVED → PAID (ou REJECTED au stade SUBMITTED).
  *
@@ -11,9 +11,9 @@ package jo.accountant.expenses.entity;
  * service (la validation par seuil est gérée par `:accounting-engine` au postage).
  */
 public enum ExpenseReportStatus {
-    DRAFT,
-    SUBMITTED,
-    APPROVED,
-    REJECTED,
-    PAID
+ DRAFT,
+ SUBMITTED,
+ APPROVED,
+ REJECTED,
+ PAID
 }

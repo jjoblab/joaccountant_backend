@@ -2,7 +2,7 @@
 
 > Version : **v6-3** (formats bailleurs) — squelette fonctionnel.
 > Module : `:funds-grants`
-> Migration : `V69__donor_report_formats.sql`
+> Migration : `V80__donor_report_formats.sql`
 > Concerne : ONG multiprojets/multibailleurs (USAID, UE, BM, CRS, ...) — gap bloquant
 > identifié lors de la validation PME3 (Mme Nadège Saintilus, ONG Espwa pou Ayiti).
 
@@ -308,7 +308,7 @@ L'accès est refusé (HTTP 403) si :
 ## 7. Modèle de données
 
 ```sql
--- Table : donor_report_line (V69)
+-- Table : donor_report_line (V80)
 -- Une ligne = (company, grant, year, quarter?, cost_category)
 -- variance_amount est GENERATED ALWAYS AS STORED — jamais écrite directement.
 

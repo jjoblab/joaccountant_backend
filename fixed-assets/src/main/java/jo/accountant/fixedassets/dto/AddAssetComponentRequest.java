@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import jo.accountant.fixedassets.entity.DepreciationMethod;
 
 /**
- * Corps de requête pour ajouter un composant à une immobilisation (Finding #11 — IAS 16).
+ * Corps de requête pour ajouter un composant à une immobilisation (IAS 16).
  *
  * <p>Un composant représente une partie identifiable d'une immobilisation ayant sa propre
  * durée de vie utile (ex. structure / toiture / installations pour un bâtiment). L'ajout
@@ -23,15 +23,15 @@ import jo.accountant.fixedassets.entity.DepreciationMethod;
  * @param depreciationMethod méthode d'amortissement (défaut STRAIGHT_LINE)
  */
 public record AddAssetComponentRequest(
-    @NotBlank String code,
-    @NotBlank String label,
-    @NotNull @Positive BigDecimal acquisitionCost,
-    @NotNull @Positive int usefulLifeYears,
-    @PositiveOrZero BigDecimal residualValue,
-    DepreciationMethod depreciationMethod
+ @NotBlank String code,
+ @NotBlank String label,
+ @NotNull @Positive BigDecimal acquisitionCost,
+ @NotNull @Positive int usefulLifeYears,
+ @PositiveOrZero BigDecimal residualValue,
+ DepreciationMethod depreciationMethod
 ) {
-    public AddAssetComponentRequest {
-        if (residualValue == null) residualValue = BigDecimal.ZERO;
-        if (depreciationMethod == null) depreciationMethod = DepreciationMethod.STRAIGHT_LINE;
-    }
+ public AddAssetComponentRequest {
+ if (residualValue == null) residualValue = BigDecimal.ZERO;
+ if (depreciationMethod == null) depreciationMethod = DepreciationMethod.STRAIGHT_LINE;
+ }
 }

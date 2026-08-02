@@ -2,7 +2,7 @@ package jo.accountant.documentgeneration.util;
 
 import java.util.Map;
 import java.util.UUID;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -62,7 +62,7 @@ public final class PdfEndpointHelper {
      */
     public static ResponseEntity<byte[]> generatePdf(DocumentGenerationService docService,
                                                      UUID companyId,
-                                                     DocumentType type,
+                                                     GeneratedDocumentType type,
                                                      Map<String, Object> contextMap,
                                                      String filename) {
         // Règle d'immuabilité contournée : on passe un UUID aléatoire comme resourceId

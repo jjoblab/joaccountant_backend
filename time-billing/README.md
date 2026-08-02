@@ -119,7 +119,7 @@ est converti en écriture comptable.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V12_001__time_billing.sql` — tables `tb_project`,
+- `src/main/resources/db/migration/V34__time_billing.sql` — tables `tb_project`,
   `tb_billable_rate`, `tb_timesheet_entry`. Unique `(company_id, code)` sur project,
   `(project_id, resource_user_id, valid_from)` sur rate. CHECK sur `status` (3 valeurs),
   `billing_type` (2 valeurs), `hours > 0`.
@@ -162,4 +162,4 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `TIME_BILLING` (voir `V3_003__business_type.sql`).
+`business_type_module` inclut `TIME_BILLING` (voir `V8__business_type.sql`).

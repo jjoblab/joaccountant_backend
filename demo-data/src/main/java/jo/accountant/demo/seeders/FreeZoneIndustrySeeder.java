@@ -144,7 +144,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
   private static final Logger LOG = LoggerFactory.getLogger(FreeZoneIndustrySeeder.class);
 
   /**
-   * UUID du référentiel IFRS_FULL (V1_002__core_seeds.sql ligne 30 — numbering_mode='FREE',
+   * UUID du référentiel IFRS_FULL (V3__core_seeds.sql ligne 30 — numbering_mode='FREE',
    * mandated_class_seed_json=NULL).
    */
   private static final UUID IFRS_FULL_FRAMEWORK_ID =

@@ -12,7 +12,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 /**
  * Listener dédié aux événements de {@link SecurityAuditEvent}.
  *
- * <p><b>Audit v4.7 §6.2 Finding #5 — FIX CRITIQUE</b> : la v4.7 n'auditait QUE les mutations
+ * <p><b>Audit v4.7 §6.2 FIX CRITIQUE</b> : la v4.7 n'auditait QUE les mutations
  * métier via {@link AuditEventListener} (qui écoute {@link jo.accountant.core.audit.AuditableAction}
  * → {@code @TransactionalEventListener(AFTER_COMMIT)}). Or les événements de sécurité comme
  * LOGIN_FAILED, REFRESH_TOKEN_REUSED, ACCESS_DENIED surviennent dans des transactions qui
@@ -22,8 +22,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <p>Ce listener utilise {@code @TransactionalEventListener(phase = AFTER_COMPLETION)} qui se
  * déclenche <b>que la transaction commit ou roll back</b>. C'est la différence cruciale :
  * <ul>
- *   <li>{@code AFTER_COMMIT} (par défaut) : uniquement après commit → rate les failed logins.</li>
- *   <li>{@code AFTER_COMPLETION} (ici) : après commit OU rollback → trace tout.</li>
+ * <li>{@code AFTER_COMMIT} (par défaut) : uniquement après commit → rate les failed logins.</li>
+ * <li>{@code AFTER_COMPLETION} (ici) : après commit OU rollback → trace tout.</li>
  * </ul>
  *
  * <p>{@code @Async} pour ne pas bloquer le thread métier — l'écriture en base se fait dans un
@@ -44,56 +44,56 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class SecurityAuditEventListener {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SecurityAuditEventListener.class);
+ private static final Logger LOG = LoggerFactory.getLogger(SecurityAuditEventListener.class);
 
-    private final AuditLogRepository repository;
+ private final AuditLogRepository repository;
 
-    public SecurityAuditEventListener(AuditLogRepository repository) {
-        this.repository = repository;
-    }
+ public SecurityAuditEventListener(AuditLogRepository repository) {
+ this.repository = repository;
+ }
 
-    /**
-     * Persiste l'événement de sécurité dans {@code audit_log} avec
-     * {@code entity_type = 'SecurityEvent'}.
-     *
-     * <p>Se déclenche après COMPLETION (commit OU rollback) — nécessaire car beaucoup
-     * d'événements de sécurité (LOGIN_FAILED, REFRESH_TOKEN_REUSED, ACCESS_DENIED) surviennent
-     * dans des transactions qui roll back.
-     *
-     * <p>Best-effort : si la persistance échoue (DB down, contrainte violée), on log ERROR
-     * avec le correlationId pour replay — on ne propage JAMAIS l'exception à l'appelant
-     * (l'audit ne doit pas casser l'auth).
-     */
-    @Async("audit-async-executor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
-    public void onSecurityAuditEvent(SecurityAuditEvent event) {
-        try {
-            AuditLog row = new AuditLog();
-            row.setId(UUID.randomUUID());
-            row.setCompanyId(event.companyId());
-            row.setActorUserId(event.actorUserId());
-            // entityType normalisé pour requêtes forensiques ciblées :
-            //   SELECT * FROM audit_log WHERE entity_type = 'SecurityEvent' AND occurred_at >= NOW() - INTERVAL '7 days';
-            row.setEntityType("SecurityEvent");
-            // entityId = userId quand applicable, sinon null (ex: LOGIN_FAILED sur email inexistant)
-            row.setEntityId(event.actorUserId());
-            // action = eventType (LOGIN_SUCCESS, LOGIN_FAILED, REFRESH_TOKEN_REUSED, etc.)
-            row.setAction(event.eventType());
-            // Pas d'oldValue pour les événements de sécurité
-            row.setOldValueJson(null);
-            // Audit v4.7 §6.3 — masquer les PII (email, fullName) avant persistance
-            row.setNewValueJson(
-                event.metadata() != null && !event.metadata().isEmpty()
-                    ? jo.accountant.core.audit.PiiMasker.maskPiiInJson(
-                        jo.accountant.core.json.JsonUtil.toJson(event.metadata()))
-                    : null
-            );
-            row.setOccurredAt(event.occurredAt());
-            row.setCorrelationId(event.correlationId());
-            repository.save(row);
-        } catch (Exception ex) {
-            LOG.error("Failed to persist security audit event [type={}, correlationId={}, userId={}]",
-                event.eventType(), event.correlationId(), event.actorUserId(), ex);
-        }
-    }
+ /**
+ * Persiste l'événement de sécurité dans {@code audit_log} avec
+ * {@code entity_type = 'SecurityEvent'}.
+ *
+ * <p>Se déclenche après COMPLETION (commit OU rollback) — nécessaire car beaucoup
+ * d'événements de sécurité (LOGIN_FAILED, REFRESH_TOKEN_REUSED, ACCESS_DENIED) surviennent
+ * dans des transactions qui roll back.
+ *
+ * <p>Best-effort : si la persistance échoue (DB down, contrainte violée), on log ERROR
+ * avec le correlationId pour replay — on ne propage JAMAIS l'exception à l'appelant
+ * (l'audit ne doit pas casser l'auth).
+ */
+ @Async("audit-async-executor")
+ @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
+ public void onSecurityAuditEvent(SecurityAuditEvent event) {
+ try {
+ AuditLog row = new AuditLog();
+ row.setId(UUID.randomUUID());
+ row.setCompanyId(event.companyId());
+ row.setActorUserId(event.actorUserId());
+ // entityType normalisé pour requêtes forensiques ciblées :
+ // SELECT * FROM audit_log WHERE entity_type = 'SecurityEvent' AND occurred_at >= NOW() - INTERVAL '7 days';
+ row.setEntityType("SecurityEvent");
+ // entityId = userId quand applicable, sinon null (ex: LOGIN_FAILED sur email inexistant)
+ row.setEntityId(event.actorUserId());
+ // action = eventType (LOGIN_SUCCESS, LOGIN_FAILED, REFRESH_TOKEN_REUSED, etc.)
+ row.setAction(event.eventType());
+ // Pas d'oldValue pour les événements de sécurité
+ row.setOldValueJson(null);
+ // Audit v4.7 §6.3 — masquer les PII (email, fullName) avant persistance
+ row.setNewValueJson(
+ event.metadata() != null && !event.metadata().isEmpty()
+ ? jo.accountant.core.audit.PiiMasker.maskPiiInJson(
+ jo.accountant.core.json.JsonUtil.toJson(event.metadata()))
+ : null
+ );
+ row.setOccurredAt(event.occurredAt());
+ row.setCorrelationId(event.correlationId());
+ repository.save(row);
+ } catch (Exception ex) {
+ LOG.error("Failed to persist security audit event [type={}, correlationId={}, userId={}]",
+ event.eventType(), event.correlationId(), event.actorUserId(), ex);
+ }
+ }
 }

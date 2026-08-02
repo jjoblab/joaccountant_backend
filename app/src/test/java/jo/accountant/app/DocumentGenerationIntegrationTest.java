@@ -12,7 +12,7 @@ import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
 import jo.accountant.documentgeneration.dto.GeneratedDocumentResponse;
 import jo.accountant.documentgeneration.dto.TemplateResponse;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.repository.DocumentTemplateRepository;
 import jo.accountant.documentgeneration.repository.GeneratedDocumentRepository;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
@@ -95,7 +95,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
 
     private TemplateResponse createInvoiceTemplate(UUID companyId) {
         return service.createTemplate(companyId, new CreateTemplateRequest(
-            DocumentType.INVOICE, INVOICE_TEMPLATE, true));
+            GeneratedDocumentType.INVOICE, INVOICE_TEMPLATE, true));
     }
 
     @Nested
@@ -107,7 +107,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
             asTenant(COMPANY_A);
             TemplateResponse t = createInvoiceTemplate(COMPANY_A);
             assertThat(t.id()).isNotNull();
-            assertThat(t.documentType()).isEqualTo(DocumentType.INVOICE);
+            assertThat(t.documentType()).isEqualTo(GeneratedDocumentType.INVOICE);
             assertThat(t.isDefault()).isTrue();
         }
     }
@@ -132,7 +132,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
                 Map.of("description", "TVA", "amount", "1500.00")));
 
             GeneratedDocumentResponse doc = service.generateDocument(
-                COMPANY_A, DocumentType.INVOICE, resourceId, variables);
+                COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, variables);
 
             assertThat(doc.id()).isNotNull();
             assertThat(doc.resourceId()).isEqualTo(resourceId);
@@ -158,7 +158,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
             variables.put("totalAmount", "5000.00");
 
             GeneratedDocumentResponse doc1 = service.generateDocument(
-                COMPANY_A, DocumentType.INVOICE, resourceId, variables);
+                COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, variables);
 
             // Regénérer avec des variables différentes — doit servir l'existant
             Map<String, Object> newVariables = new HashMap<>();
@@ -167,7 +167,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
             newVariables.put("totalAmount", "999.00");
 
             GeneratedDocumentResponse doc2 = service.generateDocument(
-                COMPANY_A, DocumentType.INVOICE, resourceId, newVariables);
+                COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, newVariables);
 
             assertThat(doc2.id()).isEqualTo(doc1.id());  // même document
             assertThat(doc2.checksum()).isEqualTo(doc1.checksum());  // même checksum
@@ -192,7 +192,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
             variables.put("lines", java.util.List.of(
                 Map.of("description", "Ventes", "amount", "10000.00")));
 
-            service.generateDocument(COMPANY_A, DocumentType.INVOICE, resourceId, variables);
+            service.generateDocument(COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, variables);
 
             // Récupérer le contenu PDF
             byte[] pdf = service.getDocumentContent(COMPANY_A, resourceId);
@@ -219,7 +219,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
             variables.put("clientName", "Client A");
             variables.put("totalAmount", "1000.00");
 
-            service.generateDocument(COMPANY_A, DocumentType.INVOICE, resourceId, variables);
+            service.generateDocument(COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, variables);
 
             asTenant(COMPANY_B);
             assertThatThrownBy(() -> service.getDocumentContent(COMPANY_B, resourceId))
@@ -238,7 +238,7 @@ class DocumentGenerationIntegrationTest extends jo.accountant.testsupport.Embedd
 
             UUID resourceId = UUID.randomUUID();
             assertThatThrownBy(() -> service.generateDocument(
-                COMPANY_A, DocumentType.INVOICE, resourceId, new HashMap<>()))
+                COMPANY_A, GeneratedDocumentType.INVOICE, resourceId, new HashMap<>()))
                 .isInstanceOf(jo.accountant.core.exception.ValidationException.class)
                 .extracting("code").isEqualTo("TEMPLATE_NOT_FOUND");
         }

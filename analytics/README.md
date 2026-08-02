@@ -84,7 +84,7 @@ valeurs de plusieurs plans via `JournalLineAnalyticalTag` (table du `:accounting
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V7_001__analytics.sql` — tables
+- `src/main/resources/db/migration/V15__analytics.sql` — tables
   `analytical_dimension_plan` et `analytical_dimension_value`. Contraintes uniques
   `(company_id, code)` sur le plan, `(plan_id, code)` sur la valeur. FK
   `value.plan_id → plan(id) ON DELETE CASCADE`. Index sur `plan_id`, `parent_id`,

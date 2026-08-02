@@ -25,13 +25,13 @@ Le module distingue deux cas à l'approbation :
   (DRAFT/SUBMITTED/APPROVED/REJECTED/PAID), `expenseDate`, `currency`, `description`,
   `totalAmount`, `paidDirectly` (boolean), `journalEntryId`.
 - `ExpenseLine` — `reportId`, `category` (TRAVEL/MEALS/SUPPLIES/OTHER ou code personnalisé
-  créé via `ExpenseCategoryController` V43, nullable), `description`, `amount`,
+  créé via `ExpenseCategoryController` V54, nullable), `description`, `amount`,
   `expenseAccountId` (compte de charge cible, CHARGES).
-- `ExpenseCategory` — **V43 — Finding #12 (audit batch B)** — catégorie de note de frais avec
+- `ExpenseCategory` — **V54 — Finding #12 (audit batch B)** — catégorie de note de frais avec
   plafonds journaliers/mensuels configurables. Champs : `code` (unique par entreprise,
   ex. `TRAVEL`/`MEALS`/`SUPPLIES`/`OTHER` seedés + codes personnalisés `HOTEL`/`PARKING`),
   `label`, `dailyLimit` (BigDecimal, nullable), `monthlyLimit` (BigDecimal, nullable),
-  `active`. Les 4 codes standards sont seedés par V43 avec `dailyLimit=NULL` /
+  `active`. Les 4 codes standards sont seedés par V54 avec `dailyLimit=NULL` /
   `monthlyLimit=NULL` (pas de validation) — l'administrateur les configure via
   `PUT /expenses/categories/{categoryId}`.
 
@@ -73,12 +73,12 @@ Le module distingue deux cas à l'approbation :
 
 ### ExpenseCategoryController — `/api/v1/companies/{companyId}/expenses/categories`
 
-**V43 — Finding #12 (audit batch B)**. CRUD des catégories de notes de frais et de leurs
+**V54 — Finding #12 (audit batch B)**. CRUD des catégories de notes de frais et de leurs
 plafonds journaliers/mensuels. `GET` : `VIEWER` ; `POST`/`PUT` : `ADMIN`.
 
 | Méthode | Chemin | Description | Codes d'erreur |
 |---|---|---|---|
-| GET | `/api/v1/companies/{companyId}/expenses/categories` | Liste les catégories (standards seedés par V43 + personnalisées). Triées par `code`. | — |
+| GET | `/api/v1/companies/{companyId}/expenses/categories` | Liste les catégories (standards seedés par V54 + personnalisées). Triées par `code`. | — |
 | POST | `/api/v1/companies/{companyId}/expenses/categories` | Crée une catégorie personnalisée avec plafonds journaliers/mensuels. Le code doit être unique par entreprise (les codes standards `TRAVEL`/`MEALS`/`SUPPLIES`/`OTHER` sont déjà seedés — utiliser `PUT` pour configurer leurs plafonds). | 409 code existe déjà |
 | PUT | `/api/v1/companies/{companyId}/expenses/categories/{categoryId}` | Modifie les plafonds d'une catégorie existante. Le code n'est PAS modifiable (intégrité référentielle avec `expense_line.category`). Pour désactiver un plafond, passer `null` explicitement. | 404 |
 
@@ -127,10 +127,10 @@ plafonds journaliers/mensuels. `GET` : `VIEWER` ; `POST`/`PUT` : `ADMIN`.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V25__expenses.sql` — tables `expense_report` et
+- `src/main/resources/db/migration/V36__expenses.sql` — tables `expense_report` et
   `expense_line`. CHECK sur `status` et `category`. Index sur `(company_id, status)` et
   `third_party_id`.
-- `src/main/resources/db/migration/V43__expense_category_limits.sql` — **V43 — Finding #12
+- `src/main/resources/db/migration/V54__expense_category_limits.sql` — **V54 — Finding #12
   (audit batch B)**. Crée la table `expense_category` (catégorie de note de frais avec
   plafonds). Colonnes : `id`, `company_id`, `code` (unique par entreprise), `label`,
   `daily_limit` (NUMERIC 19,4, nullable), `monthly_limit` (NUMERIC 19,4, nullable), `active`,

@@ -36,14 +36,14 @@ import java.util.List;
  *   <li><b>Accounting Engine</b> — écritures, journaux, balance, exercices fiscaux, RLS</li>
  *   <li><b>Invoicing</b> — factures clients + Factur-X + reverse charge</li>
  *   <li><b>Purchasing</b> — factures fournisseurs + void</li>
- *   <li><b>Purchase Orders</b> — bons de commande + 3-way match (V48)</li>
- *   <li><b>Tax</b> — règles fiscales + TVA (débits/encaissements) + cotisations (V40)</li>
+ *   <li><b>Purchase Orders</b> — bons de commande + 3-way match (V59)</li>
+ *   <li><b>Tax</b> — règles fiscales + TVA (débits/encaissements) + cotisations (V51)</li>
  *   <li><b>Payroll</b> — campagnes de paie + PayrollCalculator + bulletins</li>
- *   <li><b>Employees</b> — annuaire RH + heures supp / absences (V49)</li>
+ *   <li><b>Employees</b> — annuaire RH + heures supp / absences (V60)</li>
  *   <li><b>Fixed Assets</b> — immobilisations + composants IAS 16 + dépréciation IAS 36</li>
- *   <li><b>Expenses</b> — notes de frais + catégories avec plafonds (V43)</li>
+ *   <li><b>Expenses</b> — notes de frais + catégories avec plafonds (V54)</li>
  *   <li><b>Bank Reconciliation</b> — rapprochement bancaire + lettrage</li>
- *   <li><b>Third Parties</b> — tiers (clients/fournisseurs/donateurs) + legal fields (V42)</li>
+ *   <li><b>Third Parties</b> — tiers (clients/fournisseurs/donateurs) + legal fields (V53)</li>
  *   <li><b>Chart of Accounts</b> — plan comptable multi-référentiels</li>
  *   <li><b>Financial Statements</b> — bilan + compte de résultat + cash flow (IAS 7)</li>
  *   <li><b>Reporting</b> — dashboard + balance âgée clients/fournisseurs</li>
@@ -93,9 +93,9 @@ public class OpenApiConfig {
                              "endpoint `GET /invoicing/invoices/{id}/factur-x`.\n" +
                              "- **IAS 16/36** : amortissement par composant + test de dépréciation.\n" +
                              "- **IAS 7** : tableau de flux de trésorerie.\n" +
-                             "- **TVA encaissement** (art. 289 II CGI) : V44.\n" +
-                             "- **Reverse charge** (art. 196 CGI) : V45.\n" +
-                             "- **Row Level Security** PostgreSQL (V51) : défense en profondeur.\n")
+                             "- **TVA encaissement** (art. 289 II CGI) : V55.\n" +
+                             "- **Reverse charge** (art. 196 CGI) : V56.\n" +
+                             "- **Row Level Security** PostgreSQL (V62) : défense en profondeur.\n")
                 .contact(new Contact()
                     .name("JOAccountant Team")
                     .email("dev@joaccountant.ht")
@@ -122,18 +122,18 @@ public class OpenApiConfig {
                 new Tag().name("Auth").description("Authentification JWT + refresh rotatif + reset password"),
                 new Tag().name("MFA").description("MFA TOTP RFC 6238 — setup / verify / check / recovery / disable / status"),
                 new Tag().name("JWKS").description("Endpoint RFC 7517 — clé publique RS256 (public, pas de Bearer)"),
-                new Tag().name("Company").description("CRUD sociétés + wizard + modules + legal fields (V42)"),
+                new Tag().name("Company").description("CRUD sociétés + wizard + modules + legal fields (V53)"),
                 new Tag().name("Accounting Engine").description("Écritures, journaux, balance, exercices fiscaux, RLS PostgreSQL"),
-                new Tag().name("Invoicing").description("Factures clients + Factur-X (Loi 2023-314) + reverse charge (V45)"),
+                new Tag().name("Invoicing").description("Factures clients + Factur-X (Loi 2023-314) + reverse charge (V56)"),
                 new Tag().name("Purchasing").description("Factures fournisseurs + void"),
-                new Tag().name("Purchase Orders").description("Bons de commande + 3-way match PO/GR/Invoice (V48)"),
-                new Tag().name("Tax").description("Règles fiscales + TVA (débits/encaissements, V44) + cotisations (V40)"),
+                new Tag().name("Purchase Orders").description("Bons de commande + 3-way match PO/GR/Invoice (V59)"),
+                new Tag().name("Tax").description("Règles fiscales + TVA (débits/encaissements, V55) + cotisations (V51)"),
                 new Tag().name("Payroll").description("Campagnes de paie + PayrollCalculator + bulletins (C. trav. R3243-1)"),
-                new Tag().name("Employees").description("Annuaire RH + heures supp / absences (V49)"),
-                new Tag().name("Fixed Assets").description("Immobilisations + composants IAS 16 + dépréciation IAS 36 (V47)"),
-                new Tag().name("Expenses").description("Notes de frais + catégories avec plafonds (V43)"),
+                new Tag().name("Employees").description("Annuaire RH + heures supp / absences (V60)"),
+                new Tag().name("Fixed Assets").description("Immobilisations + composants IAS 16 + dépréciation IAS 36 (V58)"),
+                new Tag().name("Expenses").description("Notes de frais + catégories avec plafonds (V54)"),
                 new Tag().name("Bank Reconciliation").description("Rapprochement bancaire + lettrage"),
-                new Tag().name("Third Parties").description("Tiers (clients/fournisseurs/donateurs) + legal fields (V42)"),
+                new Tag().name("Third Parties").description("Tiers (clients/fournisseurs/donateurs) + legal fields (V53)"),
                 new Tag().name("Chart of Accounts").description("Plan comptable multi-référentiels"),
                 new Tag().name("Financial Statements").description("Bilan + compte de résultat + cash flow IAS 7"),
                 new Tag().name("Reporting").description("Dashboard + balance âgée clients/fournisseurs"),
@@ -146,7 +146,7 @@ public class OpenApiConfig {
                 new Tag().name("Time Billing").description("Projets + feuilles de temps + utilization"),
                 new Tag().name("Funds & Grants").description("Subventions ONG"),
                 new Tag().name("FX Operations").description("Opérations de change"),
-                new Tag().name("Batch Admin").description("Jobs Spring Batch (paie + clôture annuelle) — V52")
+                new Tag().name("Batch Admin").description("Jobs Spring Batch (paie + clôture annuelle) — V63")
             ));
     }
 

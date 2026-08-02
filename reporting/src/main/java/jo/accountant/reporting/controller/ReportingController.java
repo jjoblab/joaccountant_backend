@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import jo.accountant.core.security.CurrentUser;
 import jo.accountant.core.security.RoleChecker;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.service.DocumentGenerationService;
 import jo.accountant.documentgeneration.util.PdfEndpointHelper;
 import jo.accountant.reporting.dto.AgedBalance;
@@ -208,17 +208,17 @@ public class ReportingController {
         @RequestParam String type) {
         roleChecker.ensureRole(companyId, "VIEWER");
         String normalized = type == null ? "" : type.trim().toLowerCase();
-        DocumentType docType;
+        GeneratedDocumentType docType;
         AgedBalance balance;
         String label;
         switch (normalized) {
             case "receivables", "receivable", "clients", "client" -> {
-                docType = DocumentType.AGED_BALANCE_RECEIVABLES_REPORT;
+                docType = GeneratedDocumentType.AGED_BALANCE_RECEIVABLES_REPORT;
                 balance = service.getAgedBalance(companyId);
                 label = "clients";
             }
             case "payables", "payable", "suppliers", "supplier", "fournisseurs", "fournisseur" -> {
-                docType = DocumentType.AGED_BALANCE_PAYABLES_REPORT;
+                docType = GeneratedDocumentType.AGED_BALANCE_PAYABLES_REPORT;
                 balance = service.getSupplierAgedBalance(companyId);
                 label = "fournisseurs";
             }

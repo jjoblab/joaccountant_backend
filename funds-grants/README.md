@@ -104,7 +104,7 @@ module qui propose une écriture soumise à approbation explicite avant postage.
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V16_001__funds_grants.sql` — tables `fg_grant` et
+- `src/main/resources/db/migration/V38__funds_grants.sql` — tables `fg_grant` et
   `fg_donation_receipt`. Unique `(company_id, code)` sur grant. FK
   `grant.donor_third_party_id → third_party(id)`. CHECK sur `restriction_type` (2 valeurs),
   `total_amount >= 0`, `amount >= 0`. Index sur `(company_id, grant_id)`.
@@ -153,4 +153,4 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `FUNDS_GRANTS` (voir `V3_003__business_type.sql`).
+`business_type_module` inclut `FUNDS_GRANTS` (voir `V8__business_type.sql`).

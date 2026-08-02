@@ -9,7 +9,7 @@ import jo.accountant.thirdparties.entity.ThirdPartyType;
  *
  * <p><b>Audit v4.7 §4.2 (session 7)</b> : ajout des champs légaux {@code siret},
  * {@code vatNumber}, {@code nif} pour conformité mentions légales factures (CGI art. 289)
- * et Factur-X. Ces champs sont persistés (migration V42) mais n'étaient pas exposés.
+ * et Factur-X. Ces champs sont persistés (migration V53) mais n'étaient pas exposés.
  */
 public record ThirdPartyResponse(
     UUID id,

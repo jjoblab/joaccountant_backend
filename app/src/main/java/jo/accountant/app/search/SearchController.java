@@ -56,6 +56,11 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Pas d'authentification spécifique au-delà du filtre JWT standard — la recherche
  * est accessible à tout utilisateur connecté à l'entreprise (l'isolation multi-tenant
  * est garantie par le {@code companyId} dans l'URL + les guards applicatifs).
+ *
+ * <p><b>Task 6 — ArchUnit</b> : la méthode {@code search} appelle
+ * {@code roleChecker.ensureRole(companyId, "VIEWER")} en première ligne pour satisfaire
+ * la règle ArchUnit {@code companyScopedEndpointsMustCallRoleChecker} qui prévient les
+ * régressions du type Task 1 (PurchaseOrdersController sans guards).
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/search")
@@ -76,17 +81,20 @@ public class SearchController {
     private final JournalEntryRepository journalEntryRepository;
     private final AccountRepository accountRepository;
     private final EmployeeRepository employeeRepository;
+    private final jo.accountant.core.security.RoleChecker roleChecker;
 
     public SearchController(ThirdPartyRepository thirdPartyRepository,
                              SalesInvoiceRepository salesInvoiceRepository,
                              JournalEntryRepository journalEntryRepository,
                              AccountRepository accountRepository,
-                             EmployeeRepository employeeRepository) {
+                             EmployeeRepository employeeRepository,
+                             jo.accountant.core.security.RoleChecker roleChecker) {
         this.thirdPartyRepository = thirdPartyRepository;
         this.salesInvoiceRepository = salesInvoiceRepository;
         this.journalEntryRepository = journalEntryRepository;
         this.accountRepository = accountRepository;
         this.employeeRepository = employeeRepository;
+        this.roleChecker = roleChecker;
     }
 
     /**
@@ -108,6 +116,8 @@ public class SearchController {
             @RequestParam(name = "q", defaultValue = "") String query,
             @Parameter(description = "Nombre max de résultats (défaut 20, max 25)")
             @RequestParam(name = "limit", defaultValue = "20") int limit) {
+
+        roleChecker.ensureRole(companyId, "VIEWER");
 
         String q = query == null ? "" : query.trim();
         int cappedLimit = Math.max(1, Math.min(limit, HARD_LIMIT_CAP));

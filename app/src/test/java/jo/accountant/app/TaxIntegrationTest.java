@@ -146,7 +146,15 @@ class TaxIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgresSuppo
             service.createWithholdingRule(COMPANY_A, new CreateWithholdingRuleRequest(
                 "RS-2", "RS 2%", new BigDecimal("2"), List.of("SUPPLIER")));
 
-            assertThat(service.listTaxRules(COMPANY_A)).hasSize(1);
+            // listTaxRules renvoie les règles de l'entreprise (company_id = COMPANY_A) ET les
+            // règles globales (company_id IS NULL) seedées par la migration V66
+            // (TVA_HT_10, TCA_HT_2_BANK, TCA_HT_5_TELECOM, TCA_HT_10_SERVICES — 4 seeds).
+            // On a donc 1 règle company-specific + 4 seeds = 5 au total.
+            var taxRules = service.listTaxRules(COMPANY_A);
+            assertThat(taxRules).hasSize(5);
+            assertThat(taxRules).anyMatch(r -> "TVA-15".equals(r.getCode()));
+
+            // WithholdingRule n'a pas de seeds globales (company_id NOT NULL) — 1 seule.
             assertThat(service.listWithholdingRules(COMPANY_A)).hasSize(1);
         }
     }

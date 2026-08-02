@@ -6,13 +6,13 @@ import jo.accountant.purchaseorders.entity.PurchaseOrderLine;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Repository des lignes de commande (Finding #10).
+ * Repository des lignes de commande.
  */
 public interface PurchaseOrderLineRepository extends JpaRepository<PurchaseOrderLine, UUID> {
 
-    /** Toutes les lignes d'une commande, triées par date de création. */
-    List<PurchaseOrderLine> findByPoIdOrderByCreatedAt(UUID poId);
+ /** Toutes les lignes d'une commande, triées par date de création. */
+ List<PurchaseOrderLine> findByPoIdOrderByCreatedAt(UUID poId);
 
-    /** Supprime toutes les lignes d'une commande — utilisé lors d'une regen. */
-    void deleteByPoId(UUID poId);
+ /** Supprime toutes les lignes d'une commande — utilisé lors d'une regen. */
+ void deleteByPoId(UUID poId);
 }

@@ -7,20 +7,20 @@ import jo.accountant.fixedassets.entity.AssetComponent;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Repository des composants d'immobilisation (Finding #11 — IAS 16).
+ * Repository des composants d'immobilisation (IAS 16).
  */
 public interface AssetComponentRepository extends JpaRepository<AssetComponent, UUID> {
 
-    /** Tous les composants d'une immobilisation, triés par code. */
-    List<AssetComponent> findByAssetIdOrderByCode(UUID assetId);
+ /** Tous les composants d'une immobilisation, triés par code. */
+ List<AssetComponent> findByAssetIdOrderByCode(UUID assetId);
 
-    /** Composant d'un asset par son code — utilisé pour vérifier l'unicité du code. */
-    Optional<AssetComponent> findByAssetIdAndCode(UUID assetId, String code);
+ /** Composant d'un asset par son code — utilisé pour vérifier l'unicité du code. */
+ Optional<AssetComponent> findByAssetIdAndCode(UUID assetId, String code);
 
-    /** Supprime tous les composants d'un asset — utilisé lors de la regénération d'échéancier. */
-    void deleteByAssetId(UUID assetId);
+ /** Supprime tous les composants d'un asset — utilisé lors de la regénération d'échéancier. */
+ void deleteByAssetId(UUID assetId);
 
-    /** Compte le nombre de composants d'un asset — utilisé pour décider du mode de calcul
-     *  d'amortissement (par composant vs global). */
-    long countByAssetId(UUID assetId);
+ /** Compte le nombre de composants d'un asset — utilisé pour décider du mode de calcul
+ * d'amortissement (par composant vs global). */
+ long countByAssetId(UUID assetId);
 }

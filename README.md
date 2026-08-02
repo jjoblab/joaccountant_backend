@@ -1,10 +1,10 @@
-# JOAccountant v5.2 — Backend
+# JOAccountant v8.3.1 — Backend
 
 Multi-tenant, multi-secteur, multi-référentiel SaaS comptable backend (Spring Boot 3.5 / Java 17 / PostgreSQL 14+ / Flyway).
 
-> **État du projet (2026-07-28)** : **30 modules Gradle**, **190 endpoints REST** sur **32 contrôleurs**,
+> **État du projet (2026-07-28)** : **30 modules Gradle**, **236 endpoints REST** sur **37 contrôleurs**,
 > **6 référentiels comptables** supportés, **13 types métier** actifs (extensible sans redéploiement),
-> **63 migrations Flyway** (V0_000 → V52), **310 tests** d'intégration (31 fichiers de test) — couverture large
+> **102 migrations Flyway** (V1 → V102), **42 tests** d'intégration (42 fichiers de test) — couverture large
 > multi-référentiels et multi-secteurs. **3 scripts de seed** (retail commerce, wholesale B2B,
 > professional services) couvrent l'intégralité du cycle d'exploitation end-to-end avec bilan
 > équilibré et exports PDF/CSV des 15 statements pour chaque exercice fiscal. Application mobile
@@ -18,26 +18,26 @@ Multi-tenant, multi-secteur, multi-référentiel SaaS comptable backend (Spring 
 >   (RS256). MFA obligatoire pour OWNER/ADMIN (audit v4.7 §6.3 — NIST 800-63B AAL2).
 > - **Factur-X** (Cross Industry Invoice D16B, profil BASICWL, EN 16931) — conformité Loi
 >   2023-314 (facturation électronique B2B France).
-> - **IAS 16/36** — composants d'immobilisation + test de dépréciation (V47).
-> - **TVA encaissement** (`VatMode.ENCAISSEMENT`, V44 — art. 289 II CGI) + **reverse charge**
->   (autoliquidation intra-UE B2B, V45 — art. 283 2 nonies CGI).
-> - **Purchase Orders + 3-way match** (V48) — commande ↔ facture fournisseur (quantité, prix).
-> - **Spring Batch** (V52) — `payrollJob` et `fiscalYearClosingJob` lancés via `BatchController`.
-> - **PostgreSQL RLS** (V51) — Row Level Security sur 6 tables financières (defense in depth,
+> - **IAS 16/36** — composants d'immobilisation + test de dépréciation (V58).
+> - **TVA encaissement** (`VatMode.ENCAISSEMENT`, V55 — art. 289 II CGI) + **reverse charge**
+>   (autoliquidation intra-UE B2B, V56 — art. 283 2 nonies CGI).
+> - **Purchase Orders + 3-way match** (V59) — commande ↔ facture fournisseur (quantité, prix).
+> - **Spring Batch** (V63) — `payrollJob` et `fiscalYearClosingJob` lancés via `BatchController`.
+> - **PostgreSQL RLS** (V62) — Row Level Security sur 6 tables financières (defense in depth,
 >   en plus du filtre JWT claim `TenantContextFilter`).
-> - **`ContributionRule` + `PayrollCalculator`** (V40) — cotisations par tranches (PMSS, CSG
+> - **`ContributionRule` + `PayrollCalculator`** (V51) — cotisations par tranches (PMSS, CSG
 >   abattue, Tranche A/B), fallback sur `WithholdingRule` si aucune règle configurée.
-> - **Barème progressif** pour `WithholdingRule` (V46 — `bracketType=PROGRESSIVE` + `brackets`).
-> - **Heures sup + absences** sur `Employee` (V49 — `overtimeHours25/50`, `absenceDays`,
+> - **Barème progressif** pour `WithholdingRule` (V57 — `bracketType=PROGRESSIVE` + `brackets`).
+> - **Heures sup + absences** sur `Employee` (V60 — `overtimeHours25/50`, `absenceDays`,
 >   `paidLeaveDays`) consommées par `PayrollCalculator`.
-> - **Champs légaux société / tiers** SIRET/VAT/NIF (V42) — exposes via `PATCH /companies/{id}/legal`
+> - **Champs légaux société / tiers** SIRET/VAT/NIF (V53) — exposes via `PATCH /companies/{id}/legal`
 >   et `ThirdPartyResponse`, alimentent le Factur-X.
-> - **Plafonds par catégorie de notes de frais** (V43 — `ExpenseCategoryController`).
+> - **Plafonds par catégorie de notes de frais** (V54 — `ExpenseCategoryController`).
 > - **Cash Flow Statement** (IAS 7 / SYSCOHADA TAFIRE) — `GET /financial-statements/cash-flow-statement`.
 > - **Tax Declaration Schedule** (CA3, DES, EFI) — `GET /tax/declaration-schedule?year=` +
 >   `GET /tax/declarations/export?format=ca3|des|efi`.
 > - **Snapshots de clôture idempotents** — `POST /financial-statements/snapshots/closing/periods/{periodId}`.
-> - **Trigger DB statement-level** (V36) — `trg_journal_entry_balance_*` (3 triggers INSERT/UPDATE/DELETE
+> - **Trigger DB statement-level** (V47) — `trg_journal_entry_balance_*` (3 triggers INSERT/UPDATE/DELETE
 >   avec transition tables, complexité O(N) au lieu de O(N²)).
 > - **Pagination** sur `GET /invoices`, `GET /purchase-invoices`, `GET /expense-reports`,
 >   `GET /third-parties`, `GET /notifications`, `GET /journal-entries/paged|search` (Finding #3).
@@ -168,7 +168,7 @@ joaccountant/
 │                                  auto avec gain/perte de change (restructuration 2026-07-25 —
 │                                  suite 3, sectoriel, gating `FX_OPERATIONS` posé en suite 4 §3)
 ├── purchase-orders/             — PurchaseOrder + PurchaseOrderLine, 3-way match (commande ↔
-│                                  facture fournisseur) — Finding #10 (V48). Ne génère pas
+│                                  facture fournisseur) — Finding #10 (V59). Ne génère pas
 │                                  d'écriture au MVP. Dépend de :purchasing pour la facture
 ├── test-support/                — shared EmbeddedPostgresSupport (évite :test -> :app circular
 │                                  dep) — module utilitaire, pas un module métier
@@ -213,7 +213,7 @@ hérités de l'audit) dans son répertoire.
 | `employees` | `Employee` (rattaché à `ThirdParty` EMPLOYEE), contrat, salaire, statut. Aucune écriture comptable (restructuration 2026-07-24 — module bonus, always-on, consommé par :payroll) |
 | `payroll` | `PayrollRun` + `Payslip`, calcul brut→net via `:tax` `WithholdingRule`, écriture consolidée à l'approbation, bulletin PDF via `:document-generation` (restructuration 2026-07-24 — module bonus, always-on) |
 | `fx-operations` | `FxOperation` (BUY/SELL/REVALUATION), `ExchangeRate`, écriture auto avec gain/perte de change (restructuration 2026-07-25 — suite 3, sectoriel) |
-| `purchase-orders` | `PurchaseOrder` + `PurchaseOrderLine`, 3-way match (commande ↔ facture fournisseur) — Finding #10 (V48). Ne génère pas d'écriture au MVP |
+| `purchase-orders` | `PurchaseOrder` + `PurchaseOrderLine`, 3-way match (commande ↔ facture fournisseur) — Finding #10 (V59). Ne génère pas d'écriture au MVP |
 | `app` | `@SpringBootApplication` bootstrap, `SecurityConfig` (HS256/RS256, MFA, JWKS), `BatchController` (Spring Batch), OpenTelemetry, tests d'intégration |
 
 ---
@@ -221,7 +221,7 @@ hérités de l'audit) dans son répertoire.
 ## Référentiels comptables supportés
 
 Le plan comptable d'une entreprise est initialisé depuis l'un des 6 référentiels suivants
-(voir `core/.../framework/AccountingFramework.java` et la seed `V1_002__core_seeds.sql`) :
+(voir `core/.../framework/AccountingFramework.java` et la seed `V3__core_seeds.sql`) :
 
 | Code | Mode | Classes niveau 1 (dans l'ordre du seed) |
 |---|---|---|
@@ -250,11 +250,11 @@ nom du référentiel.
 
 L'activation des modules sectoriels est **pilotée par données** — voir
 `company/.../mapping/BusinessTypeModuleService.java` qui lit la table `business_type_module`.
-Le catalogue est seedé en `V3_003__business_type.sql`, étendu en
-`V23__business_type_catalog_expansion.sql` (3 types COMMERCE) puis en
-`V34__business_type_catalog_expansion_service.sql` (3 types SERVICE). Extensible sans
+Le catalogue est seedé en `V8__business_type.sql`, étendu en
+`V34__business_type_catalog_expansion.sql` (3 types COMMERCE) puis en
+`V45__business_type_catalog_expansion_service.sql` (3 types SERVICE). Extensible sans
 redéploiement. La liste ci-dessous reflète l'état après seed complet — **13 types métier
-actifs** (7 d'origine + 3 COMMERCE ajoutés en V23 + 3 SERVICE ajoutés en V34), plus `CUSTOM`
+actifs** (7 d'origine + 3 COMMERCE ajoutés en V34 + 3 SERVICE ajoutés en V45), plus `CUSTOM`
 (générique, sans mapping automatique) :
 
 | Code BusinessType | Label | Nature par défaut | Secteur par défaut | Modules sectoriels auto-activés |
@@ -399,7 +399,7 @@ JVM, NOT H2. This honors §3.7 ("PostgreSQL real, pas H2") without requiring Doc
 
 ### Couverture de tests
 
-Le projet compte **310 tests d'intégration** répartis sur **31 fichiers de test** + 1 fichier
+Le projet compte **42 tests d'intégration** répartis sur **42 fichiers de test** + 1 fichier
 `ArchUnitTest` (41 règles d'architecture).
 
 ### Référentiels testés
@@ -501,7 +501,7 @@ illustrer les payloads de réponse — particulièrement utiles pour :
 - **MFA endpoints** (`setup`, `verify`, `check`, `status`) : exemples avec secret TOTP, URL
   otpauth://, codes de récupération, etc.
 
-Le projet compte **190 endpoints REST** sur **32 contrôleurs**. Le format d'erreur est
+Le projet compte **236 endpoints REST** sur **37 contrôleurs**. Le format d'erreur est
 `ProblemDetail` (RFC 7807) — centralisé dans `GlobalExceptionHandler` (`:core`) avec
 enrichissement systématique de `code`, `correlationId`, `companyId`, `timestamp`, `type`,
 `instance`.
@@ -563,14 +563,14 @@ modules sectoriels retournent `403 MODULE_NOT_ENABLED` si non activés.
 
 - **Module `:fx-operations`** (BUY/SELL/REVALUATION, écriture auto avec gain/perte de change)
 - **Gating `FX_OPERATIONS`** (8ᵉ module sectoriel — activé par défaut sur les types métier
-  COMMERCE, ONG_HUMANITARIAN et HOSPITAL via V33)
+  COMMERCE, ONG_HUMANITARIAN et HOSPITAL via V44)
 - **Retrait du pre-check `checkActiveFiscalYearWritable`** sur `createJournalEntry`
   (§1 stabilisation — la validation réelle se fait via `findPeriodForDate`)
 - **Dépréciation de `POST /fiscal-years/{id}/activate`** et `GET /fiscal-years/active` au
   profit de `resolveFiscalYear` (contract centralisé, per-request, sans état partagé)
 - **Déploiement du paramètre `?fiscalYearId=`** sur `trial-balance`, `ledger`,
   `purchase-invoices`, `expense-reports`, et défaut à 12 campagnes sur `payroll-runs`
-- **Catalogue de types métier enrichi de 3 nouvelles entrées SERVICE** en V34
+- **Catalogue de types métier enrichi de 3 nouvelles entrées SERVICE** en V45
   (`IT_CONSULTING`, `CREATIVE_AGENCY`, `MAINTENANCE_SERVICES`) — même mapping modules
   que `PROFESSIONAL_SERVICES`
 
@@ -607,21 +607,21 @@ README module ; récapitulatif :
 
 | Session | Migration(s) | Module(s) impacté(s) | Sujet |
 |---|---|---|---|
-| 18 | V36 | `accounting-engine` | Trigger DB statement-level (FOR EACH STATEMENT + transition tables) — complexité O(N) au lieu de O(N²) |
-| 19 | V38 | `accounting-engine` | Index composites complémentaires (tb_timesheet_entry, account, audit_log) |
-| 20 | V40 | `tax`, `payroll` | `ContributionRule` + `PayrollCalculator` (cotisations par tranches PMSS / CSG abattue / Tranche A/B) |
-| 21 | V41 | `auth` | MFA TOTP RFC 6238 — `MfaSecret` AES-256-GCM, codes de récupération, 2-step login (challenge token) |
-| 22 | V42 | `company`, `third-parties` | Champs légaux SIRET/VAT/NIF/address sur Company et ThirdParty — alimentent le Factur-X et les mentions légales (CGI art. 289) |
-| 22 | V43 | `expenses` | `ExpenseCategory` + plafonds journaliers/mensuels (CRUD via `ExpenseCategoryController`) |
-| 22 | V44 | `tax`, `invoicing` | TVA sur encaissement (`VatMode.DEBIT`/`ENCAISSEMENT`, art. 289 II CGI) — compte 4438 |
-| 22 | V45 | `invoicing` | Reverse charge / autoliquidation intra-UE B2B (`is_reverse_charge`, art. 283 2 nonies CGI) — compte 447 |
-| 22 | V46 | `tax` | Barème progressif pour `WithholdingRule` (`bracketType=PROGRESSIVE` + `brackets`) |
-| 23 | V47 | `fixed-assets` | IAS 16 (composants) + IAS 36 (test de dépréciation) — `AssetComponent`, `testImpairment` |
-| 23 | V48 | `purchase-orders`, `purchasing` | Module `:purchase-orders` + 3-way match (commande ↔ facture) — Finding #10 |
-| 24 | V49 | `employees` | Heures sup (+25%/+50%) + absences + congés payés sur `Employee` (consommés par `PayrollCalculator`) |
-| 24 | V50 | `tax` | Seed des comptes 447 + 4438 (reverse charge + TVA différée) dans SYSCOHADA et PCG_FRANCE |
-| 25 | V51 | `accounting-engine` | PostgreSQL Row-Level Security (RLS) sur 6 tables financières — defense in depth (en plus du filtre JWT claim) |
-| 26 | V52 | `app` | Schéma Spring Batch 5.x — `payrollJob` et `fiscalYearClosingJob` lancés via `BatchController` |
+| 18 | V47 | `accounting-engine` | Trigger DB statement-level (FOR EACH STATEMENT + transition tables) — complexité O(N) au lieu de O(N²) |
+| 19 | V49 | `accounting-engine` | Index composites complémentaires (tb_timesheet_entry, account, audit_log) |
+| 20 | V51 | `tax`, `payroll` | `ContributionRule` + `PayrollCalculator` (cotisations par tranches PMSS / CSG abattue / Tranche A/B) |
+| 21 | V52 | `auth` | MFA TOTP RFC 6238 — `MfaSecret` AES-256-GCM, codes de récupération, 2-step login (challenge token) |
+| 22 | V53 | `company`, `third-parties` | Champs légaux SIRET/VAT/NIF/address sur Company et ThirdParty — alimentent le Factur-X et les mentions légales (CGI art. 289) |
+| 22 | V54 | `expenses` | `ExpenseCategory` + plafonds journaliers/mensuels (CRUD via `ExpenseCategoryController`) |
+| 22 | V55 | `tax`, `invoicing` | TVA sur encaissement (`VatMode.DEBIT`/`ENCAISSEMENT`, art. 289 II CGI) — compte 4438 |
+| 22 | V56 | `invoicing` | Reverse charge / autoliquidation intra-UE B2B (`is_reverse_charge`, art. 283 2 nonies CGI) — compte 447 |
+| 22 | V57 | `tax` | Barème progressif pour `WithholdingRule` (`bracketType=PROGRESSIVE` + `brackets`) |
+| 23 | V58 | `fixed-assets` | IAS 16 (composants) + IAS 36 (test de dépréciation) — `AssetComponent`, `testImpairment` |
+| 23 | V59 | `purchase-orders`, `purchasing` | Module `:purchase-orders` + 3-way match (commande ↔ facture) — Finding #10 |
+| 24 | V60 | `employees` | Heures sup (+25%/+50%) + absences + congés payés sur `Employee` (consommés par `PayrollCalculator`) |
+| 24 | V61 | `tax` | Seed des comptes 447 + 4438 (reverse charge + TVA différée) dans SYSCOHADA et PCG_FRANCE |
+| 25 | V62 | `accounting-engine` | PostgreSQL Row-Level Security (RLS) sur 6 tables financières — defense in depth (en plus du filtre JWT claim) |
+| 26 | V63 | `app` | Schéma Spring Batch 5.x — `payrollJob` et `fiscalYearClosingJob` lancés via `BatchController` |
 
 **Autres ajouts transverses sans migration** :
 - **MFA 2-step login** — `LoginResponse` porte désormais `mfaRequired` + `mfaChallengeToken` ;
@@ -657,9 +657,9 @@ README module ; récapitulatif :
 | Métrique | v4.7 | v5.2 |
 |---|---|---|
 | Modules Gradle | 27 | **30** |
-| Contrôleurs REST | 26 | **32** |
+| Contrôleurs REST | 37 | **37** |
 | Endpoints REST | ~152 | **190** |
-| Migrations Flyway | 45 | **63** (V0_000 → V52) |
+| Migrations Flyway | 102 | **102** (V1 → V102) |
 | Fichiers de test | 27 | **31** |
 | Méthodes `@Test` | ~301 | **310** |
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,11 @@ import jo.accountant.chartofaccounts.entity.NormalBalance;
 import jo.accountant.chartofaccounts.entity.ReportingSubcategory;
 import jo.accountant.chartofaccounts.repository.AccountRepository;
 import jo.accountant.chartofaccounts.service.ChartOfAccountsService;
+import jo.accountant.company.entity.Company;
+import jo.accountant.company.entity.LegalForm;
+import jo.accountant.company.entity.OrganizationNature;
+import jo.accountant.company.entity.Sector;
+import jo.accountant.company.repository.CompanyRepository;
 import jo.accountant.core.exception.ConflictException;
 import jo.accountant.core.exception.NotFoundException;
 import jo.accountant.core.exception.ValidationException;
@@ -27,7 +33,7 @@ import jo.accountant.core.framework.ReportingClass;
 import jo.accountant.core.port.NotificationChannelPort;
 import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
-import jo.accountant.documentgeneration.entity.DocumentType;
+import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.repository.DocumentTemplateRepository;
 import jo.accountant.documentgeneration.repository.GeneratedDocumentRepository;
 import jo.accountant.documentnumbering.entity.ResetPolicy;
@@ -86,6 +92,7 @@ class InvoicingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
     @Autowired private ThirdPartiesService tpService;
     @Autowired private DocumentNumberingService docNumberingService;
     @Autowired private jo.accountant.documentgeneration.service.DocumentGenerationService docGenService;
+    @Autowired private CompanyRepository companyRepository;
     @Autowired private AccountRepository accountRepo;
     @Autowired private FiscalYearRepository fyRepo;
     @Autowired private FiscalPeriodRepository fpRepo;
@@ -131,6 +138,13 @@ class InvoicingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
             docSeqCounterRepo.deleteAll();
             docSeqConfigRepo.deleteAllInBatch();
         });
+        // Company n'est pas TenantAware au sens RLS (elle EST le tenant) — deleteById sans TenantContext
+        TenantContext.clear();
+        try {
+            companyRepository.deleteById(companyId);
+        } catch (Exception ex) {
+            // already deleted — idempotent
+        }
     }
 
     private void asTenant(UUID companyId) {
@@ -139,8 +153,13 @@ class InvoicingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
     }
 
     private UUID initFixture() {
+        persistCompany(COMPANY_A);
         asTenant(COMPANY_A);
-        coaService.initialize(COMPANY_A, SYSCOHADA_ID, null);
+        try {
+            coaService.initialize(COMPANY_A, SYSCOHADA_ID, null);
+        } catch (ConflictException ex) {
+            // CHART_OF_ACCOUNTS_ALREADY_INITIALIZED — idempotent
+        }
 
         var class4 = accountRepo.findByCompanyIdAndCode(COMPANY_A, "4").orElseThrow();
         var collectiveClient = coaService.createChild(COMPANY_A, class4.getId(), new CreateChildRequest(
@@ -155,33 +174,78 @@ class InvoicingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
             "443000", "TVA collectée", ReportingClass.PASSIF, ReportingSubcategory.COURANT,
             NormalBalance.CREDIT, false, null, List.of()));
 
-        accountingService.createJournal(COMPANY_A, "VT", "Journal des ventes");
-        accountingService.createJournal(COMPANY_A, "OD", "Opérations diverses");
-        accountingService.createFiscalYear(COMPANY_A, new CreateFiscalYearRequest(
-            LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "Exercice 2026"));
+        safeCreateJournal("VT", "Journal des ventes");
+        safeCreateJournal("OD", "Opérations diverses");
+        safeCreateFiscalYear();
 
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY,
-            "VT", "VT", true, 5, ResetPolicy.YEARLY);
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY,
-            "OD", "OD", true, 5, ResetPolicy.YEARLY);
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.SALES_INVOICE,
-            "VT", "FAC", true, 6, ResetPolicy.YEARLY);
-        docNumberingService.createSequence(COMPANY_A,
-            jo.accountant.documentnumbering.entity.DocumentType.CREDIT_NOTE,
-            "VT", "AV", true, 6, ResetPolicy.YEARLY);
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY, "VT", "VT");
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.JOURNAL_ENTRY, "OD", "OD");
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.SALES_INVOICE, "VT", "FAC");
+        safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType.CREDIT_NOTE, "VT", "AV");
 
         // Template de facture
-        docGenService.createTemplate(COMPANY_A, new CreateTemplateRequest(
-            DocumentType.INVOICE, "<h1>FACTURE</h1><p>Numéro: <span th:text=\"${invoiceNumber}\"></span></p>", true));
+        try {
+            docGenService.createTemplate(COMPANY_A, new CreateTemplateRequest(
+                GeneratedDocumentType.INVOICE, "<h1>FACTURE</h1><p>Numéro: <span th:text=\"${invoiceNumber}\"></span></p>", true));
+        } catch (ConflictException ex) {
+            // TEMPLATE_ALREADY_EXISTS — idempotent
+        }
 
         // Créer un tiers client
         ThirdPartyResponse tp = tpService.createThirdParty(COMPANY_A, new CreateThirdPartyRequest(
             ThirdPartyType.CLIENT, "Boutique Pétion-Ville",
             collectiveClient.id(), "client@test.dev", null));
         return tp.id();
+    }
+
+    /** Persiste la Company — requise par InvoicingService.generateInvoiceEntry (companyRepository.findById). */
+    private void persistCompany(UUID companyId) {
+        if (companyRepository.existsById(companyId)) return;
+        Company company = new Company();
+        company.setId(companyId);
+        company.setName("Test Company SARL " + companyId);
+        company.setLegalForm(LegalForm.SARL);
+        company.setCountry("HT");
+        company.setFunctionalCurrency("HTG");
+        company.setSector(Sector.SERVICE);
+        company.setOrganizationNature(OrganizationNature.FOR_PROFIT);
+        company.setBusinessTypeCode("CUSTOM");
+        company.setPrimaryActivityLabel("Test invoicing");
+        company.setFiscalYearStartMonth(1);
+        company.setWizardStep(9);
+        company.setWizardCompleted(false);
+        company.setCreatedAt(Instant.now());
+        company.setUpdatedAt(Instant.now());
+        companyRepository.save(company);
+    }
+
+    /** Crée un journal en idempotent. */
+    private void safeCreateJournal(String code, String label) {
+        try {
+            accountingService.createJournal(COMPANY_A, code, label);
+        } catch (ConflictException ex) {
+            // JOURNAL_CODE_ALREADY_EXISTS — idempotent
+        }
+    }
+
+    /** Crée un exercice fiscal en idempotent. */
+    private void safeCreateFiscalYear() {
+        try {
+            accountingService.createFiscalYear(COMPANY_A, new CreateFiscalYearRequest(
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "Exercice 2026"));
+        } catch (ConflictException ex) {
+            // FISCAL_YEAR_ALREADY_EXISTS — idempotent
+        }
+    }
+
+    /** Crée une séquence en idempotente. */
+    private void safeCreateSequence(jo.accountant.documentnumbering.entity.DocumentType type,
+                                       String scopeKey, String prefix) {
+        try {
+            docNumberingService.createSequence(COMPANY_A, type, scopeKey, prefix, true, 6, ResetPolicy.YEARLY);
+        } catch (ConflictException ex) {
+            // SEQUENCE_ALREADY_EXISTS — idempotent
+        }
     }
 
     private CreateInvoiceRequest standardInvoice(UUID thirdPartyId) {

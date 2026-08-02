@@ -105,7 +105,7 @@ actionnaires) et pour IFRS (5 classes correspondant aux 5 `ReportingClass`).
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V8_001__financial_statements.sql` — table
+- `src/main/resources/db/migration/V18__financial_statements.sql` — table
   `financial_statement_snapshot`. Unique `(company_id, type, period_id)`. CHECK sur `type`
   (2 valeurs). Index sur `company_id` et `period_id`. Le contenu de l'état est sérialisé en
   JSONB (`content_json`).

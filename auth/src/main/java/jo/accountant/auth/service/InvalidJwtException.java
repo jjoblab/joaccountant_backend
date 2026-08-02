@@ -3,7 +3,7 @@ package jo.accountant.auth.service;
 import jo.accountant.core.exception.ForbiddenException;
 
 /**
- * R-01 (lot-A-securite) — Levée par {@link JwtService#parseAndVerifyClaims(String)} quand
+ * (lot-A-securite) — Levée par {@link JwtService#parseAndVerifyClaims(String)} quand
  * un JWT refusé (signature invalide, expiré, mal formé) est présenté à l'endpoint MFA.
  *
  * <p>Étend {@link ForbiddenException} pour être automatiquement mappée en HTTP 403 par
@@ -17,13 +17,13 @@ import jo.accountant.core.exception.ForbiddenException;
  */
 public class InvalidJwtException extends ForbiddenException {
 
-    private static final long serialVersionUID = 1L;
+ private static final long serialVersionUID = 1L;
 
-    public InvalidJwtException(String message) {
-        super("MFA_CHALLENGE_TOKEN_INVALID", message);
-    }
+ public InvalidJwtException(String message) {
+ super("MFA_CHALLENGE_TOKEN_INVALID", message);
+ }
 
-    public InvalidJwtException(String message, Throwable cause) {
-        super("MFA_CHALLENGE_TOKEN_INVALID", message, cause);
-    }
+ public InvalidJwtException(String message, Throwable cause) {
+ super("MFA_CHALLENGE_TOKEN_INVALID", message, cause);
+ }
 }

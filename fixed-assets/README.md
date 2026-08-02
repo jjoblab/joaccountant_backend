@@ -27,18 +27,18 @@ Le module **génère des écritures comptables** via `:accounting-engine` :
   `depreciationExpenseAccountId` (compte de charge — ex. 631),
   `accumulatedDepreciationAccountId` (compte d'amortissement cumulé — ex. 2844), `status`
   (ACTIVE/DISPOSED), `disposalDate`, `disposalAmount`, `gainOrLoss`.
-  **V47 (audit v4.7 §3.2 — IAS 36)** : `impairmentAmount` (dépréciation IAS 36 cumulée,
+  **V58 (audit v4.7 §3.2 — IAS 36)** : `impairmentAmount` (dépréciation IAS 36 cumulée,
   défaut 0), `impairmentExpenseAccountId` (compte de CHARGES pour la dépréciation — ex. 6816,
   fallback `depreciationExpenseAccountId`), `accumulatedImpairmentAccountId` (compte d'ACTIF
   pour la dépréciation cumulée — ex. 291, fallback `accumulatedDepreciationAccountId`).
-- `AssetComponent` — **V47 (IAS 16)** : composant d'une immobilisation (ex. structure,
+- `AssetComponent` — **V58 (IAS 16)** : composant d'une immobilisation (ex. structure,
   toiture, installations techniques). Champs : `assetId`, `label`, `componentCost`,
   `usefulLifeMonths`, `depreciationMethod`. Chaque composant a sa propre durée de vie et sa
   propre méthode d'amortissement. L'échéancier de l'asset parent est regénéré par composant
   après ajout.
 - `DepreciationScheduleLine` — ligne d'échéancier d'amortissement. Champs : `assetId`,
   `periodDate`, `amount`, `cumulativeAmount`, `periodId` (résolu au postage), `posted`
-  (boolean). Une ligne par mois pour `usefulLifeMonths` mois. **V47** : `componentId`
+  (boolean). Une ligne par mois pour `usefulLifeMonths` mois. **V58** : `componentId`
   (nullable — null si l'amortissement est calculé globalement sur l'asset, sinon référence
   l'`AssetComponent` dont la ligne amortit la part).
 - `AssetStatus` (enum) — `ACTIVE`, `DISPOSED`.
@@ -93,13 +93,13 @@ Le module **génère des écritures comptables** via `:accounting-engine` :
 |---|---|---|---|
 | GET | `/api/v1/companies/{companyId}/fixed-assets` | Liste les immobilisations (⚠️ non paginé) | — |
 | POST | `/api/v1/companies/{companyId}/fixed-assets` | Crée une immobilisation + génère l'échéancier. Corps : `{label, acquisitionDate, acquisitionCost, usefulLifeMonths, residualValue, depreciationMethod, assetAccountId, depreciationExpenseAccountId, accumulatedDepreciationAccountId}` | 422 `USEFUL_LIFE_INVALID`/`RESIDUAL_TOO_HIGH`/`ACCOUNT_NOT_FOUND`/`ACCOUNT_INACTIVE`/`ACCOUNT_WRONG_REPORTING_CLASS` |
-| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}` | Récupère une immobilisation (porte désormais `impairmentAmount`, `impairmentExpenseAccountId`, `accumulatedImpairmentAccountId`, `components` — V47) | 404 `Asset` |
-| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/schedule` | Échéancier d'amortissement (lignes postées et non postées) — chaque ligne porte désormais `componentId` (V47) | 404 |
+| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}` | Récupère une immobilisation (porte désormais `impairmentAmount`, `impairmentExpenseAccountId`, `accumulatedImpairmentAccountId`, `components` — V58) | 404 `Asset` |
+| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/schedule` | Échéancier d'amortissement (lignes postées et non postées) — chaque ligne porte désormais `componentId` (V58) | 404 |
 | POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/post-period-depreciation?periodId=` | Poste l'amortissement d'une période — génère écriture | 404, 409 `ASSET_DISPOSED`/`SCHEDULE_LINE_ALREADY_POSTED`, 422 `JOURNAL_OD_NOT_FOUND`/`PERIOD_NOT_FOUND` |
 | POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/dispose` | Cède une immobilisation — génère écriture de cession. Corps : `{disposalDate, disposalAmount}` | 404, 409 `ASSET_ALREADY_DISPOSED`, 422 `JOURNAL_OD_NOT_FOUND`/`PERIOD_NOT_FOUND` |
-| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/components` | **V47 — IAS 16** — Liste les composants d'une immobilisation (structure, toiture, installations...). | 404 |
-| POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/components` | **V47 — IAS 16** — Ajoute un composant à un asset existant et regénère l'échéancier par composant. Refusé (409) si l'échéancier a déjà des lignes postées. | 404, 409 `SCHEDULE_ALREADY_POSTED` |
-| POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/test-impairment?recoverableAmount=` | **V47 — IAS 36** — Test de dépréciation : compare la VNC (coût − amortissement cumulé − dépréciation antérieure) avec le montant recouvrable fourni. Si VNC > recouvrable, enregistre une dépréciation (D 6816 / C 291) et retourne le montant + l'écriture générée. Retourne `ImpairmentTestResult {assetId, bookValue, recoverableAmount, impairmentAmount, journalEntryId}`. | 404, 409 `ASSET_DISPOSED` |
+| GET | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/components` | **V58 — IAS 16** — Liste les composants d'une immobilisation (structure, toiture, installations...). | 404 |
+| POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/components` | **V58 — IAS 16** — Ajoute un composant à un asset existant et regénère l'échéancier par composant. Refusé (409) si l'échéancier a déjà des lignes postées. | 404, 409 `SCHEDULE_ALREADY_POSTED` |
+| POST | `/api/v1/companies/{companyId}/fixed-assets/{assetId}/test-impairment?recoverableAmount=` | **V58 — IAS 36** — Test de dépréciation : compare la VNC (coût − amortissement cumulé − dépréciation antérieure) avec le montant recouvrable fourni. Si VNC > recouvrable, enregistre une dépréciation (D 6816 / C 291) et retourne le montant + l'écriture générée. Retourne `ImpairmentTestResult {assetId, bookValue, recoverableAmount, impairmentAmount, journalEntryId}`. | 404, 409 `ASSET_DISPOSED` |
 
 ## Relations avec les autres modules
 
@@ -127,15 +127,15 @@ Le module **génère des écritures comptables** via `:accounting-engine` :
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V10_001__fixed_assets.sql` — tables `asset` et
+- `src/main/resources/db/migration/V20__fixed_assets.sql` — tables `asset` et
   `depreciation_schedule_line`. CHECK sur `depreciation_method` (2 valeurs), `status`
   (2 valeurs). `acquisition_cost > 0`, `useful_life_months >= 1`. Index sur
   `(company_id, status)` et `(asset_id, period_date)`.
-- `src/main/resources/db/migration/V10_002__fixed_assets_disposal_accounts.sql` — ajoute les
+- `src/main/resources/db/migration/V21__fixed_assets_disposal_accounts.sql` — ajoute les
   colonnes `disposal_gain_account_id` (PRODUITS) et `disposal_loss_account_id` (CHARGES) sur
   `asset` (audit M11).
-- `src/main/resources/db/migration/V47__fixed_assets_components_and_impairment.sql` —
-  **V47 — audit v4.7 §3.2 (Finding #11 — IAS 16/36)**. Crée la table `asset_component`
+- `src/main/resources/db/migration/V58__fixed_assets_components_and_impairment.sql` —
+  **V58 — audit v4.7 §3.2 (Finding #11 — IAS 16/36)**. Crée la table `asset_component`
   (composants d'immobilisation — structure, toiture, installations...). Ajoute sur `asset` :
   `impairment_amount` (NUMERIC 19,4, défaut 0), `impairment_expense_account_id` (compte de
   CHARGES 6816, nullable — fallback `depreciation_expense_account_id`),
@@ -196,4 +196,4 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `FIXED_ASSETS` (voir `V3_003__business_type.sql`).
+`business_type_module` inclut `FIXED_ASSETS` (voir `V8__business_type.sql`).

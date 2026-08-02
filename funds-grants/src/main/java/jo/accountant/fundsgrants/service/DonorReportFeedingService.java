@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * V7-1 — Alimentation automatique de {@code donor_report_line}.
  *
- * <p>Lit la vue matérialisée {@code donor_report_actuals_mv} (créée par la migration V72)
+ * <p>Lit la vue matérialisée {@code donor_report_actuals_mv} (créée par la migration V83)
  * et upsert les lignes dans {@code donor_report_line} pour chaque
  * (grant, period_year, period_quarter, cost_category).
  *
@@ -143,7 +143,7 @@ public class DonorReportFeedingService {
     }
 
     private void refreshMaterializedView() {
-        // CONCURRENTLY requiert un index unique (créé en V72).
+        // CONCURRENTLY requiert un index unique (créé en V83).
         try {
             jdbcTemplate.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY donor_report_actuals_mv");
         } catch (Exception e) {

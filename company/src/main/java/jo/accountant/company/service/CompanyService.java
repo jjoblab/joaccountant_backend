@@ -57,7 +57,7 @@ import jakarta.persistence.PersistenceContext;
  * Le wizard 9 étapes historique a été supprimé. Les 4 DTO V8.2 ({@link WizardStep2Request},
  * {@link WizardStep3Request}, {@link CompleteWizardRequest}, {@link CompanyWizardResult}) sont
  * désormais câblés. La constante {@link Company#TOTAL_WIZARD_STEPS} vaut 4, enfin alignée sur
- * la migration V84 qui avait déjà clampé wizard_step à 4 en base.
+ * la migration V95 qui avait déjà clampé wizard_step à 4 en base.
  *
  * <p>Les 4 étapes du wizard V8.2 :
  * <ol>

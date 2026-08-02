@@ -1,7 +1,7 @@
 # Module : purchase-orders
 
 > Commandes fournisseurs (Purchase Orders) et 3-way match commande ↔ facture — Finding #10
-> (V48, session 23).
+> (V59, session 23).
 
 ## Rôle du module
 
@@ -17,7 +17,7 @@ dimensions (existence de la commande, quantité, prix), et les écarts sont sign
 
 ### Problème adressé (Finding #10)
 
-Avant V48, aucune commande fournisseur n'était persistée. Les factures d'achat
+Avant V59, aucune commande fournisseur n'était persistée. Les factures d'achat
 (`:purchasing`) étaient enregistrées sans rapprochement avec une commande préalable. Or, le
 contrôle interne standard (3-way match) permet de détecter :
 
@@ -129,7 +129,7 @@ Si `matches=true`, `discrepancies` est vide. Sinon, `matches=false` et la liste 
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V48__purchase_orders.sql` — **V48 — Finding #10**. Crée
+- `src/main/resources/db/migration/V59__purchase_orders.sql` — **V59 — Finding #10**. Crée
   les tables `purchase_order` (entête : `supplier_id`, `order_number`, `order_date`,
   `status`, `currency`, `total_amount`) et `purchase_order_line` (lignes : `po_id`,
   `item_id`, `description`, `quantity`, `unit_price`, `received_quantity`, `line_total`).

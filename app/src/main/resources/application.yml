@@ -37,7 +37,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false
     placeholder-replacement: false
-  # Spring Batch — le schéma BATCH_* est créé par la migration Flyway V52__spring_batch_schema.sql.
+  # Spring Batch — le schéma BATCH_* est créé par la migration Flyway V63__spring_batch_schema.sql.
   # On désactive l'auto-init (pour ne pas double-créer avec Flyway) et l'auto-run des Jobs au
   # démarrage (les Jobs sont lancés manuellement via BatchController ou par cron).
   batch:
@@ -51,7 +51,7 @@ spring:
     virtual:
       enabled: true
   # v2.5.2 — Les templates Thymeleaf sont stockés en DB (document_template table, seedés par
-  # Flyway V35/V88/V89), PAS sur classpath:/templates/. On désactive la vérification de
+  # Flyway V46/V99/V100), PAS sur classpath:/templates/. On désactive la vérification de
   # l'emplacement pour éviter le warning "Cannot find template location: classpath:/templates/"
   # au startup. DocumentGenerationService rend le HTML depuis la DB, pas depuis le classpath.
   thymeleaf:

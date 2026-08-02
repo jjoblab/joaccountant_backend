@@ -103,7 +103,7 @@ import org.springframework.transaction.annotation.Transactional;
  * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
  *
  * <p><b>Bug historique corrigé</b> — la V8.1 pointait par erreur sur le framework {@code ...004}
- * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V1_002__core_seeds.sql ligne 26).
+ * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V3__core_seeds.sql ligne 26).
  */
 @Component
 public class ProfessionalServicesSeeder implements CompanySeeder {
@@ -111,7 +111,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
   private static final Logger LOG = LoggerFactory.getLogger(ProfessionalServicesSeeder.class);
 
   /**
-   * UUID du référentiel PCN_HAITI (V1_002__core_seeds.sql ligne 26 — correctif V9 : la V8.1
+   * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la V8.1
    * pointait par erreur sur ...004 = PCG_FRANCE).
    */
   private static final UUID PCN_HAITI_FRAMEWORK_ID =

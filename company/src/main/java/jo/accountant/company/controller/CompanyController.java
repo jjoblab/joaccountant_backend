@@ -59,7 +59,7 @@ public class CompanyController {
 
     @Operation(summary = "List companies accessible to the current user",
         description = "Retourne toutes les sociétés auxquelles l'utilisateur courant a accès (via UserCompanyRole), " +
-                      "avec leur étape de wizard et champs légaux (siret/vatNumber/nif/address, V42).")
+                      "avec leur étape de wizard et champs légaux (siret/vatNumber/nif/address, V53).")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = CompanyResponse.class),
@@ -152,7 +152,7 @@ public class CompanyController {
     }
 
     @Operation(summary = "Get a single company",
-        description = "Retourne une société avec tous ses champs (y compris les champs légaux V42).")
+        description = "Retourne une société avec tous ses champs (y compris les champs légaux V53).")
     @ApiResponses({
         @ApiResponse(responseCode = "200",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -202,7 +202,7 @@ public class CompanyController {
 
     @Operation(summary = "Update the legal fields of a company (Phase D — Audit v4.7 §4.2)",
         description = "Mise à jour partielle des champs légaux (siret, vatNumber, nif, address) " +
-                      "persistés par la migration V42. Ces champs restent éditables après " +
+                      "persistés par la migration V53. Ces champs restent éditables après " +
                       "wizardCompleted=true car ils relèvent de la conformité réglementaire " +
                       "(mentions légales factures CGI art. 289 + Factur-X). " +
                       "Sémantique : seuls les champs non-nuls sont écrasés ; une chaîne blank " +

@@ -261,9 +261,9 @@ class FinancialStatementsPdfIntegrationTest extends jo.accountant.testsupport.Em
 
     @Test
     @DisplayName("GET /financial-statements/balance-sheet/pdf returns 200 + application/pdf + %PDF magic bytes")
-    @Disabled("PRODUCTION BUG — V88 migration seeds a BALANCE_SHEET_REPORT Thymeleaf template with "
+    @Disabled("PRODUCTION BUG — V99 migration seeds a BALANCE_SHEET_REPORT Thymeleaf template with "
         + "malformed string-concatenation syntax at lines 77/92/107 of "
-        + "document-generation/src/main/resources/db/migration/V88__reports_hub_pdf_templates.sql "
+        + "document-generation/src/main/resources/db/migration/V99__reports_hub_pdf_templates.sql "
         + "(th:text=\"''+${sec.reportingClass}+'' - ''+${sec.reportingSubcategory}+'' (''+${sec.subtotal}+'')'\""
         + " — the leading ' opens a string literal, leaving ${...} unevaluated, and the '- ' between "
         + "literals is parsed as a numeric-minus operator on strings). The endpoint returns HTTP 500 "

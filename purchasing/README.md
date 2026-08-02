@@ -9,7 +9,7 @@ Le module `:purchasing` gère les factures reçues des fournisseurs et leur règ
 **sectoriel** : activé pour les 4 variants commerce (`RETAIL_COMMERCE`,
 `WHOLESALE_COMMERCE`, `MIXED_COMMERCE`, `ECOMMERCE`) ainsi que pour
 `PROFESSIONAL_SERVICES`, `NGO_HUMANITARIAN`, `ACCOUNTING_FIRM`, `SCHOOL`, `HOSPITAL`
-via le mapping `business_type_module` (V23 — restructuration 2026-07-24 — Partie A).
+via le mapping `business_type_module` (V34 — restructuration 2026-07-24 — Partie A).
 
 La capacité de paiement fournisseur vit ici (§2.0 du prompt — pas de module `:payment`
 séparé) :
@@ -115,7 +115,7 @@ séparé) :
 
 ## Tables / migrations Flyway
 
-- `src/main/resources/db/migration/V24__purchasing.sql` — tables `purchase_invoice` et
+- `src/main/resources/db/migration/V35__purchasing.sql` — tables `purchase_invoice` et
   `purchase_invoice_line`. CHECK sur `type` et `status`. Index sur
   `(company_id, status)`, `third_party_id`, `(company_id, supplier_reference)`.
 
@@ -158,7 +158,7 @@ Le message indique explicitement que l'activation peut se faire via
 manuelle pour le type métier `CUSTOM`).
 
 Le module est auto-activé à la complétion du wizard pour les types métier dont le mapping
-`business_type_module` inclut `PURCHASING` (voir `V23__business_type_catalog_expansion.sql`).
+`business_type_module` inclut `PURCHASING` (voir `V34__business_type_catalog_expansion.sql`).
 
 ## Tests
 
