@@ -6,6 +6,14 @@ import java.util.List;
 import java.util.UUID;
 import jo.accountant.bankreconciliation.entity.BankStatementFormat;
 
+/**
+ * ImportResult.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record ImportResult(
     UUID importId,
     UUID bankAccountId,

@@ -15,7 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Permet de convertir un montant d'une devise vers une autre en utilisant le taux
  * applicable à une date donnée.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ExchangeRateService {
 

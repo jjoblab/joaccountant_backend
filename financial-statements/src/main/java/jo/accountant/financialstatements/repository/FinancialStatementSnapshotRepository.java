@@ -9,7 +9,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des snapshots d'états financiers.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface FinancialStatementSnapshotRepository
     extends JpaRepository<FinancialStatementSnapshot, UUID> {
 

@@ -13,7 +13,12 @@ package jo.accountant.demo.support;
  *
  * <p>⚠️ Ce mot de passe est commité dans le repo public — c'est volontaire pour la démo publique.
  * En production réelle, ce fichier doit être supprimé et les users démo créés manuellement.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class DemoCredentials {
 
   /** Mot de passe partagé par les 4 users OWNER démo. Conforme à la politique (14 chars). */

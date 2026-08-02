@@ -16,7 +16,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Dépassement → 409 Conflict avec un code stable pour que le frontend puisse afficher un
  * prompt d'upgrade.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class MaxCompaniesGuard {
 

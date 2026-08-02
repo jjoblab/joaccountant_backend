@@ -11,7 +11,7 @@ import jo.accountant.core.audit.AuditableAction;
  * Événement publié à chaque décision sur une demande d'approbation
  * (APPROVED, REJECTED, CANCELLED).
  *
- * <p>Consommé asynchronement par {@code :audit-trail}. Le consommateur métier (Phase 5, 12, 14)
+ * <p>Consommé asynchronement par {@code :audit-trail}. Le consommateur métier, 12, 14)
  * peut aussi s'abonner à cet événement pour réagir à la décision (par exemple, finaliser le
  * postage d'une écriture quand sa demande est APPROVED, ou la remettre à DRAFT si REJECTED).
  *
@@ -21,7 +21,12 @@ import jo.accountant.core.audit.AuditableAction;
  * l'interface <code>AuditableAction</code>). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ApprovalDecidedEvent(
  UUID companyId,
  UUID actorUserId,

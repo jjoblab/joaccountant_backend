@@ -6,6 +6,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.inventory.entity.StockMoveDirection;
 
+/**
+ * StockMoveResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record StockMoveResponse(
     UUID id,
     UUID itemId,

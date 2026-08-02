@@ -9,20 +9,25 @@ import org.springframework.stereotype.Component;
  *
  * <p>Paramètres choisis aux minimums recommandés par OWASP (2024) :
  * <ul>
- *   <li>mémoire = 19 MiB (19456)</li>
- *   <li>itérations = 2</li>
- *   <li>parallélisme = 1</li>
- *   <li>longueur du hash = 32 octets</li>
+ * <li>mémoire = 19 MiB (19456)</li>
+ * <li>itérations = 2</li>
+ * <li>parallélisme = 1</li>
+ * <li>longueur du hash = 32 octets</li>
  * </ul>
  *
  * <p>Format de sortie : {@code $argon2id$v=19$m=19456,t=2,p=1$<salt_b64>$<hash_b64>} — identique
  * au format string libargon2, pour qu'une migration future vers un binding natif libargon2 soit
  * wire-compatible.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class Argon2PasswordEncoder {
 
-    private static final int MEMORY_KIB = 19456;  // 19 MiB
+    private static final int MEMORY_KIB = 19456; // 19 MiB
     private static final int ITERATIONS = 2;
     private static final int PARALLELISM = 1;
     private static final int HASH_LENGTH_BYTES = 32;

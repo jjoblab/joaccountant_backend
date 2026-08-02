@@ -49,20 +49,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de gestion de stock (§13 Phase 9).
+ * Service de gestion de stock (§13.
  *
  * <p>Responsabilités :
  * <ul>
- *   <li>Création d'entrepôts et d'articles</li>
- *   <li>Mouvements de stock (IN/OUT/TRANSFER)</li>
- *   <li>Valorisation FIFO ou coût moyen pondéré</li>
- *   <li>Génération d'écritures COGS pour les sorties (sourceModule=INVENTORY)</li>
- *   <li>Alerte de seuil de réapprovisionnement (événement LowStockEvent)</li>
+ * <li>Création d'entrepôts et d'articles</li>
+ * <li>Mouvements de stock (IN/OUT/TRANSFER)</li>
+ * <li>Valorisation FIFO ou coût moyen pondéré</li>
+ * <li>Génération d'écritures COGS pour les sorties (sourceModule=INVENTORY)</li>
+ * <li>Alerte de seuil de réapprovisionnement (événement LowStockEvent)</li>
  * </ul>
  *
  * <p><strong>LIFO n'est pas implémenté</strong> — IFRS l'interdit. Aucun flag "LIFO"
  * n'est exposé nulle part, même désactivé.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class InventoryService {
 
@@ -212,7 +217,7 @@ public class InventoryService {
      *
      * <p>Pour IN : crée une couche FIFO (ou met à jour le coût moyen).
      * Pour OUT : consomme les couches FIFO (ou utilise le coût moyen), calcule le COGS,
-     *   génère une écriture comptable, vérifie le stock négatif, publie LowStockEvent si seuil franchi.
+     * génère une écriture comptable, vérifie le stock négatif, publie LowStockEvent si seuil franchi.
      * Pour TRANSFER : sort de l'entrepôt source et entre dans l'entrepôt destination.
      */
     @Transactional
@@ -222,7 +227,7 @@ public class InventoryService {
 
         if (req.direction() == StockMoveDirection.TRANSFER) {
             throw new ValidationException("TRANSFER_NOT_FULLY_SUPPORTED",
-                "TRANSFER n'est pas encore supporté en Phase 9 — utiliser IN + OUT séparément");
+                "TRANSFER n'est pas encore supporté enutiliser IN + OUT séparément");
         }
 
         StockMove move = new StockMove();
@@ -292,9 +297,9 @@ public class InventoryService {
      *
      * <p>L'écriture est :
      * <ul>
-     *   <li>Débit : {@code item.inventoryAccountId} (compte de stock ACTIF) pour le coût total</li>
-     *   <li>Crédit : {@code counterpartyAccountId} (Fournisseur PASSIF ou Trésorerie ACTIF)
-     *       pour le même montant</li>
+     * <li>Débit : {@code item.inventoryAccountId} (compte de stock ACTIF) pour le coût total</li>
+     * <li>Crédit : {@code counterpartyAccountId} (Fournisseur PASSIF ou Trésorerie ACTIF)
+     * pour le même montant</li>
      * </ul>
      *
      * <p>Idempotence : clé déterministe {@code "inventory-receipt-" + move.getId()}.
@@ -305,7 +310,7 @@ public class InventoryService {
         Account inventoryAccount = accountRepository.findById(item.getInventoryAccountId())
             .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
                 "Compte de stock introuvable : " + item.getInventoryAccountId()));
-        // Audit v4.7 §6.2 — defense-in-depth
+        //— defense-in-depth
         if (!inventoryAccount.getCompanyId().equals(move.getCompanyId())) {
             throw new NotFoundException("Account", item.getInventoryAccountId().toString());
         }
@@ -317,7 +322,7 @@ public class InventoryService {
                 "Compte de contrepartie introuvable : " + counterpartyAccountId);
         }
 
-        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
         // le code/label par défaut du type (jamais d'exception pour les types standards).
         String journalCode = accountingEngineService.getOrCreateJournal(move.getCompanyId(),
             jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -377,7 +382,7 @@ public class InventoryService {
     /**
      * Consomme les couches FIFO (plus anciennes d'abord) et retourne le COGS total.
      *
-     * <p><b>Audit v4.7 §3.2 Finding HAUT — FIX race condition</b> : utilise
+     * <p><b>Finding HAUT — FIX race condition</b> : utilise
      * {@link StockValuationLayerRepository#findFifoLayersForUpdate} qui fait un
      * {@code SELECT ... FOR UPDATE} pessimiste. Sans ce verrou, deux mouvements OUT simultanés
      * pouvaient consommer la même couche FIFO → surconsommation et stock négatif.
@@ -412,7 +417,7 @@ public class InventoryService {
     /**
      * Calcule le COGS au coût moyen pondéré.
      *
-     * <p>En Phase 9 simplifié : le coût moyen = somme des (quantité × coût) de toutes les
+     * <p>Ensimplifié : le coût moyen = somme des (quantité × coût) de toutes les
      * couches restantes / somme des quantités restantes. Les couches sont créées pour FIFO
      * mais aussi utilisées pour WEIGHTED_AVERAGE (pour avoir une source de vérité unique).
      */
@@ -460,18 +465,18 @@ public class InventoryService {
     private void generateCogsEntry(StockMove move, Item item, BigDecimal cogs) {
         Account cogsAccount = accountRepository.findById(item.getCogsAccountId())
             .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND", "Compte COGS introuvable"));
-        // Audit v4.7 §6.2 — defense-in-depth
+        //— defense-in-depth
         if (!cogsAccount.getCompanyId().equals(move.getCompanyId())) {
             throw new NotFoundException("Account", item.getCogsAccountId().toString());
         }
         Account inventoryAccount = accountRepository.findById(item.getInventoryAccountId())
             .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND", "Compte de stock introuvable"));
-        // Audit v4.7 §6.2 — defense-in-depth
+        //— defense-in-depth
         if (!inventoryAccount.getCompanyId().equals(move.getCompanyId())) {
             throw new NotFoundException("Account", item.getInventoryAccountId().toString());
         }
 
-        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
         // le code/label par défaut du type (jamais d'exception pour les types standards).
         String journalCode = accountingEngineService.getOrCreateJournal(move.getCompanyId(),
             jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -498,7 +503,7 @@ public class InventoryService {
 
     /**
      * Vérifie si le stock total d'un article passe sous son seuil de réapprovisionnement.
-     * Si oui, publie un LowStockEvent (consommé par :notifications Phase 15).
+     * Si oui, publie un LowStockEvent (consommé par :notifications.
      */
     private void checkReorderThreshold(UUID companyId, Item item) {
         if (item.getReorderThreshold() == null) return;
@@ -581,7 +586,7 @@ public class InventoryService {
      * compte de résultat seraient faux.
      *
      * @param expectedReportingClass la {@link ReportingClass} attendue pour ce rôle, ou
-     *        {@code null} pour ne pas vérifier la classe (rétro-compatibilité).
+     * {@code null} pour ne pas vérifier la classe (rétro-compatibilité).
      */
     private void validateAccount(UUID companyId, UUID accountId, String fieldName,
                                  jo.accountant.core.framework.ReportingClass expectedReportingClass) {
@@ -629,8 +634,8 @@ public class InventoryService {
      *
      * <p>Utilisé par :
      * <ul>
-     *   <li>{@code GET /api/v1/companies/{companyId}/inventory/valuation} (JSON, Part E1) ;</li>
-     *   <li>le CSV {@code inventory_valuation} exposé par :reporting (Part E4).</li>
+     * <li>{@code GET /api/v1/companies/{companyId}/inventory/valuation} (JSON, Part E1) ;</li>
+     * <li>le CSV {@code inventory_valuation} exposé par :reporting (Part E4).</li>
      * </ul>
      *
      * <p>Réutilise la logique de {@link #getValuation(UUID, UUID)} (mêmes arrondis
@@ -688,8 +693,8 @@ public class InventoryService {
      *
      * <p>Utilisé par :
      * <ul>
-     *   <li>{@code GET /api/v1/companies/{companyId}/inventory/stock-moves?from=&to=} (JSON, Part E2) ;</li>
-     *   <li>le CSV {@code stock_movement_register} exposé par :reporting (Part E4).</li>
+     * <li>{@code GET /api/v1/companies/{companyId}/inventory/stock-moves?from=&to=} (JSON, Part E2) ;</li>
+     * <li>le CSV {@code stock_movement_register} exposé par :reporting (Part E4).</li>
      * </ul>
      */
     @Transactional(readOnly = true)

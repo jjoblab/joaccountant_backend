@@ -11,14 +11,19 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Reçu de don (§13 Phase 14 + V8-5 donationType).
+ * Reçu de don (§13+ V8-5 donationType).
  *
  * <p>{@link #receiptNumber} est généré via {@code document-numbering}
  * (DocumentType.DONATION_RECEIPT) au moment de la création — jamais calculé localement.
  *
  * <p><b>V8-5</b> — Le champ {@link #donationType} (CASH ou IN_KIND) distingue les dons en
  * espèces (D 521/C 70x) des dons en nature (D 3x Stocks ou D 215 Immobilisations / C 70x).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "fg_donation_receipt")
 public class DonationReceipt extends TenantAwareEntity {

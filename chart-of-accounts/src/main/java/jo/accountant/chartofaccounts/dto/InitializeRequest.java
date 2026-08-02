@@ -11,7 +11,7 @@ import jo.accountant.core.framework.ReportingClass;
  *
  * <p>Initialise (ou réinitialise si demandé) le plan comptable d'une entreprise en générant
  * les niveaux 1 (classes) et 2 (rubriques) verrouillés à partir du référentiel choisi à la
- * création de l'entreprise (§13 Phase 3).
+ * création de l'entreprise (§13.
  *
  * <p>Pour les référentiels {@code MANDATED} (SYSCOHADA, PCG, PCN, PCGR) : les classes sont
  * issues du {@code mandatedClassSeed} du référentiel.
@@ -19,7 +19,7 @@ import jo.accountant.core.framework.ReportingClass;
  * {@link jo.accountant.chartofaccounts.entity.AccountNumberingTemplate} doit être fourni
  * explicitement.
  *
- * <p>Restructuration 2026-07-24 (suite — plan comptable context-aware) : le paramètre
+ * <p>(suite — plan comptable context-aware) : le paramètre
  * optionnel {@code businessTypeCode} déclenche la génération automatique de comptes
  * niveau 2+ typiques du secteur (ex. RETAIL_COMMERCE → 401 Fournisseurs, 411 Clients,
  * 521 Banque, 601 Achats de marchandises, 701 Ventes, etc. — voir
@@ -27,12 +27,17 @@ import jo.accountant.core.framework.ReportingClass;
  * seul le niveau 1 est généré (comportement historique).
  *
  * @param accountingFrameworkId identifiant du référentiel (déjà choisi à la création de
- *        l'entreprise, mais passé explicitement pour valider la cohérence)
+ * l'entreprise, mais passé explicitement pour valider la cohérence)
  * @param template gabarit de numérotation — requis uniquement pour {@code FREE},
- *        ignoré sinon (peut être {@code null})
+ * ignoré sinon (peut être {@code null})
  * @param businessTypeCode code du type métier (ex. RETAIL_COMMERCE) — optionnel, déclenche
- *        la génération de comptes niveau 2+ contextuels. Si null, seul le niveau 1 est créé.
- */
+ * la génération de comptes niveau 2+ contextuels. Si null, seul le niveau 1 est créé.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record InitializeRequest(
     @NotNull UUID accountingFrameworkId,
     AccountNumberingTemplateDto template,

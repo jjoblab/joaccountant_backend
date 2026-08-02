@@ -56,7 +56,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Bean Spring {@code @Component} — injectable dans {@code BankReconciliationService} (à venir
  * en intégration). Le parseur est stateless et thread-safe.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class Mt940Parser {
 

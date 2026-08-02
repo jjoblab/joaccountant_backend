@@ -5,8 +5,13 @@ import java.util.UUID;
 import jo.accountant.payroll.entity.Payslip;
 
 /**
- * V8.1 — Builder fluent pour créer des bulletins de paie démo.
- */
+ * Builder fluent pour créer des bulletins de paie démo.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class PayslipBuilder {
 
     private final Payslip payslip = new Payslip();

@@ -21,7 +21,12 @@ import jo.accountant.fixedassets.entity.DepreciationMethod;
  * @param usefulLifeYears durée de vie utile en années (≥ 1)
  * @param residualValue valeur résiduelle (défaut 0)
  * @param depreciationMethod méthode d'amortissement (défaut STRAIGHT_LINE)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AddAssetComponentRequest(
  @NotBlank String code,
  @NotBlank String label,

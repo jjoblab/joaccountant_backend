@@ -1,25 +1,25 @@
 package jo.accountant.documentgeneration.entity;
 
 /**
- * Type de document générable en PDF (§8, §13 Phase 11).
+ * Type de document générable en PDF (§8, §13.
  *
  * <p>Chaque module producteur de documents imprimables ajoute une valeur ici.
  * Les valeurs présentes correspondent aux consommateurs identifiés :
  * <ul>
- * <li>{@link #INVOICE} — facture client (Phase 12)</li>
- * <li>{@link #CREDIT_NOTE} — avoir (Phase 12)</li>
- * <li>{@link #DONATION_RECEIPT} — reçu de don (Phase 14)</li>
- * <li>{@link #BALANCE_SHEET} — bilan (Phase 6 / 17)</li>
- * <li>{@link #INCOME_STATEMENT} — compte de résultat (Phase 6 / 17)</li>
- * <li>{@link #GENERAL_LEDGER} — grand livre (Phase 17)</li>
- * <li>{@link #DONOR_REPORT} — rapport bailleur (Phase 14 / 17)</li>
+ * <li>{@link #INVOICE} — facture client</li>
+ * <li>{@link #CREDIT_NOTE} — avoir</li>
+ * <li>{@link #DONATION_RECEIPT} — reçu de don</li>
+ * <li>{@link #BALANCE_SHEET} — bilan/ 17)</li>
+ * <li>{@link #INCOME_STATEMENT} — compte de résultat/ 17)</li>
+ * <li>{@link #GENERAL_LEDGER} — grand livre</li>
+ * <li>{@link #DONOR_REPORT} — rapport bailleur/ 17)</li>
  * <li>{@link #PAYSLIP} — bulletin de paie (module :payroll)</li>
  * </ul>
  *
  * <p>Note : la facture d'achat (module :purchasing) n'a pas de PDF au MVP — document interne,
  * pas envoyé à un tiers externe. Aucune valeur {@code PURCHASE_INVOICE} ici (§2.5 du prompt).
  *
- * <p><b>step2-backend — Reports Hub (v2.4.0)</b> : 12 nouvelles valeurs ajoutées pour les
+ * <p><b>Reports Hub</b> : 12 nouvelles valeurs ajoutées pour les
  * exports PDF du Reports Hub mobile. Le suffixe {@code _REPORT} distingue ces nouveaux
  * types de rapports (URLs dédiées {@code /.../{report}/pdf}) des types historiques
  * (URLs legacy {@code /reporting/exports/{statement}?format=pdf}).
@@ -38,7 +38,7 @@ package jo.accountant.documentgeneration.entity;
  * <li>{@link #PAYROLL_SUMMARY_REPORT} — synthèse de paie agrégée par période</li>
  * </ul>
  *
- * <p><b>step7-backend — Reports Hub v2.5.0</b> : 2 nouveaux types pour les derniers
+ * <p><b>Reports Hub</b> : 2 nouveaux types pour les derniers
  * rapports manquants du Reports Hub mobile (LETTERING + CNSS_RETURN), pour atteindre
  * 19/19 rapports fonctionnels.
  * <ul>
@@ -50,7 +50,11 @@ package jo.accountant.documentgeneration.entity;
  * {@code GeneratedDocumentType} pour la distinguer des 2 autres enums homonymes du projet
  * ({@code documentnumbering.entity.DocumentType} pour les séquences de numérotation,
  * {@code invoicing.signature.SignableDocumentType} pour les documents signables électroniquement).
- */
+ 
+ *
+ * @author jo@Dev
+
+*/
 public enum GeneratedDocumentType {
  INVOICE,
  CREDIT_NOTE,
@@ -59,9 +63,9 @@ public enum GeneratedDocumentType {
  INCOME_STATEMENT,
  GENERAL_LEDGER,
  DONOR_REPORT,
- // Restructuration 2026-07-24 (suite) — module :payroll
+ //(suite) — module :payroll
  PAYSLIP,
- // step2-backend — Reports Hub v2.4.0 : 12 nouveaux types pour les PDF dédiés
+ // Reports Hub : 12 nouveaux types pour les PDF dédiés
  BALANCE_SHEET_REPORT,
  INCOME_STATEMENT_REPORT,
  CASH_FLOW_STATEMENT_REPORT,
@@ -74,7 +78,7 @@ public enum GeneratedDocumentType {
  VAT_DECLARATION_REPORT,
  TCA_DECLARATION_REPORT,
  PAYROLL_SUMMARY_REPORT,
- // step7-backend — Reports Hub v2.5.0 : 2 derniers types pour atteindre 19/19 rapports
+ // Reports Hub : 2 derniers types pour atteindre 19/19 rapports
  LETTERING_REPORT,
  CNSS_RETURN_REPORT
 }

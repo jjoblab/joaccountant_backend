@@ -10,11 +10,16 @@ import java.util.UUID;
  *
  * <p>Invariant : {@code netResult == totalProducts - totalCharges}.
  *
- * <p><b>Task v6-4-presentation-currency</b> : champs optionnels de conversion de devise de
+ * <p><b></b> : champs optionnels de conversion de devise de
  * présentation. Si {@code presentationCurrency} est non null, le CR a été converti depuis la
  * devise fonctionnelle au taux moyen de période (IAS 21 — flux au taux moyen). Si null, le CR
- * est en devise fonctionnelle (comportement v5.5 inchangé).
- */
+ * est en devise fonctionnelle (comportement inchangé).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record IncomeStatement(
     UUID companyId,
     LocalDate from,
@@ -32,7 +37,7 @@ public record IncomeStatement(
 ) {
 
     /**
-     * Constructeur backward-compat (v5.5) — équivalent à un CR en devise fonctionnelle sans
+     * Constructeur backward-compat — équivalent à un CR en devise fonctionnelle sans
      * conversion. Les champs de conversion sont null.
      */
     public IncomeStatement(UUID companyId,

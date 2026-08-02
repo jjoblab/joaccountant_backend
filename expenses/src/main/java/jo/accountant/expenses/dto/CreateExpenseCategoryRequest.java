@@ -22,7 +22,12 @@ import java.math.BigDecimal;
  * Doit être ≥ 0 si fourni.
  * @param monthlyLimit plafond mensuel par employé/tiers. Null = pas de plafond.
  * Doit être ≥ 0 si fourni.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateExpenseCategoryRequest(
  @NotBlank
  @Size(max = 20)

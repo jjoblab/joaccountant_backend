@@ -6,9 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jo.accountant.auth.entity.UserRole;
 
 /**
- * Invitation d'un utilisateur dans une société (§3.4, §13 Phase 1).
+ * Invitation d'un utilisateur dans une société (§3.4, §13.
  *
- * <p><b>V2.6.0 (wizard refonte) — Extension du payload</b> : ajout du champ
+ * <p><b>Extension du payload</b> : ajout du champ
  * {@code fullName} pour permettre à un OWNER/ADMIN d'inviter un utilisateur
  * <em>n'ayant pas encore de compte</em>. Le service créera alors le compte
  * via {@link jo.accountant.auth.service.AuthService#register} avec un mot de
@@ -24,7 +24,12 @@ import jo.accountant.auth.entity.UserRole;
  * <p>{@code role} ne peut pas être {@link UserRole#OWNER} — le service lève 403
  * {@code OWNER_NOT_INVITABLE}. Le seul OWNER d'une société est son créateur
  * (assigné automatiquement à {@code createCompany}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record InviteUserRequest(
     @NotBlank @Email String email,
     /** Nullable — requis uniquement pour créer un nouvel utilisateur. */

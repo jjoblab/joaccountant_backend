@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>Cron : tous les jours à 06:00 UTC.
  *
- * <p><b>Audit v4.7 §9.2 ShedLock</b> : en déploiement multi-instances (K8s
+ * <p><b>ShedLock</b> : en déploiement multi-instances (K8s
  * replicas), chaque instance exécutait le cron → N replicas = N× les alertes envoyées.
  * Désormais, l'annotation {@link SchedulerLock} ({@code @SchedulerLock}) garantit qu'une
  * seule instance exécute la tâche — les autres skippent. Configuration ShedLock dans
@@ -29,7 +29,12 @@ import org.springframework.stereotype.Component;
  * prendre le relais trop tôt si la tâche se termine en <1 min. Évite les exécutions
  * en rafale si le cron tourne plus fréquemment (ex : toutes les minutes).</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ScheduledAlertsConfig {
 

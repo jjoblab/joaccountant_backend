@@ -8,7 +8,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.stereotype.Component;
 
 /**
- * (lot-A-securite) — Installe {@link TenantRlsConnectionCustomizer} autour du bean
+ *Installe {@link TenantRlsConnectionCustomizer} autour du bean
  * "dataSource" (auto-configuré par Spring Boot avec HikariCP).
  *
  * <p>Pattern BeanPostProcessor plutôt que {@code @Bean @Primary DataSource} : cette dernière
@@ -25,7 +25,12 @@ import org.springframework.stereotype.Component;
  * créés AVANT les beans applicatifs. Quand le bean "dataSource" (Hikari) est créé, notre
  * postProcessAfterInitialization le wrappe. Les beans qui dépendent du DataSource (Flyway,
  * EntityManagerFactory, Spring Batch) voient alors le proxy wrappé — pas le Hikari brut.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class TenantRlsDataSourcePostProcessor implements BeanPostProcessor {
 
@@ -42,7 +47,7 @@ public class TenantRlsDataSourcePostProcessor implements BeanPostProcessor {
  @Override
  public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
  if (bean instanceof DataSource ds && DATA_SOURCE_BEAN_NAME.equals(beanName)) {
- LOG.info("(lot-A-securite) : wrapping DataSource '{}' avec TenantRlsConnectionCustomizer " +
+ LOG.info("wrapping DataSource '{}' avec TenantRlsConnectionCustomizer " +
  "(SET LOCAL app.current_tenant au début de chaque transaction).", beanName);
  return new TenantRlsConnectionCustomizer(ds);
  }

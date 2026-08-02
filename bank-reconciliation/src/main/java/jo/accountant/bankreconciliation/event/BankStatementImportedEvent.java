@@ -14,7 +14,12 @@ import jo.accountant.bankreconciliation.entity.BankStatementImport;
  * forensique à des fins d'investigation post-incident. Il reste <b>prêt pour consommation
  * future</b> par d'autres abonnés (auto-rapprochement, détection de fraude, alertes solde)
  * — ces consommateurs seront ajoutés quand le besoin métier se matérialisera.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record BankStatementImportedEvent(
  UUID companyId, UUID actorUserId, UUID importId, UUID bankAccountId,
  int lineCount, Instant occurredAt

@@ -21,27 +21,27 @@ import org.springframework.stereotype.Service;
  * <p><b>Séquences créées</b> :
  *
  * <table>
- *   <caption>Table des séquences documentaires</caption>
- *   <tr><th>Prefix</th><th>DocumentType</th><th>scopeKey</th><th>ResetPolicy</th><th>Usage</th></tr>
- *   <tr><td>VT</td><td>JOURNAL_ENTRY</td><td>VT</td><td>YEARLY</td><td>Écritures du journal Ventes</td></tr>
- *   <tr><td>AC</td><td>JOURNAL_ENTRY</td><td>AC</td><td>YEARLY</td><td>Écritures du journal Achats</td></tr>
- *   <tr><td>BQ</td><td>JOURNAL_ENTRY</td><td>BQ</td><td>YEARLY</td><td>Écritures du journal Banque</td></tr>
- *   <tr><td>OD</td><td>JOURNAL_ENTRY</td><td>OD</td><td>YEARLY</td><td>Écritures du journal Opérations diverses</td></tr>
- *   <tr><td>PA</td><td>JOURNAL_ENTRY</td><td>PA</td><td>YEARLY</td><td>Écritures du journal Paie</td></tr>
- *   <tr><td>FAC</td><td>SALES_INVOICE</td><td>(vide)</td><td>YEARLY</td><td>Factures de vente</td></tr>
- *   <tr><td>AV</td><td>CREDIT_NOTE</td><td>(vide)</td><td>YEARLY</td><td>Avoirs clients</td></tr>
- *   <tr><td>FF</td><td>PURCHASE_INVOICE</td><td>(vide)</td><td>YEARLY</td><td>Factures fournisseurs</td></tr>
- *   <tr><td>BS</td><td>PAYSLIP</td><td>(vide)</td><td>NEVER</td><td>Bulletins de salaire (numéros monotones pluriannuels)</td></tr>
- *   <tr><td>RD</td><td>DONATION_RECEIPT</td><td>(vide)</td><td>YEARLY</td><td>Reçus de dons (ONG)</td></tr>
+ * <caption>Table des séquences documentaires</caption>
+ * <tr><th>Prefix</th><th>DocumentType</th><th>scopeKey</th><th>ResetPolicy</th><th>Usage</th></tr>
+ * <tr><td>VT</td><td>JOURNAL_ENTRY</td><td>VT</td><td>YEARLY</td><td>Écritures du journal Ventes</td></tr>
+ * <tr><td>AC</td><td>JOURNAL_ENTRY</td><td>AC</td><td>YEARLY</td><td>Écritures du journal Achats</td></tr>
+ * <tr><td>BQ</td><td>JOURNAL_ENTRY</td><td>BQ</td><td>YEARLY</td><td>Écritures du journal Banque</td></tr>
+ * <tr><td>OD</td><td>JOURNAL_ENTRY</td><td>OD</td><td>YEARLY</td><td>Écritures du journal Opérations diverses</td></tr>
+ * <tr><td>PA</td><td>JOURNAL_ENTRY</td><td>PA</td><td>YEARLY</td><td>Écritures du journal Paie</td></tr>
+ * <tr><td>FAC</td><td>SALES_INVOICE</td><td>(vide)</td><td>YEARLY</td><td>Factures de vente</td></tr>
+ * <tr><td>AV</td><td>CREDIT_NOTE</td><td>(vide)</td><td>YEARLY</td><td>Avoirs clients</td></tr>
+ * <tr><td>FF</td><td>PURCHASE_INVOICE</td><td>(vide)</td><td>YEARLY</td><td>Factures fournisseurs</td></tr>
+ * <tr><td>BS</td><td>PAYSLIP</td><td>(vide)</td><td>NEVER</td><td>Bulletins de salaire (numéros monotones pluriannuels)</td></tr>
+ * <tr><td>RD</td><td>DONATION_RECEIPT</td><td>(vide)</td><td>YEARLY</td><td>Reçus de dons (ONG)</td></tr>
  * </table>
  *
  * <p><b>Choix des politiques de reset</b> :
  *
  * <ul>
- *   <li>{@code YEARLY} pour les écritures et factures — conforme aux usages fiscaux haïtiens
- *       (numérotation annuelle recommencée au 1er janvier).
- *   <li>{@code NEVER} pour les bulletins de salaire — l'usage haïtien veut que les BS soient
- *       numérotés de façon monotone pluriannuelle pour faciliter les audits de paie.
+ * <li>{@code YEARLY} pour les écritures et factures — conforme aux usages fiscaux haïtiens
+ * (numérotation annuelle recommencée au 1er janvier).
+ * <li>{@code NEVER} pour les bulletins de salaire — l'usage haïtien veut que les BS soient
+ * numérotés de façon monotone pluriannuelle pour faciliter les audits de paie.
  * </ul>
  *
  * <p><b>Format de numéro</b> : {@code {PREFIX}-{YEAR}-{NNNNNN}} (6 chiffres paddés). Exemple :
@@ -53,7 +53,12 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Thread-safety</b> — le service est stateless. Le contexte tenant doit être posé par
  * l'appelant (typiquement via {@link DemoTenantContext}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class DocumentNumberingBootstrap {
 

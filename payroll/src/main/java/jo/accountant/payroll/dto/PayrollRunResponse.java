@@ -7,6 +7,14 @@ import java.util.UUID;
 import jo.accountant.payroll.entity.PayrollRunStatus;
 import jo.accountant.payroll.entity.PayrollRunType;
 
+/**
+ * PayrollRunResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record PayrollRunResponse(
     UUID id,
     UUID companyId,
@@ -24,7 +32,7 @@ public record PayrollRunResponse(
 ) {
 
     /**
-     * Constructeur backward-compat (v5.5) — sans runType. Délègue au canonique
+     * Constructeur backward-compat — sans runType. Délègue au canonique
      * avec runType = REGULAR (défaut pour les campagnes existantes).
      */
     public PayrollRunResponse(

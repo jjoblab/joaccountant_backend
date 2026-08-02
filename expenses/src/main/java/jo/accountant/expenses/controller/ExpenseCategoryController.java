@@ -61,6 +61,32 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "ExpenseCategories",
  description = "CRUD des catégories de notes de frais et de leurs plafonds "
  + "journaliers/mensuels (audit batch B)")
+/**
+ * Contrôleur REST ExpenseCategory.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class ExpenseCategoryController {
 
  private final ExpenseCategoryService service;

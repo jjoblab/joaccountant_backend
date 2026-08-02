@@ -32,12 +32,17 @@ import jo.accountant.core.tax.VatMode;
  * }
  * </pre>
  *
- * <p>Même pattern que {@link WithholdingRulePort} (audit v4.7 §4.1 ) pour la même
+ * <p>Même pattern que {@link WithholdingRulePort}pour la même
  * raison de découplage.
  *
  * @see WithholdingRulePort
  * @see jo.accountant.core.tax.VatMode
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface TaxRulePort {
 
  /**

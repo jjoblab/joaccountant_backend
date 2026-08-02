@@ -12,7 +12,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p>Une catégorie est identifiée par le couple {@code (companyId, code)} — chaque entreprise
  * peut configurer ses propres plafonds journaliers/mensuels pour les codes standards
  * {@code TRAVEL/MEALS/SUPPLIES/OTHER} ou pour des codes personnalisés.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ExpenseCategoryRepository extends JpaRepository<ExpenseCategory, UUID> {
 
  List<ExpenseCategory> findByCompanyIdOrderByCode(UUID companyId);

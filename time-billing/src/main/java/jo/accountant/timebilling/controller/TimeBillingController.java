@@ -36,11 +36,40 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de suivi du temps (§13 Phase 10).
- */
+ * Endpoints de suivi du temps (§13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code PATCH /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/time-billing")
-@Tag(name = "TimeBilling", description = "Temps, projets, WIP (secteur Service, §13 Phase 10)")
+@Tag(name = "TimeBilling", description = "Temps, projets, WIP (secteur Service, §13")
 public class TimeBillingController {
 
     private final TimeBillingService service;

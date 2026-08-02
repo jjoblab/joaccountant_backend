@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service MFA TOTP (RFC 6238) — audit v4.7 §6.3 Finding MOYENNE (suite).
+ * Service MFA TOTP (RFC 6238) —Finding MOYENNE (suite).
  *
  * <p>Implémente le setup, la validation et la désactivation de la MFA TOTP. Compatible avec
  * Google Authenticator, Authy, FreeOTP, Microsoft Authenticator.
@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code enabledAt=now()} — la MFA est activée. Génère aussi 10 codes de récupération.</li>
  * </ol>
  *
- * <h2>Flux de login (à intégrer en v4.8 dans AuthService)</h2>
+ * <h2>Flux de login (à intégrer dans AuthService)</h2>
  * <ol>
  * <li>Login + password → retourne {@code MFA_REQUIRED} + challenge.</li>
  * <li>Client fournit le code TOTP → {@link #verifyCode(UUID, int)} valide.</li>
@@ -54,7 +54,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Fenêtre TOTP de ±1 période (±30s) pour tolérer le drift d'horloge.</li>
  * <li>SecureRandom pour la génération du secret (32 bytes d'entropie).</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class MfaService {
 
@@ -69,7 +74,7 @@ public class MfaService {
  /**
  * Valeur par défaut de {@code app.mfa.encryption-key} (commitée dans Git pour le dev/test).
  * Utilisée pour détecter au démarrage si la variable d'env n'a pas été surchargée en prod.
- * (lot-A-securite) — fail-fast pour empêcher un démarrage prod avec une clé publique.
+ *fail-fast pour empêcher un démarrage prod avec une clé publique.
  */
  private static final String DEFAULT_DEV_ENCRYPTION_KEY = "dev-only-mfa-key-please-override-32-chars";
 
@@ -98,7 +103,7 @@ public class MfaService {
  }
 
  /**
- * (lot-A-securite) — Validation au démarrage de la clé de chiffrement MFA.
+ *Validation au démarrage de la clé de chiffrement MFA.
  *
  * <p>Sans ce garde-fou, l'application démarre silencieusement avec la clé publique
  * {@code dev-only-mfa-key-please-override-32-chars} (commitée dans le code) si

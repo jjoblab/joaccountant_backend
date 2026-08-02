@@ -13,7 +13,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p><b>pagination Pageable</b> : variantes paginées ({@code Page<>}) disponibles
  * pour l'endpoint {@code GET /notifications}. Les variantes {@code List<>} sont conservées pour
  * rétro-compatibilité (appels internes sans pagination).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
  List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(UUID recipientUserId);
  List<Notification> findByRecipientUserIdAndStatusOrderByCreatedAtDesc(UUID recipientUserId, jo.accountant.notifications.entity.NotificationStatus status);

@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * V8.2 (audit Z.ai 2026-07-31) — Implémentation de {@link AccountingProvisioningPort}.
+ * Implémentation de {@link AccountingProvisioningPort}.
  *
  * <p>Définie dans {@code :app} (et non dans {@code :company}) car elle doit dépendre de
  * {@code :chart-of-accounts}, {@code :accounting-engine}, {@code :document-numbering} et
@@ -37,16 +37,21 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Initialise en une seule transaction :
  * <ol>
- *   <li>Plan comptable (via {@link ChartOfAccountsService#initialize})</li>
- *   <li>Exercice fiscal + 12 périodes mensuelles (via {@link AccountingEngineService#createFiscalYear})</li>
- *   <li>Journaux standards VT/AC/BQ/CA/OD/PA/DP/FX (via {@link AccountingEngineService#createJournal})</li>
- *   <li>Séquences de numérotation par défaut (via {@link DocumentNumberingService#createSequence})</li>
- *   <li>Règles TVA par défaut si pays non couvert par les seeds globaux (via {@link TaxService#createTaxRule})</li>
+ * <li>Plan comptable (via {@link ChartOfAccountsService#initialize})</li>
+ * <li>Exercice fiscal + 12 périodes mensuelles (via {@link AccountingEngineService#createFiscalYear})</li>
+ * <li>Journaux standards VT/AC/BQ/CA/OD/PA/DP/FX (via {@link AccountingEngineService#createJournal})</li>
+ * <li>Séquences de numérotation par défaut (via {@link DocumentNumberingService#createSequence})</li>
+ * <li>Règles TVA par défaut si pays non couvert par les seeds globaux (via {@link TaxService#createTaxRule})</li>
  * </ol>
  *
- * <p><b>Idempotence</b> : chaque sous-étape catch {@link ConflictException} (et reste silencieux
+ * <p><b>Idempotence</b> : chaque sous-{@link ConflictException} (et reste silencieux
  * si l'objet existe déjà). {@code provision} peut donc être rappelée sans créer de doublons.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class AccountingProvisioningPortImpl implements AccountingProvisioningPort {
 
@@ -121,7 +126,7 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
             ChartOfAccountsService.InitializeResult result = chartOfAccountsService.initialize(
                 company.getId(),
                 company.getAccountingFrameworkId(),
-                null,  // template null — requis seulement pour IFRS (FREE numbering)
+                null, // template null — requis seulement pour IFRS (FREE numbering)
                 company.getBusinessTypeCode());
             LOG.info("Chart of accounts initialized: {} accounts created", result.accountsCreated());
             return result.accountsCreated();
@@ -175,7 +180,7 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
         int year = fiscalYearStartYear != 0 ? fiscalYearStartYear : LocalDate.now().getYear();
         int count = 0;
 
-        // V8.2 — JOURNAL_ENTRY : créer une séquence par code journal (VT, AC, BQ, CA, OD, PA, DP, FX)
+        // JOURNAL_ENTRY : créer une séquence par code journal (VT, AC, BQ, CA, OD, PA, DP, FX)
         // car le postage cherche DocumentNumberingService.nextNumber(companyId, JOURNAL_ENTRY, journalCode)
         // où journalCode = "VT", "AC", etc. (pas "")
         String ecrPrefix = getPrefix(prefixes, "JOURNAL_ENTRY", "ECR");
@@ -210,8 +215,8 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
         try {
             documentNumberingService.createSequence(
                 companyId, docType, scopeKey, prefix + year + "-",
-                true,  // includeYear
-                6,     // padding (6 digits)
+                true, // includeYear
+                6, // padding (6 digits)
                 ResetPolicy.YEARLY);
             return 1;
         } catch (ConflictException ex) {
@@ -247,10 +252,10 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
                 "TVA_FR_20",
                 "TVA standard 20% (France)",
                 new java.math.BigDecimal("20.00"),
-                null,  // payableAccountId — résolu au premier usage
-                null,  // receivableAccountId
+                null, // payableAccountId — résolu au premier usage
+                null, // receivableAccountId
                 LocalDate.now(),
-                null,  // applicableTo (pas de fin)
+                null, // applicableTo (pas de fin)
                 vatMode);
             TaxRule rule = taxService.createTaxRule(company.getId(), req);
             count++;

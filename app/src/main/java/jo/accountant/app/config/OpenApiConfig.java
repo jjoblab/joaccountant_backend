@@ -30,36 +30,41 @@ import java.util.List;
  *
  * <h2>Tags standards</h2>
  * <ul>
- *   <li><b>Auth</b> — register / login / refresh / logout / forgot-password / reset-password</li>
- *   <li><b>MFA</b> — TOTP RFC 6238 (setup / verify / check / recovery-code / disable / status)</li>
- *   <li><b>Company</b> — CRUD sociétés + wizard + modules + legal fields (PATCH /legal)</li>
- *   <li><b>Accounting Engine</b> — écritures, journaux, balance, exercices fiscaux, RLS</li>
- *   <li><b>Invoicing</b> — factures clients + Factur-X + reverse charge</li>
- *   <li><b>Purchasing</b> — factures fournisseurs + void</li>
- *   <li><b>Purchase Orders</b> — bons de commande + 3-way match (V59)</li>
- *   <li><b>Tax</b> — règles fiscales + TVA (débits/encaissements) + cotisations (V51)</li>
- *   <li><b>Payroll</b> — campagnes de paie + PayrollCalculator + bulletins</li>
- *   <li><b>Employees</b> — annuaire RH + heures supp / absences (V60)</li>
- *   <li><b>Fixed Assets</b> — immobilisations + composants IAS 16 + dépréciation IAS 36</li>
- *   <li><b>Expenses</b> — notes de frais + catégories avec plafonds (V54)</li>
- *   <li><b>Bank Reconciliation</b> — rapprochement bancaire + lettrage</li>
- *   <li><b>Third Parties</b> — tiers (clients/fournisseurs/donateurs) + legal fields (V53)</li>
- *   <li><b>Chart of Accounts</b> — plan comptable multi-référentiels</li>
- *   <li><b>Financial Statements</b> — bilan + compte de résultat + cash flow (IAS 7)</li>
- *   <li><b>Reporting</b> — dashboard + balance âgée clients/fournisseurs</li>
- *   <li><b>Notifications</b> — notifications in-app + mark-all-read</li>
- *   <li><b>Approval Workflow</b> — workflow 4-yeux</li>
- *   <li><b>Audit Trail</b> — journal d'audit forensique</li>
- *   <li><b>Document Generation</b> — PDF / CSV / Factur-X</li>
- *   <li><b>Document Numbering</b> — séquences documentaires</li>
- *   <li><b>Inventory</b> — stock + valorisation + mouvements</li>
- *   <li><b>Time Billing</b> — projets + feuilles de temps + utilization</li>
- *   <li><b>Funds &amp; Grants</b> — subventions ONG</li>
- *   <li><b>FX Operations</b> — opérations de change</li>
- *   <li><b>Batch Admin</b> — jobs Spring Batch (paie + clôture annuelle)</li>
- *   <li><b>JWKS</b> — endpoint RFC 7517 (clé publique RS256)</li>
+ * <li><b>Auth</b> — register / login / refresh / logout / forgot-password / reset-password</li>
+ * <li><b>MFA</b> — TOTP RFC 6238 (setup / verify / check / recovery-code / disable / status)</li>
+ * <li><b>Company</b> — CRUD sociétés + wizard + modules + legal fields (PATCH /legal)</li>
+ * <li><b>Accounting Engine</b> — écritures, journaux, balance, exercices fiscaux, RLS</li>
+ * <li><b>Invoicing</b> — factures clients + Factur-X + reverse charge</li>
+ * <li><b>Purchasing</b> — factures fournisseurs + void</li>
+ * <li><b>Purchase Orders</b> — bons de commande + 3-way match (V59)</li>
+ * <li><b>Tax</b> — règles fiscales + TVA (débits/encaissements) + cotisations (V51)</li>
+ * <li><b>Payroll</b> — campagnes de paie + PayrollCalculator + bulletins</li>
+ * <li><b>Employees</b> — annuaire RH + heures supp / absences (V60)</li>
+ * <li><b>Fixed Assets</b> — immobilisations + composants IAS 16 + dépréciation IAS 36</li>
+ * <li><b>Expenses</b> — notes de frais + catégories avec plafonds (V54)</li>
+ * <li><b>Bank Reconciliation</b> — rapprochement bancaire + lettrage</li>
+ * <li><b>Third Parties</b> — tiers (clients/fournisseurs/donateurs) + legal fields (V53)</li>
+ * <li><b>Chart of Accounts</b> — plan comptable multi-référentiels</li>
+ * <li><b>Financial Statements</b> — bilan + compte de résultat + cash flow (IAS 7)</li>
+ * <li><b>Reporting</b> — dashboard + balance âgée clients/fournisseurs</li>
+ * <li><b>Notifications</b> — notifications in-app + mark-all-read</li>
+ * <li><b>Approval Workflow</b> — workflow 4-yeux</li>
+ * <li><b>Audit Trail</b> — journal d'audit forensique</li>
+ * <li><b>Document Generation</b> — PDF / CSV / Factur-X</li>
+ * <li><b>Document Numbering</b> — séquences documentaires</li>
+ * <li><b>Inventory</b> — stock + valorisation + mouvements</li>
+ * <li><b>Time Billing</b> — projets + feuilles de temps + utilization</li>
+ * <li><b>Funds &amp; Grants</b> — subventions ONG</li>
+ * <li><b>FX Operations</b> — opérations de change</li>
+ * <li><b>Batch Admin</b> — jobs Spring Batch (paie + clôture annuelle)</li>
+ * <li><b>JWKS</b> — endpoint RFC 7517 (clé publique RS256)</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 public class OpenApiConfig {
 
@@ -151,8 +156,8 @@ public class OpenApiConfig {
     }
 
     // ────────────────────────────────────────────────────────────────────
-    //  GroupedOpenApi par module — page Swagger dédiée par module
-    //  (accessible via /v3/api-docs/{groupName} et /swagger-ui.html?group={groupName})
+    // GroupedOpenApi par module — page Swagger dédiée par module
+    // (accessible via /v3/api-docs/{groupName} et /swagger-ui.html?group={groupName})
     // ────────────────────────────────────────────────────────────────────
 
     @Bean

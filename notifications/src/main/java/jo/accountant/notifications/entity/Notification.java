@@ -13,7 +13,12 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * Notification envoyée à un utilisateur (§9).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "ntf_notification")
 public class Notification {

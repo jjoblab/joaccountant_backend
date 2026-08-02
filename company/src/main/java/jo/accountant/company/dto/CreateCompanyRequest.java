@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Création d'une société (wizard étape 1 — ).
+ * Création d'une société (wizard).
  *
  * <p><strong>Changement cassant</strong> (documenté dans {@code ENDPOINTS_CHANGELOG.md} et
  * {@code MOBILE_SYNC_2026-07-24_business-type-restructuring.md}) : les champs
@@ -16,7 +16,7 @@ import jakarta.validation.constraints.Size;
  * <p>Seuls les champs strictement nécessaires pour instancier le tenant restent :
  * {@code name}, {@code country}, {@code functionalCurrency}.
  *
- * <p><b>V2.6.0 (wizard refonte) — Extension optionnelle</b> : les champs
+ * <p><b>Extension optionnelle</b> : les champs
  * {@code organizationNature} et {@code legalForm} sont ré-introduits sous forme de
  * <strong>Strings nullables</strong> pour permettre au wizard step 1 de saisir ces
  * informations dès la création (au lieu de les laisser aux defaults provisoires
@@ -33,7 +33,10 @@ import jakarta.validation.constraints.Size;
  * <li>{@code organizationNature} ∈ {"FOR_PROFIT", "NON_PROFIT"} (V101 — domaine réduit).</li>
  * <li>{@code legalForm} ∈ {"SOLE_PROPRIETORSHIP","SARL","SA","SAS","NGO","ASSOCIATION","OTHER"}.</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+*/
 public record CreateCompanyRequest(
  @NotBlank String name,
  @NotBlank @Size(min = 2, max = 2) String country,

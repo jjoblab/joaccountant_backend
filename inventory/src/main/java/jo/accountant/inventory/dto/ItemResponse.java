@@ -18,20 +18,25 @@ import jo.accountant.inventory.entity.CostingMethod;
  *
  * <p>Champs miroir de {@link jo.accountant.inventory.entity.Item} :
  * <ul>
- *   <li>{@code id} — UUID ;</li>
- *   <li>{@code companyId} — UUID du tenant ;</li>
- *   <li>{@code sku} — code article unique par tenant ;</li>
- *   <li>{@code label} — libellé ;</li>
- *   <li>{@code unitOfMeasure} — unité (pièce, kg, l, m², …) ;</li>
- *   <li>{@code costingMethod} — FIFO ou WEIGHTED_AVERAGE ;</li>
- *   <li>{@code reorderThreshold} — seuil de réapprovisionnement (nullable) ;</li>
- *   <li>{@code inventoryAccountId} — UUID du compte de stock (ACTIF) ;</li>
- *   <li>{@code cogsAccountId} — UUID du compte de COGS (CHARGES).</li>
+ * <li>{@code id} — UUID ;</li>
+ * <li>{@code companyId} — UUID du tenant ;</li>
+ * <li>{@code sku} — code article unique par tenant ;</li>
+ * <li>{@code label} — libellé ;</li>
+ * <li>{@code unitOfMeasure} — unité (pièce, kg, l, m², …) ;</li>
+ * <li>{@code costingMethod} — FIFO ou WEIGHTED_AVERAGE ;</li>
+ * <li>{@code reorderThreshold} — seuil de réapprovisionnement (nullable) ;</li>
+ * <li>{@code inventoryAccountId} — UUID du compte de stock (ACTIF) ;</li>
+ * <li>{@code cogsAccountId} — UUID du compte de COGS (CHARGES).</li>
  * </ul>
  *
  * <p>Note : pas de champ {@code description} (n'existe pas sur l'entité backend) —
  * aligné avec la correction mobile E-8 #5 (InventoryItemDto).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ItemResponse(
     UUID id,
     UUID companyId,

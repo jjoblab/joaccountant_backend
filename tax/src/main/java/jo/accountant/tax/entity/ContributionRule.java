@@ -13,7 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Règle de cotisation sociale pour le moteur de paie (audit v4.7 §4.1 ).
+ * Règle de cotisation sociale pour le moteur de paie.
  *
  * <p>Représente une cotisation (URSSAF, retraite, prévoyance, mutuelle, CSG/CRDS) avec :
  * <ul>
@@ -33,7 +33,12 @@ import org.hibernate.type.SqlTypes;
  * </ul>
  *
  * <p>Stockage : une ligne par (companyId, code, regime). {@code active=true} pour activer.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "contribution_rule")
 public class ContributionRule {

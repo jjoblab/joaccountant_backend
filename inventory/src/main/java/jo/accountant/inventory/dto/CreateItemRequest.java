@@ -6,6 +6,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import jo.accountant.inventory.entity.CostingMethod;
 
+/**
+ * CreateItemRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateItemRequest(
     @NotBlank String sku,
     @NotBlank String label,

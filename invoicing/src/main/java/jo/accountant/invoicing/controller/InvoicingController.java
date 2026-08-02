@@ -31,11 +31,45 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de facturation (§13 Phase 12).
- */
+ * Endpoints de facturation (§13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/invoicing")
-@Tag(name = "Invoicing", description = "Facturation, avoirs (§13 Phase 12)")
+@Tag(name = "Invoicing", description = "Facturation, avoirs (§13")
 public class InvoicingController {
 
  private final InvoicingService service;
@@ -157,7 +191,7 @@ public class InvoicingController {
  }
 
  @Operation(summary = "Générer le PDF d'une facture",
- description = "Généré via document-generation (Phase 11). Sert le PDF directement.")
+ description = "Généré via document-generation. Sert le PDF directement.")
  @GetMapping("/invoices/{invoiceId}/pdf")
  public ResponseEntity<byte[]> getInvoicePdf(@PathVariable UUID companyId,
  @PathVariable UUID invoiceId,
@@ -172,11 +206,11 @@ public class InvoicingController {
  }
 
  @Operation(summary = "Générer le XML Factur-X d'une facture (facturation électronique 2026)",
- description = "Audit v4.7 §4.1 Génère le XML Factur-X profil BASICWL (Cross Industry Invoice D16B, " +
+ description = "Génère le XML Factur-X profil BASICWL (Cross Industry Invoice D16B, " +
  "conforme EN 16931) pour conformité Loi 2023-314 (facturation électronique obligatoire B2B France " +
  "depuis le 1er septembre 2026). Le XML contient SellerTradeParty + BuyerTradeParty (SIRET, TVA " +
  "intracommunautaire), ApplicableTradeTax par taux de TVA, et SpecifiedTradeSettlementHeaderMonetarySummation. " +
- "Limitation v4.7.2 : le XML est servi séparément — l'embarquement PDF/A-3 sera finalisé en v4.8.\n\n" +
+ "Limitation : le XML est servi séparément — l'embarquement PDF/A-3 sera finalisé .\n\n" +
  "**Content-Type** : `application/xml` (UTF-8). Content-Disposition : `attachment; filename=\"factur-x-{invoiceId}.xml\"`.")
  @ApiResponses({
  @ApiResponse(responseCode = "200", description = "XML Factur-X généré (CII D16B BASICWL, EN 16931)",
@@ -230,7 +264,7 @@ public class InvoicingController {
  }
 
  @Operation(summary = "Générer le PDF/A-3 avec XML Factur-X embarqué (facturation électronique 2026)",
- description = "Audit v4.7 §4.1 Génère un PDF/A-3 unique contenant le rendu visuel de la " +
+ description = "Génère un PDF/A-3 unique contenant le rendu visuel de la " +
  "facture ET le XML Factur-X (CII D16B) embarqué comme /EmbeddedFile (AFRelationship=/Data). " +
  "Conforme à la spec Factur-X / EN 16931 : lisible par les humains ET parsable par le PPF/DGFiP. " +
  "v8-2 : implémenté avec openpdf 1.4.2 (LGPL). Best-effort PDF/A-3 (XMP pdfaid:part=3/B) — " +

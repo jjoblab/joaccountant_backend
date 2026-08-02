@@ -44,12 +44,17 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Limitation v1</b> : comme pour le calendrier français, les reports de weekend/jour
  * férié ne sont pas gérés (en Haïti, si le 15 tombe un samedi/dimanche/jour férié légal,
- * l'échéance est reportée au prochain jour ouvré — arrêté DGI). À enrichir en v4.8 via un
+ * l'échéance est reportée au prochain jour ouvré — arrêté DGI). À enrichir via un
  * {@code HaitianBusinessCalendar}.
  *
  * <p>Les taux (10% TVA, 1% acompte IS, 30% IS solde) sont indicatifs 2024 — à valider par
  * un expert-comptable DGI avant mise en production.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class HaitianTaxDeclarationSchedule {
 

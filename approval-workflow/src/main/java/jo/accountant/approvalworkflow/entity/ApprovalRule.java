@@ -25,19 +25,19 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>Règles métier :
  * <ul>
- *   <li>Une seule règle {@code active = true} par (companyId, actionType). Tentative de
- *       créer une deuxième règle active pour le même actionType → 409. Pour modifier une
- *       règle, désactiver l'ancienne puis créer la nouvelle (avec audit trail).</li>
- *   <li>{@code thresholdAmount} est en devise fonctionnelle de l'entreprise — le consommateur
- *       doit convertir le montant de l'action en devise fonctionnelle avant d'appeler
- *       {@code evaluate}.</li>
- *   <li>{@code requiredApproverRoles} : liste des rôles (au sens {@link UserRole}) capables
- *       d'approuver. La liste est stockée en JSONB. Tous les utilisateurs ayant un de ces
- *       rôles dans l'entreprise sont notifiés à chaque création de
- *       {@link ApprovalRequest}.</li>
- *   <li>{@code minApprovals} : nombre minimum d'approbations requises. En Phase 4, forcé à 1
- *       (workflow multi-étapes non implémenté — champ prévu pour l'extension Phase 14 si
- *       besoin). La validation en interdit les valeurs &gt; 1 pour l'instant.</li>
+ * <li>Une seule règle {@code active = true} par (companyId, actionType). Tentative de
+ * créer une deuxième règle active pour le même actionType → 409. Pour modifier une
+ * règle, désactiver l'ancienne puis créer la nouvelle (avec audit trail).</li>
+ * <li>{@code thresholdAmount} est en devise fonctionnelle de l'entreprise — le consommateur
+ * doit convertir le montant de l'action en devise fonctionnelle avant d'appeler
+ * {@code evaluate}.</li>
+ * <li>{@code requiredApproverRoles} : liste des rôles (au sens {@link UserRole}) capables
+ * d'approuver. La liste est stockée en JSONB. Tous les utilisateurs ayant un de ces
+ * rôles dans l'entreprise sont notifiés à chaque création de
+ * {@link ApprovalRequest}.</li>
+ * <li>{@code minApprovals} : nombre minimum d'approbations requises. En, forcé à 1
+ * (workflow multi-étapes non implémenté — champ prévu pour l'extensionsi
+ * besoin). La validation en interdit les valeurs &gt; 1 pour l'instant.</li>
  * </ul>
  *
  * <p>Entité {@link TenantAwareEntity} : le {@code companyId} est injecté depuis
@@ -47,6 +47,14 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "approval_rule",
     uniqueConstraints = @UniqueConstraint(name = "uc_approval_rule_active",
         columnNames = {"company_id", "action_type", "active"}))
+/**
+ * ApprovalRule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class ApprovalRule extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)
@@ -76,8 +84,8 @@ public class ApprovalRule extends TenantAwareEntity {
     private String requiredApproverRoles;
 
     /**
-     * Nombre minimum d'approbations requises. En Phase 4, forcé à 1.
-     * Le champ est posé pour une future extension multi-étapes (Phase 14 si besoin).
+     * Nombre minimum d'approbations requises. En, forcé à 1.
+     * Le champ est posé pour une future extension multi-étapessi besoin).
      */
     @Column(name = "min_approvals", nullable = false)
     private int minApprovals = 1;

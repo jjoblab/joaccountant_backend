@@ -12,12 +12,17 @@ import org.springframework.stereotype.Component;
  * §3.3 point de vigilance explicite : Spring Boot ne configure PAS automatiquement la
  * multi-location Hibernate. Nous devons enregistrer explicitement le
  * {@link CurrentTenantIdentifierResolver}, plus la stratégie de discriminateur
- * {@code @TenantId}. Ce bean est validé par un vrai test d'intégration (DoD Phase 1), jamais
+ * {@code @TenantId}. Ce bean est validé par un vrai test d'intégration (DoD, jamais
  * supposé fonctionner par défaut.
  *
  * <p>Stratégie : {@code DISCRIMINATOR} — schéma partagé + colonne {@code company_id}. Pas de
  * schéma-par-tenant (§3.3 : 2 à 3 sociétés par utilisateur ne le justifie pas).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class TenantHibernatePropertiesCustomizer implements HibernatePropertiesCustomizer {
 

@@ -11,7 +11,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Période fiscale — typiquement mensuelle (§13 Phase 5).
+ * Période fiscale — typiquement mensuelle (§13.
  *
  * <p>Une période appartient à un {@link FiscalYear}. Par défaut, un exercice est découpé en
  * 12 périodes mensuelles, mais l'utilisateur peut créer des périodes personnalisées
@@ -24,6 +24,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "fiscal_period",
     uniqueConstraints = @UniqueConstraint(name = "uc_fp_year_dates",
         columnNames = {"fiscal_year_id", "start_date", "end_date"}))
+/**
+ * FiscalPeriod.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class FiscalPeriod extends TenantAwareEntity {
 
     @Column(name = "fiscal_year_id", nullable = false)

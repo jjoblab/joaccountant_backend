@@ -13,7 +13,12 @@ package jo.accountant.purchasing.entity;
  * <li>{@link #PAID} — {@code paidAmount == totalAmount}.</li>
  * <li>{@link #VOID} — facture annulée (disponible tant que non payée).</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum PurchaseInvoiceStatus {
  DRAFT,
  RECEIVED,

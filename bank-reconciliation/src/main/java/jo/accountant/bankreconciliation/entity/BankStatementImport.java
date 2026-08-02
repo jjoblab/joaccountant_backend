@@ -10,11 +10,16 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Import de relevé bancaire (§13 Phase 13).
+ * Import de relevé bancaire (§13.
  *
  * <p>Le fichier brut est conservé via {@link jo.accountant.core.port.FileStoragePort}
  * (storageKey opaque) pour audit — jamais de blob binaire en colonne PostgreSQL.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "bank_statement_import")
 public class BankStatementImport extends TenantAwareEntity {

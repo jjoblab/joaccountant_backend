@@ -12,7 +12,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Quand aucun utilisateur n'est présent (par ex. endpoint d'enregistrement, bootstrap de test),
  * renvoie vide — les colonnes sont nullables pour supporter explicitement ce cas.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class SpringSecurityAuditorAware implements AuditorAware<UUID> {
 

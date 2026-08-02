@@ -1,7 +1,7 @@
 package jo.accountant.tax.entity;
 
 /**
- * Éligibilité au taux réduit d'IS pour PME (audit v4.7 §4.1 ).
+ * Éligibilité au taux réduit d'IS pour PME.
  *
  * <p>En France (CGI art. 219), le taux réduit de 15% s'applique aux PME dont le chiffre
  * d'affaires est inférieur à 10 M€ et dont le capital est entièrement libéré et détenu
@@ -18,7 +18,12 @@ package jo.accountant.tax.entity;
  * Ces 2 valeurs sont mappées sur des CorporateTaxRule globales par pays (migration V90)
  * et activées via {@code Company.isFreeZone} ou {@code Company.taxExemptionStatus}
  * (migration V91).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum CorporateTaxEligibility {
  /** PME éligible au taux réduit (15% jusqu'à 42 500 €, 25% au-delà). */
  SME,

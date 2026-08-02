@@ -33,6 +33,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "purchase_order",
  uniqueConstraints = @UniqueConstraint(name = "uc_po_company_number",
  columnNames = {"company_id", "order_number"}))
+/**
+ * PurchaseOrder.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class PurchaseOrder extends TenantAwareEntity {
 
  /** Tiers SUPPLIER (FK logique vers third_party.id). */

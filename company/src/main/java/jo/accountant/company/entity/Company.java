@@ -15,7 +15,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Entité Company (§13 Phase 1 — restructurée en 2026-07-24, voir
+ * Entité Company (§13restructurée en 2026-07-24, voir
  * {@code PROMPT_AGENT_restructuration_type_organisation}).
  *
  * <p>N'EST PAS une {@link jo.accountant.core.tenant.TenantAwareEntity} — une Company EST le
@@ -24,7 +24,7 @@ import org.hibernate.type.SqlTypes;
  * <p>Restructuration : la modélisation organisationnelle s'articule désormais autour de 5 axes
  * distincts (§4.2 du prompt de restructuration) :
  * <ul>
- * <li><em>organizationNature</em> — lucratif / non-lucratif (V2.6.0 : domaine réduit à 2 valeurs,
+ * <li><em>organizationNature</em> — lucratif / non-lucratif (0 : domaine réduit à 2 valeurs,
  * voir {@link OrganizationNature} + migration {@code V101__simplify_organization_nature.sql}).
  * Filtre les formes juridiques valides (ex. {@code ASSOCIATION}/{@code NGO} ⟹
  * {@code NON_PROFIT} uniquement).</li>
@@ -40,15 +40,20 @@ import org.hibernate.type.SqlTypes;
  * {@code businessTypeCode} et les valeurs de {@code extraAttributes} sont verrouillés une
  * fois {@code wizardCompleted = true} (§4.2 — extension de l'ancienne règle sur {@code sector}
  * seul).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "companies")
 public class Company {
 
  /**
- * Nombre total d'étapes du wizard V8.2 (refonte 4 étapes avec activation atomique).
+ * Nombre total d'étapes du wizard d'onboarding (refonte 4 étapes avec activation atomique).
  *
- * <p>Le wizard V8.2 fusionne les 9 étapes historiques en 4 étapes :
+ * <p>Le wizard d'onboarding fusionne les 9 étapes historiques en 4 étapes :
  * <ol>
  * <li><b>Identité</b> — name + country + functionalCurrency (création via POST /companies)</li>
  * <li><b>Activité</b> — businessTypeCode + primaryActivityLabel + sector + extraAttributes
@@ -88,7 +93,7 @@ public class Company {
  private String functionalCurrency;
 
  /**
- * SIRET de l'entreprise (14 chiffres en France). Audit v4.7 §4.2 Finding HAUT — requis pour
+ * SIRET de l'entreprise (14 chiffres en France).Finding HAUT — requis pour
  * les mentions légales des factures (CGI art. 289) et le Factur-X. Null si non configuré
  * (ex: entreprise haïtienne sans SIRET — utilise NIF à la place).
  */
@@ -96,7 +101,7 @@ public class Company {
  private String siret;
 
  /**
- * Numéro de TVA intracommunautaire (ex: FR12345678901 pour la France). Audit v4.7 §4.2 —
+ * Numéro de TVA intracommunautaire (ex: FR12345678901 pour la France).—
  * requis pour les factures B2B intra-UE (reverse-charge) et le Factur-X. Null si non assujetti.
  */
  @Column(name = "vat_number", length = 20)
@@ -104,13 +109,13 @@ public class Company {
 
  /**
  * NIF (Numéro d'Identification Fiscale) — équivalent SIRET pour les entreprises hors France
- * (Haïti, OHADA). Audit v4.7 §4.2 — utilisé comme fallback SIRET dans les mentions légales.
+ * (Haïti, OHADA).— utilisé comme fallback SIRET dans les mentions légales.
  */
  @Column(name = "nif", length = 30)
  private String nif;
 
  /**
- * Adresse postale de l'entreprise (une ligne). Audit v4.7 §4.2 — requise pour les mentions
+ * Adresse postale de l'entreprise (une ligne).— requise pour les mentions
  * légales des factures (CGI art. 289). Format libre : "123 rue de la Paix, 75001 Paris".
  */
  @Column(name = "address", length = 500)
@@ -135,7 +140,7 @@ public class Company {
  /**
  * Type métier — LE moteur d'activation des modules. Référence vers
  * {@link BusinessType#getCode()}. Le type {@code CUSTOM} remplace l'ancien secteur
- * {@code MIXTE} et permet la sélection manuelle des modules à l'étape 8 du wizard.
+ * {@code MIXTE} et permet la sélection manuelle des modules à l'du wizard.
  */
  @Column(name = "business_type_code", nullable = false, length = 60)
  private String businessTypeCode;
@@ -153,7 +158,7 @@ public class Company {
  private Map<String, Object> extraAttributes;
 
  /**
- * Référentiel comptable — positionné à l'étape 6 du wizard.
+ * Référentiel comptable — positionné à l'du wizard.
  * Nullable tant que l'utilisateur n'a pas atteint cette étape.
  */
  @Column(name = "accounting_framework_id")
@@ -163,7 +168,7 @@ public class Company {
  private int fiscalYearStartMonth;
 
  /**
- * V77 (R-F-validation lot-G) — TRUE si la société est agréée zone franche
+ * V77 (R-F-validationTRUE si la société est agréée zone franche
  * (CODEVI / SONAPI — Code Fiscal Haïti art. 195). IS réduit 15% au lieu de 30%.
  *
  * <p>Colonne créée en migration V77 ; champ JPA exposé en v8-1 pour permettre à
@@ -186,7 +191,7 @@ public class Company {
  private TaxExemptionStatus taxExemptionStatus = TaxExemptionStatus.STANDARD;
 
  /**
- * V8.1 — Module Démos : TRUE si entreprise fictive (mode démo, lecture seule publique).
+ * Module Démos : TRUE si entreprise fictive (mode démo, lecture seule publique).
  * Colonne créée en migration V94 (module :demo-data).
  */
  @Column(name = "is_demo", nullable = false)

@@ -28,7 +28,10 @@ import java.math.BigDecimal;
  * <p><b>Rétro-compatibilité</b> : si {@code LineDto.taxes} est {@code null} ou vide,
  * {@code InvoicingService} fallback sur {@code LineDto.taxRate} comme TVA seule (comportement
  * historique v5.x). Aucune modification des clients existants n'est nécessaire.
- */
+ 
+ *
+ * @author jo@Dev
+*/
 public record TaxApplication(
     @NotBlank
     @Pattern(regexp = "VAT|TCA|TURNOVER_TAX|EXCISE|VAT_EXEMPT_ZF|VAT_EXEMPT_NGO",

@@ -6,7 +6,7 @@ import java.util.UUID;
 import jo.accountant.thirdparties.entity.LettrageStatus;
 
 /**
- * Ligne d'un rapport de lettrage (step7-backend — Reports Hub v2.5.0).
+ * Ligne d'un rapport de lettrage (Reports Hub).
  *
  * <p>DTO paginé retourné par {@code GET /api/v1/companies/{companyId}/third-parties/lettrage}.
  * Plus riche que {@link LettrageResponse} (qui est centré sur POST) car la vue liste doit
@@ -15,18 +15,23 @@ import jo.accountant.thirdparties.entity.LettrageStatus;
  *
  * <p>Champs :
  * <ul>
- *   <li>{@code id} — ID du {@code LettrageMatch}.</li>
- *   <li>{@code thirdPartyId} — ID du tiers lettré.</li>
- *   <li>{@code thirdPartyName} — nom du tiers (résolu via lookup batch).</li>
- *   <li>{@code accountCode} — code du compte dédié du tiers (snapshot au moment du lettrage).</li>
- *   <li>{@code matchCode} — code de lettrage séquentiel (A, B, C, ...).</li>
- *   <li>{@code matchedAt} — timestamp du lettrage.</li>
- *   <li>{@code matchedBy} — ID utilisateur qui a lettré.</li>
- *   <li>{@code matchedAmount} — somme des montants des lignes lettrées (débit + crédit).</li>
- *   <li>{@code status} — statut ({@link LettrageStatus#FULL} ou {@link LettrageStatus#PARTIAL}).</li>
- *   <li>{@code entryCount} — nombre de lignes d'écriture lettrées ensemble (taille de journalLineIds).</li>
+ * <li>{@code id} — ID du {@code LettrageMatch}.</li>
+ * <li>{@code thirdPartyId} — ID du tiers lettré.</li>
+ * <li>{@code thirdPartyName} — nom du tiers (résolu via lookup batch).</li>
+ * <li>{@code accountCode} — code du compte dédié du tiers (snapshot au moment du lettrage).</li>
+ * <li>{@code matchCode} — code de lettrage séquentiel (A, B, C, ...).</li>
+ * <li>{@code matchedAt} — timestamp du lettrage.</li>
+ * <li>{@code matchedBy} — ID utilisateur qui a lettré.</li>
+ * <li>{@code matchedAmount} — somme des montants des lignes lettrées (débit + crédit).</li>
+ * <li>{@code status} — statut ({@link LettrageStatus#FULL} ou {@link LettrageStatus#PARTIAL}).</li>
+ * <li>{@code entryCount} — nombre de lignes d'écriture lettrées ensemble (taille de journalLineIds).</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record LettrageListResponse(
     UUID id,
     UUID thirdPartyId,

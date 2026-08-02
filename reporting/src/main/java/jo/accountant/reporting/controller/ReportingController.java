@@ -33,11 +33,38 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de reporting (§13 Phase 17 — dernière phase).
- */
+ * Endpoints de reporting (§13dernière phase).
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/reporting")
-@Tag(name = "Reporting", description = "Exports PDF/Excel, tableaux de bord (§13 Phase 17)")
+@Tag(name = "Reporting", description = "Exports PDF/Excel, tableaux de bord (§13")
 public class ReportingController {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReportingController.class);
@@ -179,12 +206,12 @@ public class ReportingController {
     }
 
     // ======================================================================
-    // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés pour les
+    // Reports Hub : endpoints PDF dédiés pour les
     // balances âgées clients et fournisseurs. Un seul endpoint PDF avec
     // ?type=receivables|payables qui dispatch vers le bon service métier.
     // ======================================================================
 
-    @Operation(summary = "Générer la balance âgée en PDF (Reports Hub v2.4.0)",
+    @Operation(summary = "Générer la balance âgée en PDF (Reports Hub)",
         description = "Rendu PDF de la balance âgée via :document-generation. " +
                       "<code>?type=receivables</code> (clients — template AGED_BALANCE_RECEIVABLES_REPORT) " +
                       "ou <code>?type=payables</code> (fournisseurs — template AGED_BALANCE_PAYABLES_REPORT). " +

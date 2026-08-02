@@ -13,7 +13,12 @@ import jakarta.persistence.Version;
  * cette devise. HTG = 2, XOF = 0 (franc CFA), JPY = 0.
  *
  * <p>Seed-only — non modifiable par les utilisateurs.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "currency")
 public class Currency {

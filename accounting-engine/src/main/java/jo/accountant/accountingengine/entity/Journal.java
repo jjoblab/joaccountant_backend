@@ -9,22 +9,22 @@ import jakarta.persistence.UniqueConstraint;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Journal comptable (§13 Phase 5).
+ * Journal comptable (§13.
  *
  * <p>Exemples : VT (ventes), AC (achats), BQ (banque), OD (opérations diverses).
  *
- * <p>Ne porte plus de {@code sequenceFormat} depuis la v2.1 — la configuration du format de
+ * <p>Ne porte plus de {@code sequenceFormat} depuis une version précédente — la configuration du format de
  * numérotation vit désormais uniquement dans {@code :document-numbering}
  * ({@code DocumentSequenceConfig.scopeKey} = code journal).
  *
- * <p><b>V8.2 (audit Z.ai 2026-07-31, Phase 3)</b> — ajout de deux champs :
+ * <p>ajout de deux champs :
  * <ul>
- *   <li>{@code type} ({@link JournalType}) — remplace la convention implicite sur le code.
- *       Permet à {@code AccountingEngineService.getOrCreateJournal(companyId, JournalType)}
- *       de résoudre un journal par type plutôt que par code.</li>
- *   <li>{@code active} (boolean) — permet de désactiver un journal sans le supprimer
- *       (préserve l'intégrité référentielle des écritures passées). Avant V8.2, la seule
- *       option était la suppression physique, impossible si des écritures référencent le journal.</li>
+ * <li>{@code type} ({@link JournalType}) — remplace la convention implicite sur le code.
+ * Permet à {@code AccountingEngineService.getOrCreateJournal(companyId, JournalType)}
+ * de résoudre un journal par type plutôt que par code.</li>
+ * <li>{@code active} (boolean) — permet de désactiver un journal sans le supprimer
+ * (préserve l'intégrité référentielle des écritures passées). Antérieurement, la seule
+ * option était la suppression physique, impossible si des écritures référencent le journal.</li>
  * </ul>
  *
  * <p>La contrainte unique {@code uc_journal_company_code} (company_id, code) est conservée —
@@ -36,6 +36,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "journal",
     uniqueConstraints = @UniqueConstraint(name = "uc_journal_company_code",
         columnNames = {"company_id", "code"}))
+/**
+ * Journal.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Journal extends TenantAwareEntity {
 
     @Column(name = "code", nullable = false, length = 10)
@@ -45,16 +53,16 @@ public class Journal extends TenantAwareEntity {
     private String label;
 
     /**
-     * Type de journal (V8.2 Phase 3). Null pour les journaux personnalisés (créés manuellement
+     * Type de journal (Null pour les journaux personnalisés (créés manuellement
      * par l'admin avec un code non-standard). Renseigné automatiquement par
-     * {@code getOrCreateJournal} et par l'activation atomique du wizard V8.2.
+     * {@code getOrCreateJournal} et par l'activation atomique du wizard d'onboarding.
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "type", length = 15)
     private JournalType type;
 
     /**
-     * Indique si le journal est actif (V8.2 Phase 3). Un journal inactif n'accepte plus de
+     * Indique si le journal est actif (Un journal inactif n'accepte plus de
      * nouvelles écritures mais conserve son historique. Defaults to true.
      */
     @Column(name = "active", nullable = false)

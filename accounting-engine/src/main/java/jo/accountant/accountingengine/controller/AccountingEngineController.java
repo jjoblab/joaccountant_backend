@@ -52,14 +52,55 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints du moteur comptable (§13 Phase 5).
+ * Endpoints du moteur comptable (§13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/accounting-engine/...}.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code PATCH /}</li>
+ *   <li>{@code PATCH /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/accounting-engine")
-@Tag(name = "AccountingEngine", description = "Moteur comptable — écritures, journal, grand livre, balance (§13 Phase 5)")
+@Tag(name = "AccountingEngine", description = "Moteur comptable — écritures, journal, grand livre, balance (§13")
 public class AccountingEngineController {
 
  private static final Logger LOG = LoggerFactory.getLogger(AccountingEngineController.class);
@@ -438,7 +479,7 @@ public class AccountingEngineController {
  "et utilise ses bornes start/end comme plage de dates. Prévalence sur " +
  "<code>from</code>/<code>to</code>.</li>" +
  "<li><code>?from=&to=</code> (LocalDate) — plage de dates explicite. " +
- "Optionnels depuis la restructuration 2026-07-25 (suite 4).</li>" +
+ "Optionnels depuis la(suite 4).</li>" +
  "<li>Si ni <code>fiscalYearId</code> ni <code>from</code>/<code>to</code> " +
  "n'est fourni, le service résout l'exercice par défaut (OPEN contenant " +
  "aujourd'hui, sinon le dernier OPEN).</li>" +
@@ -563,7 +604,7 @@ public class AccountingEngineController {
  """)))
  })
  @GetMapping("/fiscal-years/active")
- @java.lang.SuppressWarnings("deprecation") // v2.5.2 — endpoint déprécié, garde rétro-compat
+ @java.lang.SuppressWarnings("deprecation") // — endpoint déprécié, garde rétro-compat
  public FiscalYear getActiveFiscalYear(@PathVariable UUID companyId,
  @CurrentUser UUID userId) {
  roleChecker.ensureRole(companyId, "VIEWER");
@@ -571,10 +612,10 @@ public class AccountingEngineController {
  }
 
  // ======================================================================
- // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés + export CSV
+ // Reports Hub : endpoints PDF dédiés + export CSV
  // ======================================================================
 
- @Operation(summary = "Générer la balance générale en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer la balance générale en PDF (Reports Hub)",
  description = "Rendu PDF de la balance générale via :document-generation (template TRIAL_BALANCE_REPORT). " +
  "Délègue au même service métier que GET /trial-balance. " +
  "Filtres : ?fiscalYearId= (UUID) ou ?from=&to= (LocalDate) — voir GET /trial-balance.")
@@ -649,7 +690,7 @@ public class AccountingEngineController {
  return response;
  }
 
- @Operation(summary = "Générer le grand livre en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer le grand livre en PDF (Reports Hub)",
  description = "Rendu PDF du grand livre d'un compte via :document-generation (template LEDGER_REPORT). " +
  "Délègue au même service métier que GET /ledger. " +
  "Le paramètre accountId est obligatoire (le grand livre est par compte).")
@@ -710,7 +751,7 @@ public class AccountingEngineController {
  return response;
  }
 
- @Operation(summary = "Exporter les écritures comptables en CSV (Reports Hub v2.4.0)",
+ @Operation(summary = "Exporter les écritures comptables en CSV (Reports Hub)",
  description = "Export CSV de toutes les écritures POSTED sur la période. " +
  "Format : UTF-8 avec BOM (compatible Excel français), séparateur point-virgule, CRLF. " +
  "Colonnes : Date;Journal;Reference;Description;Statut;Debit total;Credit total. " +
@@ -740,7 +781,7 @@ public class AccountingEngineController {
  .body(null);
  }
 
- // step2-backend — si fiscalYearId est fourni (par le mobile), résoudre l'exercice
+ // si fiscalYearId est fourni (par le mobile), résoudre l'exercice
  // et utiliser ses bornes comme from/to (prévalence sur les from/to explicites).
  // Permet au mobile Reports Hub de passer ?fiscalYearId= sans avoir à calculer
  // les dates d'exercice côté client.
@@ -766,7 +807,7 @@ public class AccountingEngineController {
  }
 
  // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
- // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+ //ajoutés par CsvEndpointHelper (0-task8).
  StringBuilder sb = new StringBuilder();
  String LINE_SEP = "\r\n";
  sb.append("Date;Journal;Reference;Description;Statut;Debit total;Credit total").append(LINE_SEP);

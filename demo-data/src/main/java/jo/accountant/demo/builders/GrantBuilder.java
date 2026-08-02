@@ -7,8 +7,13 @@ import jo.accountant.fundsgrants.entity.Grant;
 import jo.accountant.fundsgrants.entity.RestrictionType;
 
 /**
- * V8.1 — Builder fluent pour créer des subventions démo (ONG Espwa pou Ayiti).
- */
+ * Builder fluent pour créer des subventions démo (ONG Espwa pou Ayiti).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class GrantBuilder {
 
     private final Grant grant = new Grant();

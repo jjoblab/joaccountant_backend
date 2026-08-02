@@ -8,7 +8,12 @@ import jo.accountant.approvalworkflow.entity.ApprovalStatus;
 
 /**
  * Réponse pour {@code GET .../requests}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record RequestResponse(
     UUID id,
     UUID companyId,

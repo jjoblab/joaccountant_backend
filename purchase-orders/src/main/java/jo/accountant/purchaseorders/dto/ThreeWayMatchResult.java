@@ -25,7 +25,12 @@ import java.util.UUID;
  * @param purchaseOrderId commande rapprochée (peut être null si aucune commande n'existe)
  * @param matches {@code true} si le 3-way match passe (aucune divergence)
  * @param discrepancies liste des écarts constatés (vide si {@code matches})
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ThreeWayMatchResult(
  UUID invoiceId,
  UUID purchaseOrderId,

@@ -64,12 +64,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de reporting (§13 Phase 17 — dernière phase du projet).
+ * Service de reporting (§13dernièreprojet).
  *
  * <p>Responsabilités :
  * <ul>
  * <li>Export PDF (bilan, compte de résultat, grand livre, balance, rapport bailleur) —
- * produit via :document-generation (Phase 11) : :reporting orchestre uniquement
+ * produit via :document-generation:reporting orchestre uniquement
  * quels documents exporter et sur quelle période, sans dupliquer de logique de rendu PDF.</li>
  * <li>Export Excel/CSV (grand livre, balance) — généré directement par :reporting.</li>
  * <li>Tableau de bord de synthèse (position de trésorerie, balance âgée clients/fournisseurs,
@@ -92,7 +92,12 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Formats réglementaires par pays (ex. TAFIRE pour SYSCOHADA, liasse fiscale française) :
  * hors périmètre v1, à cadrer dans un futur prompt dédié une fois le socle validé en production.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ReportingService {
 
@@ -325,7 +330,7 @@ public class ReportingService {
 
  private ExportResult exportGeneralLedger(UUID companyId, LocalDate from, LocalDate to,
  String format) {
- // Pour le grand livre, on a besoin d'un accountId — en Phase 17 simplifié,
+ // Pour le grand livre, on a besoin d'un accountId — ensimplifié,
  // on exporte tous les comptes. On prend le premier compte ACTIF trouvé.
  List<Account> accounts = accountRepository.findByCompanyIdOrderByCode(companyId);
  if (accounts.isEmpty()) {
@@ -411,7 +416,7 @@ public class ReportingService {
  // --- Tableau de bord ---
 
  /**
- * Tableau de bord de synthèse (§13 Phase 17).
+ * Tableau de bord de synthèse (§13.
  *
  * <p>Position de trésorerie, balance âgée clients/fournisseurs, principales charges,
  * approbations en attente, factures échues.
@@ -425,7 +430,7 @@ public class ReportingService {
  */
  @Transactional(readOnly = true)
  public Dashboard getDashboard(UUID companyId) {
- // V8.3 — Protection défensive : si une étape échoue (ex. pas d'exercice fiscal,
+ // Protection défensive : si une étape échoue (ex. pas d'exercice fiscal,
  // NPE sur accountCode null, query SQL qui échoue), on retourne un dashboard
  // partiel à zéros plutôt qu'un HTTP 500 (cf. fff.txt — DashboardVM API error 500).
  BigDecimal cashPosition = BigDecimal.ZERO;
@@ -452,7 +457,7 @@ public class ReportingService {
  if (account == null) continue; // compte supprimé (rare — journalLine.accountId n'a pas de FK dure)
  jo.accountant.core.framework.ReportingClass rc = account.getReportingClass();
  BigDecimal balance = line.balance() != null ? line.balance() : BigDecimal.ZERO;
- // V8.3 — defense-in-depth : accountCode peut être "(code inconnu)" ou null
+ // defense-in-depth : accountCode peut être "(code inconnu)" ou null
  // si la base a été corrompue — on garde une référence locale nullable.
  String code = line.accountCode();
 
@@ -997,7 +1002,7 @@ public class ReportingService {
 
  StringBuilder csv = new StringBuilder();
  csv.append("Taux (%);Base imposable;TVA collectee;TVA deductible;TVA nette\n");
- // Audit v4.7 §4.1 — afficher collecté et déductible séparément, puis net
+ //— afficher collecté et déductible séparément, puis net
  for (TaxDeclaration.TaxLine line : declaration.collectedLines()) {
  // Chercher la ligne déductible au même taux
  BigDecimal tvaDeductible = declaration.deductibleLines().stream()

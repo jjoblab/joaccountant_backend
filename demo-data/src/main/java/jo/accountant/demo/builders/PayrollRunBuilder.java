@@ -7,8 +7,13 @@ import jo.accountant.payroll.entity.PayrollRunStatus;
 import jo.accountant.payroll.entity.PayrollRunType;
 
 /**
- * V8.1 — Builder fluent pour créer des campagnes de paie démo.
- */
+ * Builder fluent pour créer des campagnes de paie démo.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class PayrollRunBuilder {
 
     private final PayrollRun run = new PayrollRun();

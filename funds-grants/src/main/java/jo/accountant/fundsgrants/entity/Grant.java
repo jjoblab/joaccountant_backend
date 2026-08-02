@@ -12,7 +12,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Subvention / don d'un bailleur (§13 Phase 14).
+ * Subvention / don d'un bailleur (§13.
  *
  * <p>Une subvention est rattachée à un bailleur (ThirdParty de type DONOR) et optionnellement
  * à une valeur analytique (plan "Fonds/Projets") qui permet de tracer les charges et produits
@@ -20,16 +20,24 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>{@link #restrictionType} détermine si le mécanisme des fonds dédiés s'applique à la clôture :
  * <ul>
- *   <li>{@link RestrictionType#RESTRICTED} → à la clôture, calcul du solde (produits − charges
- *       tagués analytiquement). Si positif (ressource affectée non utilisée), soumission d'une
- *       {@link jo.accountant.approvalworkflow.entity.ApprovalRequest} pour l'écriture proposée.</li>
- *   <li>{@link RestrictionType#UNRESTRICTED} → pas de fonds dédiés.</li>
+ * <li>{@link RestrictionType#RESTRICTED} → à la clôture, calcul du solde (produits − charges
+ * tagués analytiquement). Si positif (ressource affectée non utilisée), soumission d'une
+ * {@link jo.accountant.approvalworkflow.entity.ApprovalRequest} pour l'écriture proposée.</li>
+ * <li>{@link RestrictionType#UNRESTRICTED} → pas de fonds dédiés.</li>
  * </ul>
  */
 @Entity
 @Table(name = "fg_grant",
     uniqueConstraints = @UniqueConstraint(name = "uc_fg_grant_company_code",
         columnNames = {"company_id", "code"}))
+/**
+ * Grant.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Grant extends TenantAwareEntity {
 
     /** Bailleur (ThirdParty de type DONOR). */

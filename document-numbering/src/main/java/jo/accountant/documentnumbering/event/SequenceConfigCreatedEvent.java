@@ -10,7 +10,7 @@ import jo.accountant.documentnumbering.entity.DocumentSequenceConfig;
  * Événement publié à chaque création ou mise à jour d'une configuration de séquence.
  *
  * <p>Consommé asynchronement par {@code :audit-trail} (même pattern que {@code UserRegisteredEvent}
- * en Phase 1). Permet de tracer QUI a modifié une séquence et QUAND — important pour l'audit
+ * en. Permet de tracer QUI a modifié une séquence et QUAND — important pour l'audit
  * fiscal (un changement de prefix en cours d'année pourrait être suspect).
  *
  * <p><b>(audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
@@ -19,7 +19,12 @@ import jo.accountant.documentnumbering.entity.DocumentSequenceConfig;
  * l'interface <code>AuditableAction</code>). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record SequenceConfigCreatedEvent(
  UUID companyId,
  UUID actorUserId,

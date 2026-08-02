@@ -16,7 +16,12 @@ import jo.accountant.inventory.entity.StockMove;
  * l'interface <code>AuditableAction</code>). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record StockMoveCreatedEvent(
  UUID companyId,
  UUID actorUserId,

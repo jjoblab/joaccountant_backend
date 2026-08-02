@@ -8,7 +8,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Ligne d'écriture comptable (§13 Phase 5).
+ * Ligne d'écriture comptable (§13.
  *
  * <p>Une ligne porte soit un débit, soit un crédit — jamais les deux. La convention est
  * que {@link #debit} et {@link #credit} sont mutuellement exclusifs (l'un est 0 quand
@@ -16,17 +16,22 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Montants en devise fonctionnelle uniquement pour cette itération. Les champs
  * {@code amountTransactionCurrency}, {@code transactionCurrency}, {@code exchangeRateUsed}
- * sont posés (§3.5) mais la conversion n'est pas implémentée en Phase 5 — les lignes sont
- * saisies directement en devise fonctionnelle. Phase ultérieure (probablement Phase 12 ou
+ * sont posés (§3.5) mais la conversion n'est pas implémentée enles lignes sont
+ * saisies directement en devise fonctionnelle.(probablementou
  * 13) activera le multi-devises.
  *
  * <p>Référence un {@link jo.accountant.chartofaccounts.entity.Account compte} du plan
  * comptable via {@link #accountId} — pas de FK dure pour permettre la désactivation d'un
  * compte sans casser les écritures historiques.
  *
- * <p>{@link #thirdPartyId} est nullable — sera renseigné par Phase 7 ({@code third-parties}).
+ * <p>{@link #thirdPartyId} est nullable — sera renseigné par({@code third-parties}).
  * Pour l'instant c'est juste un champ libre (UUID opaque).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "journal_line")
 public class JournalLine extends TenantAwareEntity {
@@ -58,17 +63,17 @@ public class JournalLine extends TenantAwareEntity {
     private String description;
 
     /**
-     * Montant en devise de transaction (§3.5). En Phase 5, égal à {@link #debit} ou
+     * Montant en devise de transaction (§3.5). En, égal à {@link #debit} ou
      * {@link #credit} (pas de multi-devises).
      */
     @Column(name = "amount_transaction_currency", precision = 19, scale = 4)
     private BigDecimal amountTransactionCurrency;
 
-    /** Code ISO 4217 de la devise de transaction. En Phase 5, égal à la devise fonctionnelle. */
+    /** Code ISO 4217 de la devise de transaction. En, égal à la devise fonctionnelle. */
     @Column(name = "transaction_currency", length = 3)
     private String transactionCurrency;
 
-    /** Taux de change utilisé pour la conversion. En Phase 5, toujours 1. */
+    /** Taux de change utilisé pour la conversion. En, toujours 1. */
     @Column(name = "exchange_rate_used", precision = 19, scale = 6)
     private BigDecimal exchangeRateUsed = BigDecimal.ONE;
 

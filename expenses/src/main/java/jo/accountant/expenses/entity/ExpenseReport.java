@@ -30,7 +30,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Le compte de trésorerie est résolu par recherche `ACTIF + taxMappingCode="CASH"`
  * puis fallback SYSCOHADA `"570000"/"57"`. Si aucun compte de trésorerie n'est trouvé,
  * l'approbation échoue avec `422 CASH_ACCOUNT_NOT_FOUND`.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "expense_report")
 public class ExpenseReport extends TenantAwareEntity {

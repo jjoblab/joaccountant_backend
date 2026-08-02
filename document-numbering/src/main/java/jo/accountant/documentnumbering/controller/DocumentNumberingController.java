@@ -36,25 +36,51 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de numérotation documentaire (§6, §13 Phase 2).
+ * Endpoints de numérotation documentaire (§6, §13.
  *
  * <p>Convention d'URL (§3.8) : {@code /api/v1/companies/{companyId}/document-numbering/...}.
- * Le {@code companyId} du path est validé contre le JWT par {@code TenantClaimFilter} (Phase 1).
+ * Le {@code companyId} du path est validé contre le JWT par {@code TenantClaimFilter}.
  *
  * <p>Endpoints :
  * <ul>
- *   <li>{@code POST /sequences} — créer une config</li>
- *   <li>{@code GET /sequences} — lister les configs</li>
- *   <li>{@code GET /sequences/{documentType}/next-preview} — aperçu non consommateur</li>
+ * <li>{@code POST /sequences} — créer une config</li>
+ * <li>{@code GET /sequences} — lister les configs</li>
+ * <li>{@code GET /sequences/{documentType}/next-preview} — aperçu non consommateur</li>
  * </ul>
  *
  * <p>Aucun endpoint {@code consume} : la consommation effective d'un numéro se fait via
- * {@link DocumentNumberingService#nextNumber}, appelé directement par les modules Phase 5/12/14
+ * {@link DocumentNumberingService#nextNumber}, appelé directement par les modules/12/14
  * au moment de la transition qui rend le document définitif.
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/document-numbering")
 @Tag(name = "DocumentNumbering", description = "Génération atomique et sans trou des numéros de documents (factures, écritures, reçus)")
+/**
+ * Contrôleur REST DocumentNumbering.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ * <li>{@code GET /api/v1/companies/{companyId}/document-numbering/sequences}</li>
+ * <li>{@code POST /api/v1/companies/{companyId}/document-numbering/sequences}</li>
+ * <li>{@code GET /api/v1/companies/{companyId}/document-numbering/sequences/{documentType}/next-preview}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class DocumentNumberingController {
 
     private final DocumentNumberingService service;

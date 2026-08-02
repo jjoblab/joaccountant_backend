@@ -6,15 +6,15 @@ package jo.accountant.company.entity;
  * <p>Axe conceptuel distinct du secteur d'activité et de la forme juridique : décrit la
  * <em>nature</em> de l'organisation.
  *
- * <p><b>V2.6.0 (wizard refonte 2026-08) — Simplification à 2 valeurs.</b>
+ * <p><b>Simplification à 2 valeurs.</b>
  * Initialement 4 valeurs ({@code FOR_PROFIT}, {@code NON_PROFIT}, {@code PUBLIC_SECTOR},
  * {@code COOPERATIVE}), le domaine a été réduit aux 2 valeurs effectivement utilisées par
  * le wizard refonte :
  * <ul>
- *   <li>{@link #FOR_PROFIT} — « à but lucratif » (entreprises commerciales, cabinets,
- *       sociétés de services...).</li>
- *   <li>{@link #NON_PROFIT} — « non lucratif » (ONG, associations, fondations, écoles
- *       privées à but non lucratif, hôpitaux...).</li>
+ * <li>{@link #FOR_PROFIT} — « à but lucratif » (entreprises commerciales, cabinets,
+ * sociétés de services...).</li>
+ * <li>{@link #NON_PROFIT} — « non lucratif » (ONG, associations, fondations, écoles
+ * privées à but non lucratif, hôpitaux...).</li>
  * </ul>
  *
  * <p>Les anciennes valeurs {@code PUBLIC_SECTOR} et {@code COOPERATIVE} ont été retirées
@@ -29,7 +29,12 @@ package jo.accountant.company.entity;
  *
  * <p>Enum Java (2 valeurs stables) — pas une table de référence en base, contrairement à
  * {@code BusinessType}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum OrganizationNature {
     FOR_PROFIT,
     NON_PROFIT

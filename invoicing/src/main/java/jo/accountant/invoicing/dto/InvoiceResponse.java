@@ -8,6 +8,14 @@ import java.util.UUID;
 import jo.accountant.invoicing.entity.InvoiceStatus;
 import jo.accountant.invoicing.entity.InvoiceType;
 
+/**
+ * InvoiceResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record InvoiceResponse(
     UUID id,
     UUID companyId,
@@ -39,7 +47,7 @@ public record InvoiceResponse(
     /** Montant net à recevoir = totalAmount − withholdingAmount. Null si pas de RS. */
     BigDecimal netReceivable,
     /** Code de la WithholdingRule appliquée (ex : "RS_HT_PRESTATIONS_LOCAL"). Null si pas de RS
-     *  ou si RS appliquée via taux forcé sans règle. */
+     * ou si RS appliquée via taux forcé sans règle. */
     String withholdingRuleCode
 ) {
 
@@ -96,11 +104,11 @@ public record InvoiceResponse(
      * PDF et la relecture côté client mobile.
      */
     public record TaxApplicationResponse(
-        String taxType,        // VAT | TCA | TURNOVER_TAX | EXCISE
-        String taxCode,        // nullable — code de la TaxRule (ex: TVA_HT_10)
-        String taxLabel,       // nullable — libellé (ex: "TVA 10% (art. 191)")
-        BigDecimal rate,       // taux en %
+        String taxType, // VAT | TCA | TURNOVER_TAX | EXCISE
+        String taxCode, // nullable — code de la TaxRule (ex: TVA_HT_10)
+        String taxLabel, // nullable — libellé (ex: "TVA 10% (art. 191)")
+        BigDecimal rate, // taux en %
         BigDecimal taxableBase, // base HT soumise
-        BigDecimal taxAmount   // montant de la taxe
+        BigDecimal taxAmount // montant de la taxe
     ) {}
 }

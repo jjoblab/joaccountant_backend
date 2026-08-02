@@ -21,7 +21,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * d'origine n'est PAS rollbackée (l'audit est de l'observabilité, pas de la cohérence) —
  * l'échec est loggé au niveau ERROR avec l'id de corrélation pour replay.
  *
- * <p><b>Audit v4.7 §5.1 FIX CRITIQUE</b> : la version originale appelait
+ * <p><b>la version originale appelait
  * {@code this.onAuditEvent(...)} directement depuis {@link #onAuditableAction(AuditableAction)},
  * ce qui court-circuitait le proxy Spring. Les annotations {@code @Async} et
  * {@code @TransactionalEventListener(AFTER_COMMIT)} étaient décoratives — l'audit était écrit
@@ -32,7 +32,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * lieu d'appeler la méthode directement. Le multicaster Spring invoquera alors
  * {@link #onAuditEvent(AuditEvent)} via le proxy, ce qui réactivera
  * {@code @Async} + {@code @TransactionalEventListener(AFTER_COMMIT)}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class AuditEventListener {
 
@@ -57,14 +62,14 @@ public class AuditEventListener {
  row.setEntityType(event.entityType());
  row.setEntityId(event.entityId());
  row.setAction(event.action());
- // Audit v4.7 §6.3 — masquer les PII (email, fullName) dans oldValue/newValue JSON
+ //— masquer les PII (email, fullName) dans oldValue/newValue JSON
  row.setOldValueJson(jo.accountant.core.audit.PiiMasker.maskPiiInJson(event.oldValueJson()));
  row.setNewValueJson(jo.accountant.core.audit.PiiMasker.maskPiiInJson(event.newValueJson()));
  row.setOccurredAt(event.occurredAt());
  row.setCorrelationId(event.correlationId());
  repository.save(row);
  } catch (Exception ex) {
- // Audit v4.7 §9 — échec silencieux devrait déclencher un compteur Micrometer
+ //§9 — échec silencieux devrait déclencher un compteur Micrometer
  // (à ajouter quand micrometer-registry-prometheus sera intégré).
  LOG.error("Failed to persist audit event [correlationId={}, entityId={}]",
  event.correlationId(), event.entityId(), ex);
@@ -74,7 +79,7 @@ public class AuditEventListener {
  /**
  * Réception des markers {@link AuditableAction} émis par les services métier.
  *
- * <p><b>Audit v4.7 §5.1 Fix</b> : au lieu d'appeler {@code this.onAuditEvent(...)} (ce qui
+ * <p><b>Fix</b> : au lieu d'appeler {@code this.onAuditEvent(...)} (ce qui
  * bypassait le proxy Spring), on <b>re-publie</b> un {@link AuditEvent} via
  * {@link ApplicationEventPublisher}. Le multicaster Spring invoquera alors
  * {@link #onAuditEvent(AuditEvent)} via le proxy, réactivant ainsi

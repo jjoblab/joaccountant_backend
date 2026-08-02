@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des composants d'immobilisation (IAS 16).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface AssetComponentRepository extends JpaRepository<AssetComponent, UUID> {
 
  /** Tous les composants d'une immobilisation, triés par code. */

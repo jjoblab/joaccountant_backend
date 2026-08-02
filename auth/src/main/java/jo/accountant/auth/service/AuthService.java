@@ -30,21 +30,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cœur de l'authentification (§13 Phase 1).
+ * Cœur de l'authentification (§13.
  *
- * <p>Implémente chaque règle listée dans §13 Phase 1 « Règles métier » :
+ * <p>Implémente chaque règle listée dans §13« Règles métier » :
  * <ul>
  * <li>email unique</li>
  * <li>complexité du mot de passe (déléguée à {@link PasswordValidator})</li>
  * <li>rotation du refresh token — ancien token révoqué à l'usage, réutilisation → 403</li>
  * <li>invitation + réinitialisation de mot de passe via {@link NotificationChannelPort}</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class AuthService {
 
  private static final Logger LOG = LoggerFactory.getLogger(AuthService.class);
- // Audit v4.7 §6.3 — TTL réduit de 30j à 14j. Pour un SaaS financier, 30j est trop long
+ //— TTL réduit de 30j à 14j. Pour un SaaS financier, 30j est trop long
  // (recommandation OWASP : 14j max). En cas de vol de token, la fenêtre d'exploitation est
  // réduite de moitié. Compensation : l'utilisateur doit se reconnecter plus souvent, mais
  // la rotation au refresh prolonge la session active sans re-saisie du mot de passe.
@@ -125,7 +130,7 @@ public class AuthService {
  User user = userRepository.findByEmailIgnoreCase(safeEmail)
  .orElse(null);
 
- // Audit v4.7 §6.2 audit sécurité LOGIN_FAILED pour email inconnu.
+ //audit sécurité LOGIN_FAILED pour email inconnu.
  // Pas d'userId → on ne peut pas deviner qui c'était, mais on trace la tentative (anti brute-force).
  if (user == null) {
  events.publishEvent(SecurityAuditEvent.of(
@@ -160,7 +165,7 @@ public class AuthService {
 
  TenantContext.setUserId(user.getId());
 
- // Audit v4.7 §6.2 audit sécurité LOGIN_SUCCESS.
+ //audit sécurité LOGIN_SUCCESS.
  events.publishEvent(SecurityAuditEvent.of(
  SecurityAuditEvent.Types.LOGIN_SUCCESS, user.getId(), null,
  Map.of("email", safeEmail), correlationId));
@@ -189,7 +194,7 @@ public class AuthService {
  t.setRevokedAt(Instant.now());
  refreshTokenRepository.save(t);
  });
- // Audit v4.7 §6.2 REFRESH_TOKEN_REUSED = signal critique de vol de token.
+ //REFRESH_TOKEN_REUSED = signal critique de vol de token.
  events.publishEvent(SecurityAuditEvent.of(
  SecurityAuditEvent.Types.REFRESH_TOKEN_REUSED, token.getUserId(), null,
  Map.of("action", "ALL_SESSIONS_REVOKED"), correlationId));
@@ -225,7 +230,7 @@ public class AuthService {
 
  TenantContext.setUserId(user.getId());
 
- // Audit v4.7 §6.2 REFRESH_TOKEN_ROTATED = usage normal du refresh.
+ //REFRESH_TOKEN_ROTATED = usage normal du refresh.
  events.publishEvent(SecurityAuditEvent.of(
  SecurityAuditEvent.Types.REFRESH_TOKEN_ROTATED, user.getId(), null,
  Map.of(), correlationId));
@@ -245,7 +250,7 @@ public class AuthService {
  if (token.getRevokedAt() == null) {
  token.setRevokedAt(Instant.now());
  refreshTokenRepository.save(token);
- // Audit v4.7 §6.2 LOGOUT.
+ //LOGOUT.
  events.publishEvent(SecurityAuditEvent.of(
  SecurityAuditEvent.Types.LOGOUT, token.getUserId(), null,
  Map.of(), correlationId));
@@ -254,7 +259,7 @@ public class AuthService {
  }
 
  /**
- * §13 Phase 1 « mot de passe oublié » — initie la réinitialisation.
+ * §13« mot de passe oublié » — initie la réinitialisation.
  *
  * <p>Renvoie toujours un succès, ne révèle jamais si l'email existe (anti-énumération).
  * L'email de notification est envoyé de manière asynchrone via {@link NotificationChannelPort}.
@@ -280,7 +285,7 @@ public class AuthService {
  vars.put("expiresInMinutes", PASSWORD_RESET_TTL.toMinutes());
  notificationChannel.sendEmail(user.getEmail(), "password-reset", vars);
 
- // Audit v4.7 §6.2 PASSWORD_RESET_REQUESTED.
+ //PASSWORD_RESET_REQUESTED.
  events.publishEvent(SecurityAuditEvent.of(
  SecurityAuditEvent.Types.PASSWORD_RESET_REQUESTED, user.getId(), null,
  Map.of("email", safeEmail), correlationId));
@@ -330,7 +335,7 @@ public class AuthService {
  refreshTokenRepository.save(t);
  });
 
- // Audit v4.7 §6.2 PASSWORD_RESET_CONSUMED. Événement critique de sécurité :
+ //PASSWORD_RESET_CONSUMED. Événement critique de sécurité :
  // un changement de mot de passe peut indiquer une reprise de compte légitime OU une
  // compromission (si l'attaquant a intercepté le token). Tracer permet la forensique.
  events.publishEvent(SecurityAuditEvent.of(
@@ -367,7 +372,7 @@ public class AuthService {
 
  /**
  * Émet les tokens normaux pour un utilisateur qui a validé son code MFA.
- * Audit v4.7 §6.3 (session 14) — MFA login 2-step.
+ *(session 14) — MFA login 2-step.
  */
  public LoginResult issueTokensForMfaUser(UUID userId, String email,
  List<Map<String, Object>> companies) {

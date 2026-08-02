@@ -9,11 +9,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Repository JPA InvoiceLine.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface InvoiceLineRepository extends JpaRepository<InvoiceLine, UUID> {
  List<InvoiceLine> findByInvoiceIdOrderByCreatedAt(UUID invoiceId);
 
  /**
- * (lot-C-perf-devops) — Agrégation par taux de TVA côté SQL.
+ *Agrégation par taux de TVA côté SQL.
  *
  * <p>Remplace l'ancien pattern N+1 de {@code TaxService.getDeclaration()} qui chargeait
  * chaque facture individuellement puis bouclait sur ses lignes en Java. Sur 1000 factures,
@@ -55,7 +63,7 @@ public interface InvoiceLineRepository extends JpaRepository<InvoiceLine, UUID> 
  @Param("statuses") List<jo.accountant.invoicing.entity.InvoiceStatus> statuses);
 
  /**
- * (lot-C-perf-devops) — Projection pour l'agrégation SQL par taux de TVA.
+ *Projection pour l'agrégation SQL par taux de TVA.
  *
  * <p>Interface de projection Spring Data JPA — pas de classe concrète, Hibernate génère
  * un proxy à runtime. Les alias ({@code AS taxRate}, etc.) doivent correspondre exactement

@@ -20,7 +20,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Note : pas de chaînage automatique achat → entrée de stock {@code :inventory} au MVP.
  * Voir BACKLOG.md — entrée de stock déclenchée par une facture d'achat est explicitement
  * hors scope (§4 du prompt) car elle sort du périmètre de ce lot.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "purchase_invoice_line")
 public class PurchaseInvoiceLine extends TenantAwareEntity {

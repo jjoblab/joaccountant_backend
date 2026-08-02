@@ -11,14 +11,14 @@ import java.util.UUID;
  * <p>Tableau de variation des capitaux propres entre deux dates, conforme à IAS 1.
  * Le tableau présente la réconciliation suivante :
  * <pre>
- *   Capitaux propres d'ouverture (à from - 1)
- *   + Résultat net de l'exercice (from → to)
- *   + Other Comprehensive Income (OCI)
- *   + Émissions de capital
- *   − Rachats d'actions (treasury shares)
- *   − Dividendes distribués
- *   ± Autres mouvements
- *   = Capitaux propres de clôture (à to)
+ * Capitaux propres d'ouverture (à from - 1)
+ * + Résultat net de l'exercice (from → to)
+ * + Other Comprehensive Income (OCI)
+ * + Émissions de capital
+ * − Rachats d'actions (treasury shares)
+ * − Dividendes distribués
+ * ± Autres mouvements
+ * = Capitaux propres de clôture (à to)
  * </pre>
  *
  * <p>Détail des mouvements (liste {@link #movements}) fourni pour transparence — permet à
@@ -29,7 +29,12 @@ import java.util.UUID;
  * les soldes sont convertis depuis la devise fonctionnelle ({@code functionalCurrency}) au
  * taux de clôture (IAS 21 — soldes au taux de clôture). Le {@code conversionRate} est exposé
  * pour information.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record StatementOfChangesInEquity(
     UUID companyId,
     LocalDate from,
@@ -70,12 +75,12 @@ public record StatementOfChangesInEquity(
     /**
      * Un mouvement individuel de capitaux propres (pour le détail/audit).
      *
-     * @param date        date comptable de l'écriture
+     * @param date date comptable de l'écriture
      * @param description description (reprise du libellé de l'écriture)
      * @param accountCode code du compte mouvement (101, 109, 455, 108, etc.)
-     * @param debit       montant débit (0 si mouvement crédit)
-     * @param credit      montant crédit (0 si mouvement débit)
-     * @param category    catégorie : CAPITAL_ISSUED, TREASURY_PURCHASE, DIVIDEND, OCI, OTHER
+     * @param debit montant débit (0 si mouvement crédit)
+     * @param credit montant crédit (0 si mouvement débit)
+     * @param category catégorie : CAPITAL_ISSUED, TREASURY_PURCHASE, DIVIDEND, OCI, OTHER
      */
     public record EquityMovement(
         LocalDate date,

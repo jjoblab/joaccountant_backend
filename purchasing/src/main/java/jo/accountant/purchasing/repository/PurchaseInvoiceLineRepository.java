@@ -9,12 +9,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Repository JPA PurchaseInvoiceLine.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface PurchaseInvoiceLineRepository extends JpaRepository<PurchaseInvoiceLine, UUID> {
 
  List<PurchaseInvoiceLine> findByInvoiceIdOrderByCreatedAt(UUID invoiceId);
 
  /**
- * (lot-C-perf-devops) — Agrégation par taux de TVA côté SQL (côté achats).
+ *Agrégation par taux de TVA côté SQL (côté achats).
  *
  * <p>Équivalent de {@code InvoiceLineRepository.aggregateByTaxRate} mais pour les factures
  * d'achat. Permet le calcul de la TVA déductible en une seule requête SQL GROUP BY au lieu
@@ -45,7 +53,7 @@ public interface PurchaseInvoiceLineRepository extends JpaRepository<PurchaseInv
  @Param("statuses") List<jo.accountant.purchasing.entity.PurchaseInvoiceStatus> statuses);
 
  /**
- * (lot-C-perf-devops) — Projection pour l'agrégation SQL par taux de TVA (achats).
+ *Projection pour l'agrégation SQL par taux de TVA (achats).
  */
  interface TaxRateAggregate {
  BigDecimal getTaxRate();

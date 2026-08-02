@@ -6,10 +6,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * V8.1 — Taux de change BRH mensuels HTG/USD 2024-2026 pour les données démo.
+ * Taux de change BRH mensuels HTG/USD 2024-2026 pour les données démo.
  *
  * <p>Valeurs indicatives basées sur les taux BRH historiques (variation 150-160 HTG/USD).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class ExchangeRateFixtures {
 
   public record MonthlyRate(int year, int month, BigDecimal htgPerUsd, BigDecimal htgPerEur) {}

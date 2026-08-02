@@ -11,25 +11,30 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Secret MFA TOTP (RFC 6238) d'un utilisateur — audit v4.7 §6.3 Finding MOYENNE (suite).
+ * Secret MFA TOTP (RFC 6238) d'un utilisateur —Finding MOYENNE (suite).
  *
  * <p>Stockage du secret partagé TOTP (Base32) chiffré en base. L'utilisateur active la MFA
  * en scannant un QR code (Google Authenticator, Authy, FreeOTP). À chaque login, un code TOTP
  * à 6 chiffres est demandé en plus du mot de passe.
  *
  * <p><b>Obligation</b> : la MFA est obligatoire pour les rôles {@code OWNER} et {@code ADMIN}
- * (audit v4.7 §6.3). Pour les autres rôles, elle est optionnelle.
+ *. Pour les autres rôles, elle est optionnelle.
  *
  * <p><b>Sécurité</b> :
  * <ul>
- *   <li>Le secret est stocké chiffré (AES-256-GCM) — la clé de chiffrement est dans
- *       {@code app.mfa.encryption-key} (à externaliser dans Vault/KMS en prod).</li>
- *   <li>Les codes de récupération ({@code recoveryCodes}) permettent l'accès en cas de perte
- *       du téléphone — 10 codes à usage unique, hashés SHA-256.</li>
- *   <li>{@code enabledAt} null = MFA configurée mais pas encore activée (l'utilisateur doit
- *       valider un premier code TOTP pour confirmer le setup).</li>
+ * <li>Le secret est stocké chiffré (AES-256-GCM) — la clé de chiffrement est dans
+ * {@code app.mfa.encryption-key} (à externaliser dans Vault/KMS en prod).</li>
+ * <li>Les codes de récupération ({@code recoveryCodes}) permettent l'accès en cas de perte
+ * du téléphone — 10 codes à usage unique, hashés SHA-256.</li>
+ * <li>{@code enabledAt} null = MFA configurée mais pas encore activée (l'utilisateur doit
+ * valider un premier code TOTP pour confirmer le setup).</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "mfa_secret")
 public class MfaSecret {

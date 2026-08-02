@@ -23,6 +23,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Entity
 @Table(name = "company_module",
     uniqueConstraints = @UniqueConstraint(name = "uc_company_module", columnNames = {"company_id", "module_code"}))
+/**
+ * CompanyModule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class CompanyModule extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)

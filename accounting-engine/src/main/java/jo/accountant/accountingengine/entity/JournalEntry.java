@@ -16,7 +16,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Écriture comptable (§13 Phase 5).
+ * Écriture comptable (§13.
  *
  * <p>Une écriture est composée d'au moins 2 {@link JournalLine lignes} dont la somme des
  * débits doit égaler la somme des crédits (vérifié en application ET par trigger DB).
@@ -57,6 +57,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  @UniqueConstraint(name = "uc_je_company_idempotency",
  columnNames = {"company_id", "idempotency_key"})
  })
+/**
+ * JournalEntry.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class JournalEntry extends TenantAwareEntity {
 
  @Column(name = "journal_id", nullable = false)

@@ -15,18 +15,23 @@ import java.util.UUID;
  * l'exercice) avant de générer le bilan. Sinon, le bilan peut être déséquilibré — c'est
  * attendu tant que l'exercice n'est pas clôturé.
  *
- * <p><b>Task v6-4-presentation-currency</b> : champs optionnels de conversion de devise de
+ * <p><b></b> : champs optionnels de conversion de devise de
  * présentation. Si {@code presentationCurrency} est non null, le bilan a été converti depuis
  * la devise fonctionnelle ({@code functionalCurrency}) au {@code conversionRate} (taux de
  * clôture IAS 21 à la {@code conversionRateDate}). Si null, le bilan est en devise fonctionnelle
- * (comportement v5.5 inchangé).
+ * (comportement inchangé).
  *
  * <p><b>V85 — v7-3</b> : {@code ctaAmount} (Cumulative Translation Adjustment) est calculé
  * lorsque le bilan est converti dans une devise de présentation. Il isole l'écart de
  * conversion en capitaux propres (IAS 21) : CTA = totalAssetsPresentation −
  * totalLiabilitiesPresentation − totalEquityFunctionalConverted. Si pas de conversion,
  * {@code ctaAmount} est null.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record BalanceSheet(
     UUID companyId,
     LocalDate asOf,
@@ -46,7 +51,7 @@ public record BalanceSheet(
 ) {
 
     /**
-     * Constructeur backward-compat (v5.5) — équivalent à un bilan en devise fonctionnelle
+     * Constructeur backward-compat — équivalent à un bilan en devise fonctionnelle
      * sans conversion. Les champs de conversion sont null, et ctaAmount est null
      * (pas de conversion → pas de CTA).
      */

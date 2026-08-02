@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * V8.1 — Endpoints publics du module Démos.
+ * Endpoints publics du module Démos.
  *
  * <p>Tous les endpoints {@code GET /api/v1/demos/**} sont <strong>publics</strong> (pas d'auth) —
  * accessibles sans login pour prospection commerciale et onboarding utilisateur.
@@ -36,6 +36,37 @@ import org.springframework.web.bind.annotation.RestController;
         "V8.1 — Module Démos : 4 entreprises fictives haïtiennes (Boutik Lakay retail, "
             + "Moïse & Associés services, Espwa pou Ayiti ONG, Caribbean Textiles zone franche) "
             + "sur 2 exercices fiscaux (FY2024-2025 + FY2025-2026). Endpoints publics.")
+/**
+ * Contrôleur REST Demo.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class DemoController {
 
   private final DemoService demoService;
@@ -93,7 +124,7 @@ public class DemoController {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // v2.5.2 — Endpoints de diagnostic + re-seed manuel
+  // Endpoints de diagnostic + re-seed manuel
   // ────────────────────────────────────────────────────────────────────
 
   @Operation(
@@ -122,7 +153,7 @@ public class DemoController {
               + "DB, le seeder n'a pas tourné — appeler POST /demos/seed pour le déclencher).")
   @GetMapping("/seed/status")
   public ResponseEntity<java.util.Map<String, Object>> seedStatus() {
-    // v2.5.2 — wrap dans try/catch pour exposer l'erreur au lieu d'un 500 générique
+    // wrap dans try/catch pour exposer l'erreur au lieu d'un 500 générique
     // (le GlobalExceptionHandler masque le détail). RLS peut bloquer findAll() si pas
     // de tenant context, ou la DB peut être indisponible.
     long actual;

@@ -30,7 +30,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
- * Implémentation S3 / MinIO du {@link FileStoragePort} — audit v4.7 §9 .
+ * Implémentation S3 / MinIO du {@link FileStoragePort} —§9 .
  *
  * <p>Activée via {@code app.storage.backend=s3}. Utilise AWS SDK v2 avec :
  * <ul>
@@ -66,7 +66,12 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  * </ul>
  *
  * @see FileSystemFileStorageAdapter — implémentation par défaut (dev/test)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component("s3FileStorageAdapter")
 @ConditionalOnProperty(name = "app.storage.backend", havingValue = "s3")
 @Configuration
@@ -139,7 +144,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
  .key(storageKey)
  .contentType(contentType != null ? contentType : "application/octet-stream")
  .contentLength((long) content.length)
- // Audit v4.7 §9 — SHA-256 en metadata S3 pour vérification d'intégrité au load
+ //§9 — SHA-256 en metadata S3 pour vérification d'intégrité au load
  .metadata(java.util.Map.of("sha256", sha256));
 
  client().putObject(reqBuilder.build(), RequestBody.fromBytes(content));
@@ -158,11 +163,11 @@ public class S3FileStorageAdapter implements FileStoragePort {
  try (ResponseInputStream<GetObjectResponse> response = client().getObject(
  GetObjectRequest.builder().bucket(bucket).key(storageKey).build())) {
  byte[] content = response.readAllBytes();
- // Audit v4.7 §9 — vérification SHA-256 anti-altération.
+ //§9 — vérification SHA-256 anti-altération.
  // Note : les tags S3 ne sont pas exposés via GetObjectResponse. Pour activer la
  // vérification, utiliser get-object-tagging séparément, ou stocker le SHA-256 dans
  // les métadonnées S3 (x-amz-meta-sha256) via PutObjectRequest.metadata().
- // Ici on log le hash calculé pour audit, sans vérification stricte (à finaliser en v4.8).
+ // Ici on log le hash calculé pour audit, sans vérification stricte (à finaliser ultérieurement).
  String actualSha256 = sha256Hex(content);
  LOG.debug("S3 load : key={}, size={}, sha256={}", storageKey, content.length, actualSha256);
  return content;
@@ -220,7 +225,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
 
  /**
  * Stream les octets (variante InputStream pour gros fichiers — à ajouter au port
- * quand la refonte du port sera faite en v4.8).
+ * quand la refonte du port sera faite ultérieurement).
  *
  * <p>Pour les PDF de bilans/CR qui peuvent dépasser 10 MB, éviter de tout charger en heap
  * via {@link #load(String)}. Préférer un streaming direct vers la réponse HTTP.

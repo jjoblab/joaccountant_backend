@@ -7,6 +7,14 @@ import java.util.UUID;
 import jo.accountant.fxoperations.entity.FxOperationStatus;
 import jo.accountant.fxoperations.entity.FxOperationType;
 
+/**
+ * FxOperationResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record FxOperationResponse(
     UUID id,
     UUID companyId,

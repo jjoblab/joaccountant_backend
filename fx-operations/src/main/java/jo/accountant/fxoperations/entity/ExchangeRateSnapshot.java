@@ -9,7 +9,7 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
  * Snapshot de taux de change pour la présentation des états financiers en devise de présentation
- * (Task v6-4-presentation-currency).
+ *.
  *
  * <p>Stocke le taux officiel (typiquement BRH — Banque de la République d'Haïti) à utiliser pour
  * convertir les états financiers de la devise fonctionnelle (ex. USD pour une ONG haïtienne ou
@@ -17,11 +17,11 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Deux types de snapshot (colonne {@code snapshot_type}) :
  * <ul>
- *   <li><b>CLOSING</b> — taux à la date de clôture. Utilisé pour le bilan (IAS 21 — solde à la clôture).
- *       {@code periodYear} et {@code periodMonth} sont NULL.</li>
- *   <li><b>PERIOD_AVERAGE</b> — taux moyen sur une période. Utilisé pour le compte de résultat
- *       et le tableau de flux de trésorerie (IAS 21 — flux à la moyenne). {@code periodYear} et
- *       {@code periodMonth} sont renseignés (mois 1-12).</li>
+ * <li><b>CLOSING</b> — taux à la date de clôture. Utilisé pour le bilan (IAS 21 — solde à la clôture).
+ * {@code periodYear} et {@code periodMonth} sont NULL.</li>
+ * <li><b>PERIOD_AVERAGE</b> — taux moyen sur une période. Utilisé pour le compte de résultat
+ * et le tableau de flux de trésorerie (IAS 21 — flux à la moyenne). {@code periodYear} et
+ * {@code periodMonth} sont renseignés (mois 1-12).</li>
  * </ul>
  *
  * <p><b>Conformité IAS 21</b> : la présente table permet d'appliquer les deux conventions de
@@ -32,7 +32,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p><b>Limitation v6-4</b> : pas encore de cumul de translation adjustment (CTA) en capitaux
  * propres — planifié v7. La conversion v6 multiplie chaque solde par le taux sans isoler l'écart
  * de conversion.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "exchange_rate_snapshot")
 public class ExchangeRateSnapshot extends TenantAwareEntity {

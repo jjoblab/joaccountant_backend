@@ -33,11 +33,36 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de rapprochement bancaire (§13 Phase 13).
- */
+ * Endpoints de rapprochement bancaire (§13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/bank-reconciliation")
-@Tag(name = "BankReconciliation", description = "Import et lettrage bancaire, rapprochement automatique (§13 Phase 13)")
+@Tag(name = "BankReconciliation", description = "Import et lettrage bancaire, rapprochement automatique (§13")
 public class BankReconciliationController {
 
  private final BankReconciliationService service;
@@ -147,7 +172,7 @@ public class BankReconciliationController {
  }
 
  @Operation(summary = "Annuler un rapprochement (unmatch)",
- description = "Audit v4.7 §3.1 .6 — Annule le rapprochement d'une ligne de relevé " +
+ description = ".6 — Annule le rapprochement d'une ligne de relevé " +
  "bancaire. Passe matched=false, matchedJournalLineId=null, matchedAt=null. " +
  "Si un rapprochement est erroné (manuel ou auto), l'utilisateur peut " +
  "l'annuler sans intervention DBA.")

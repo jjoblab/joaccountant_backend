@@ -10,21 +10,29 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Projet de prestation de service (§13 Phase 10).
+ * Projet de prestation de service (§13.
  *
  * <p>Un projet est rattaché optionnellement à un client (tiers de type CLIENT, via
  * {@link #clientThirdPartyId}). Le {@code code} est unique par entreprise.
  *
  * <p>{@link #billingType} détermine comment le projet est facturé :
  * <ul>
- *   <li>{@link BillingType#FIXED_FEE} — forfait : prix convenu, WIP informatif</li>
- *   <li>{@link BillingType#TIME_AND_MATERIALS} — régie : facturation au temps passé × taux</li>
+ * <li>{@link BillingType#FIXED_FEE} — forfait : prix convenu, WIP informatif</li>
+ * <li>{@link BillingType#TIME_AND_MATERIALS} — régie : facturation au temps passé × taux</li>
  * </ul>
  */
 @Entity
 @Table(name = "tb_project",
     uniqueConstraints = @UniqueConstraint(name = "uc_tb_project_company_code",
         columnNames = {"company_id", "code"}))
+/**
+ * Project.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Project extends TenantAwareEntity {
 
     /** Tiers client (optionnel — null pour un projet interne). */

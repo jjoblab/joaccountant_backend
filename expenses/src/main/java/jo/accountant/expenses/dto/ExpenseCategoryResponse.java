@@ -15,7 +15,12 @@ import java.util.UUID;
  * @param label libellé long optionnel
  * @param dailyLimit plafond journalier par employé/tiers (null = pas de plafond)
  * @param monthlyLimit plafond mensuel par employé/tiers (null = pas de plafond)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ExpenseCategoryResponse(
  UUID id,
  UUID companyId,

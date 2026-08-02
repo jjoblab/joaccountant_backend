@@ -6,6 +6,14 @@ import java.util.UUID;
 import jo.accountant.timebilling.entity.BillableRate;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA BillableRate.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface BillableRateRepository extends JpaRepository<BillableRate, UUID> {
 
     /** Toutes les tarifs de l'entreprise. */

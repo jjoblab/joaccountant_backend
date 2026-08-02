@@ -11,7 +11,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Immobilisation (§13 Phase 8).
+ * Immobilisation (§13.
  *
  * <p>Une immobilisation est un actif destiné à être utilisé durablement par l'entreprise
  * (typiquement > 12 mois) — ex. véhicule, matériel informatique, mobilier, bâtiment.
@@ -42,7 +42,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <li>{@link #depreciationExpenseAccountId} — compte de charge d'amortissement (ex. 631)</li>
  * <li>{@link #accumulatedDepreciationAccountId} — compte d'amortissement cumulé (ex. 2844)</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "asset")
 public class Asset extends TenantAwareEntity {

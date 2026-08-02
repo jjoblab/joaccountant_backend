@@ -18,7 +18,12 @@ import java.time.LocalDate;
  * @param rate taux : 1 unité fromCurrency = rate unités toCurrency
  * @param asOfDate date d'effet (optionnel — défaut : aujourd'hui)
  * @param source source du taux (ex. "Banque Nationale", "BCEAO", "manuel")
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateExchangeRateRequest(
     @NotBlank String fromCurrency,
     @NotBlank String toCurrency,

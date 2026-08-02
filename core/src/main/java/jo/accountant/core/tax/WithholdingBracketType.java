@@ -20,7 +20,12 @@ package jo.accountant.core.tax;
  * référencée à la fois par {@code :tax} (sur l'entité {@code WithholdingRule}) et par
  * {@code :purchasing} (via {@link jo.accountant.core.port.WithholdingRulePort}) — sans
  * dépendance circulaire Gradle.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum WithholdingBracketType {
  /** Taux unique appliqué à toute la base (comportement historique). */
  FLAT,

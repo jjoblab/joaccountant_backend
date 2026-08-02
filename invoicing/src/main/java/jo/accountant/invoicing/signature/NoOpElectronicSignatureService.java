@@ -29,7 +29,12 @@ import org.slf4j.LoggerFactory;
  * l'annotation {@code @ConditionalOnMissingBean(ElectronicSignatureService.class)}. Dès qu'une
  * autre implémentation (XAdES, PAdES, etc.) est enregistrée comme bean, NoOp est désactivée
  * automatiquement.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class NoOpElectronicSignatureService implements ElectronicSignatureService {
 
  private static final Logger LOG = LoggerFactory.getLogger(NoOpElectronicSignatureService.class);
@@ -40,7 +45,7 @@ public class NoOpElectronicSignatureService implements ElectronicSignatureServic
  * l'absence de valeur juridique.
  */
  public NoOpElectronicSignatureService() {
- // v2.5.2 — baissé à INFO : c'est un état attendu en démo/dev (pas un bug).
+ // baissé à INFO : c'est un état attendu en démo/dev (pas un bug).
  // En prod, si signature réelle est requise, configurer app.signature.xades.enabled=true.
  LOG.info("Electronic signature not configured — using NoOp implementation. "
  + "Documents will NOT be legally signed (expected in demo/dev). To enable "

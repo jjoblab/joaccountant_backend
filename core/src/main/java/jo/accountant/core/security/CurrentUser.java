@@ -11,7 +11,12 @@ import java.lang.annotation.Target;
  * <p>Usage : {@code void handler(@CurrentUser UUID userId, ...)}.
  * Résolu par {@link CurrentUserArgumentResolver} — lève 403 si aucun utilisateur authentifié n'est
  * présent.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Target({ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CurrentUser {

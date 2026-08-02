@@ -1,7 +1,7 @@
 package jo.accountant.company.dto;
 
 /**
- * V8.3 — Réponse de POST /api/v1/companies (création d'entreprise).
+ * Réponse de POST /api/v1/companies (création d'entreprise).
  *
  * <p>Contient la {@link CompanyResponse} + un nouveau JWT fraîchement émis avec le claim
  * {@code companies} mis à jour (incluant la nouvelle company).
@@ -19,11 +19,16 @@ package jo.accountant.company.dto;
  * ce nouveau JWT et l'utilise pour les requêtes suivantes. Pas de fall-back DB, pas de
  * re-login — le JWT est toujours à jour.
  *
- * @param company        la company créée
- * @param accessToken    nouveau JWT avec claim companies mis à jour
- * @param refreshToken   nouveau refresh token (rotation)
- * @param expiresIn      durée de validité du access token (secondes)
- */
+ * @param company la company créée
+ * @param accessToken nouveau JWT avec claim companies mis à jour
+ * @param refreshToken nouveau refresh token (rotation)
+ * @param expiresIn durée de validité du access token (secondes)
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateCompanyResponse(
     CompanyResponse company,
     String accessToken,

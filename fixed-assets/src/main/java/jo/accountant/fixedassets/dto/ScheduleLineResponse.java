@@ -7,7 +7,12 @@ import java.util.UUID;
 
 /**
  * Ligne d'échéancier d'amortissement (réponse).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ScheduleLineResponse(
     UUID id,
     UUID assetId,

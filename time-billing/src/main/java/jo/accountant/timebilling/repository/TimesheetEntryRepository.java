@@ -6,6 +6,14 @@ import java.util.UUID;
 import jo.accountant.timebilling.entity.TimesheetEntry;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA TimesheetEntry.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface TimesheetEntryRepository extends JpaRepository<TimesheetEntry, UUID> {
 
     /** Toutes les entrées d'un projet. */

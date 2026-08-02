@@ -37,16 +37,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de suivi du temps et facturation (§13 Phase 10).
+ * Service de suivi du temps et facturation (§13.
  *
  * <p>Règles métier :
  * <ol>
- *   <li>Seules les entrées {@code approved=true} ET {@code billable=true} sont facturables.</li>
- *   <li>Le temps non facturé s'accumule comme WIP — pas d'écriture comptable tant que non
- *       facturé (sauf option revenue recognition, désactivée par défaut).</li>
- *   <li>Une entrée déjà {@code invoiced=true} ne peut pas être réutilisée (idempotence métier).</li>
+ * <li>Seules les entrées {@code approved=true} ET {@code billable=true} sont facturables.</li>
+ * <li>Le temps non facturé s'accumule comme WIP — pas d'écriture comptable tant que non
+ * facturé (sauf option revenue recognition, désactivée par défaut).</li>
+ * <li>Une entrée déjà {@code invoiced=true} ne peut pas être réutilisée (idempotence métier).</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class TimeBillingService {
 
@@ -174,8 +179,8 @@ public class TimeBillingService {
      * négligent pouvait auto-approuver ses propres timesheets, ce qui contournait la
      * déontologie des cabinets (PME2 Moïse &amp; Associés).
      *
-     * @param companyId  identifiant de l'entreprise
-     * @param entryId    identifiant de l'entrée à approuver
+     * @param companyId identifiant de l'entreprise
+     * @param entryId identifiant de l'entrée à approuver
      * @param approverId ID de l'utilisateur qui approuve (issu du JWT)
      * @throws jo.accountant.core.exception.ForbiddenException si approverId == entry.resourceUserId
      */
@@ -289,12 +294,12 @@ public class TimeBillingService {
      * <p>Une ligne par couple (projet, consultant) ayant au moins une entrée de temps sur la
      * période. Les heures sont ventilées en :
      * <ul>
-     *   <li>{@code hoursLogged} — toutes les heures saisies sur la période (toutes entrées).</li>
-     *   <li>{@code hoursBilled} — heures des entrées {@code billable=true},
-     *       {@code approved=true}, {@code invoiced=true} (facturées au client).</li>
-     *   <li>{@code hoursUnbilled} — heures des entrées {@code billable=true},
-     *       {@code approved=true}, {@code invoiced=false} (WIP — facturable mais pas
-     *       encore facturé).</li>
+     * <li>{@code hoursLogged} — toutes les heures saisies sur la période (toutes entrées).</li>
+     * <li>{@code hoursBilled} — heures des entrées {@code billable=true},
+     * {@code approved=true}, {@code invoiced=true} (facturées au client).</li>
+     * <li>{@code hoursUnbilled} — heures des entrées {@code billable=true},
+     * {@code approved=true}, {@code invoiced=false} (WIP — facturable mais pas
+     * encore facturé).</li>
      * </ul>
      *
      * <p>Le {@code utilizationRate} (%) = (hoursBilled + hoursUnbilled) / hoursLogged × 100

@@ -47,7 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Choix d'approbation</b> (§2.2 du prompt) : délègue à `JOURNAL_ENTRY_POST` plutôt
  * que de réinventer un `ApprovalActionType` dédié — cohérent avec `:invoicing`,
  * `:fixed-assets`, `:inventory`. La transition APPROVED → génération d'écriture se fait en
- * une seule étape côté service (la validation par seuil reste gérée par
+ * une seuleservice (la validation par seuil reste gérée par
  * `:accounting-engine` au postage).
  *
  * <p><b>Écriture comptable générée à l'approbation</b> :
@@ -60,7 +60,12 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  *
  * <p><b>Code journal `DP` (dépenses)</b> — doit exister (sinon `422 JOURNAL_DP_NOT_FOUND`).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ExpensesService {
 
@@ -208,7 +213,7 @@ public class ExpensesService {
  chargesByAccount.merge(chargeAccount.getCode(), line.getAmount(), BigDecimal::add);
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.DEPENSES).getCode();
@@ -236,7 +241,7 @@ public class ExpensesService {
  ThirdParty tp = thirdPartyRepository.findById(report.getThirdPartyId())
  .orElseThrow(() -> new ValidationException("THIRD_PARTY_NOT_FOUND",
  "Tiers employé introuvable : " + report.getThirdPartyId()));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!tp.getCompanyId().equals(companyId)) {
  throw new NotFoundException("ThirdParty", report.getThirdPartyId().toString());
  }
@@ -245,7 +250,7 @@ public class ExpensesService {
  Account employeeAccount = accountRepository.findById(employeeAccountId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte employé introuvable"));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!employeeAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", employeeAccountId.toString());
  }
@@ -302,7 +307,7 @@ public class ExpensesService {
  /**
  * Liste les notes de frais d'une entreprise, triées par {@code expenseDate} décroissant.
  *
- * <p>Si {@code fiscalYearId} est fourni (restructuration 2026-07-25 suite 4), résout l'exercice
+ * <p>Si {@code fiscalYearId} est fournisuite 4), résout l'exercice
  * via {@link AccountingEngineService#resolveFiscalYear(UUID, UUID)} et filtre par
  * {@code expenseDate} entre les bornes start/end de l'exercice. Si l'exercice n'est pas trouvé,
  * la liste filtrée est vide.
@@ -379,7 +384,7 @@ public class ExpensesService {
  String tpName = "";
  if (report.getThirdPartyId() != null) {
  try {
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  ThirdParty tp = thirdPartyRepository.findById(report.getThirdPartyId())
  .filter(t -> t.getCompanyId().equals(companyId))
  .orElse(null);
@@ -422,7 +427,7 @@ public class ExpensesService {
  Account acc = accountRepository.findById(expenseAccountId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte de charge introuvable : " + expenseAccountId));
- // Audit v4.7 §6.2 IDOR critique : sans ce guard, un BOOKKEEPER de la
+ //IDOR critique : sans ce guard, un BOOKKEEPER de la
  // company A pouvait soumettre une note de frais avec expenseAccountId = UUID d'un compte
  // de la company B. L'écriture comptable était créée dans la company A mais référençait
  // le code de compte de la company B → fuite du plan comptable concurrent + corruption.

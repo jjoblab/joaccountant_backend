@@ -46,7 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service des états financiers (§13 Phase 6).
+ * Service des états financiers (§13.
  *
  * <p>Responsabilités :
  * <ul>
@@ -71,7 +71,12 @@ import org.springframework.transaction.annotation.Transactional;
  * nouveau, résultat de l'exercice), le bilan peut être déséquilibré — c'est attendu tant
  * que l'exercice n'est pas CLOSED. Le flag {@link BalanceSheet#balanced()} l'indique
  * clairement à l'appelant.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class FinancialStatementsService {
 
@@ -87,7 +92,7 @@ public class FinancialStatementsService {
  private final ApplicationEventPublisher events;
  private final ObjectMapper objectMapper;
  private final jo.accountant.accountingengine.service.AccountingEngineService accountingEngineService;
- // Task v6-4-presentation-currency — pour résoudre la devise fonctionnelle et les snapshots de taux BRH
+ // — pour résoudre la devise fonctionnelle et les snapshots de taux BRH
  private final CompanyRepository companyRepository;
  private final ExchangeRateSnapshotRepository exchangeRateSnapshotRepository;
 
@@ -133,14 +138,14 @@ public class FinancialStatementsService {
  /**
  * Génère le bilan à une date donnée, avec conversion optionnelle vers une devise de présentation.
  *
- * <p><b>Task v6-4-presentation-currency</b> : si {@code presentation} est non null et que
+ * <p><b></b> : si {@code presentation} est non null et que
  * {@code presentation.presentationCurrency()} diffère de la devise fonctionnelle de la
  * Company, le bilan est converti au taux de clôture (IAS 21). Le taux est soit fourni
  * directement ({@code presentation.closingRate()}), soit retrouvé via
  * {@link ExchangeRateSnapshotRepository} (snapshot_type = CLOSING à la date {@code asOf}).
  *
  * <p>Backward-compat : si {@code presentation} est null, ou que la devise de présentation
- * est null ou égale à la devise fonctionnelle, le comportement v5.5 est inchangé (bilan en
+ * est null ou égale à la devise fonctionnelle, le comportement est inchangé (bilan en
  * devise fonctionnelle, champs de conversion null).
  */
  @Transactional(readOnly = true)
@@ -190,13 +195,13 @@ public class FinancialStatementsService {
  closingRate, rateDate, ExchangeRateSnapshot.TYPE_CLOSING);
  }
 
- /** Calcule le bilan en devise fonctionnelle (logique v5.5 inchangée, sans infos de conversion). */
+ /** Calcule le bilan en devise fonctionnelle (logique inchangée, sans infos de conversion). */
  private BalanceSheet computeBalanceSheetFunctional(UUID companyId, LocalDate asOf) {
 
  // Charger tous les comptes de l'entreprise
  List<Account> allAccounts = accountRepository.findByCompanyIdOrderByCode(companyId);
 
- // (lot-C-perf-devops) — agrégation SQL au lieu de charger toutes les lignes.
+ //agrégation SQL au lieu de charger toutes les lignes.
  // Avant : findAllPostedUpToDate(companyId, asOf) chargeait toutes les lignes POSTED
  // en mémoire puis agrégeait en Java → OOM sur 100K+ lignes.
  // Maintenant : 1 requête SQL GROUP BY account_id, retourne ~100 lignes.
@@ -321,8 +326,8 @@ public class FinancialStatementsService {
  * <p>Calcule les soldes des comptes PRODUITS et CHARGES, puis calcule le résultat net
  * = totalProducts − totalCharges.
  *
- * <p>En Phase 6 simplifié : pas de filtrage par date (toutes les écritures POSTED sont
- * incluses). Filtre à ajouter en Phase 17 (reporting) si besoin.
+ * <p>Ensimplifié : pas de filtrage par date (toutes les écritures POSTED sont
+ * incluses). Filtre à ajouter en(reporting) si besoin.
  */
  @Transactional(readOnly = true)
  public IncomeStatement getIncomeStatement(UUID companyId, LocalDate from, LocalDate to) {
@@ -333,7 +338,7 @@ public class FinancialStatementsService {
  * Génère le compte de résultat sur une plage de dates, avec conversion optionnelle vers
  * une devise de présentation.
  *
- * <p><b>Task v6-4-presentation-currency</b> : si la conversion est demandée, le CR est
+ * <p><b></b> : si la conversion est demandée, le CR est
  * converti au taux moyen de période (IAS 21 — flux au taux moyen). Le taux est soit fourni
  * directement ({@code presentation.averageRate()}), soit retrouvé via
  * {@link ExchangeRateSnapshotRepository} (snapshot_type = PERIOD_AVERAGE sur les mois de la
@@ -389,10 +394,10 @@ public class FinancialStatementsService {
  averageRate, rateDate, ExchangeRateSnapshot.TYPE_PERIOD_AVERAGE);
  }
 
- /** Calcule le compte de résultat en devise fonctionnelle (logique v5.5 inchangée). */
+ /** Calcule le compte de résultat en devise fonctionnelle (logique inchangée). */
  private IncomeStatement computeIncomeStatementFunctional(UUID companyId, LocalDate from, LocalDate to) {
  List<Account> allAccounts = accountRepository.findByCompanyIdOrderByCode(companyId);
- // (lot-C-perf-devops) — agrégation SQL au lieu de findAllPostedBetweenDates
+ //agrégation SQL au lieu de findAllPostedBetweenDates
  // (chargeait toutes les lignes en mémoire pour agréger en Java).
  List<jo.accountant.accountingengine.repository.JournalLineRepository.AccountAggregate> aggregates =
  journalLineRepository.aggregateByAccountBetweenDates(companyId, from, to);
@@ -507,7 +512,7 @@ public class FinancialStatementsService {
  /**
  * Crée automatiquement les snapshots figés bilan + compte de résultat pour une période donnée.
  *
- * <p><b>Audit v4.7 §3.1 FIX</b> : après {@code AccountingEngineService.closeFiscalYear},
+ * <p><b>FIX</b> : après {@code AccountingEngineService.closeFiscalYear},
  * l'appelant (controller ou frontend) doit appeler cette méthode pour figer le bilan et le CR
  * au moment de la clôture. Sans ces snapshots, le plan comptable pourrait être modifié après
  * clôture et les états financiers générés ultérieurement pourraient différer de ceux valables
@@ -570,8 +575,8 @@ public class FinancialStatementsService {
  /**
  * Génère le tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE) par méthode indirecte.
  *
- * <p><b>Audit v4.7 §3.1 FIX</b> : obligatoire en IFRS (IAS 7) et SYSCOHADA,
- * déclaré obligatoire dans le seed IFRS_FULL mais non implémenté dans la v4.7.
+ * <p><b>FIX</b> : obligatoire en IFRS (IAS 7) et SYSCOHADA,
+ * déclaré obligatoire dans le seed IFRS_FULL mais non implémenté dans la version précédente.
  *
  * <p>Logique (méthode indirecte) :
  * <ol>
@@ -587,7 +592,7 @@ public class FinancialStatementsService {
  *
  * <p><b>Limitation</b> : l'implémentation actuelle est simplifiée — elle se base sur les
  * ReportingClass et les codes de compte. La distinction précise investissement/financement
- * nécessite un mapping explicite par compte (à affiner en v4.8). L'objectif v4.7.1 est de
+ * nécessite un mapping explicite par compte (à affiner). L'objectif est de
  * fournir un tableau exploitable, pas une conformité IFRS stricte.
  */
  @Transactional(readOnly = true)
@@ -600,7 +605,7 @@ public class FinancialStatementsService {
  * Génère le tableau de flux de trésorerie, avec conversion optionnelle vers une devise de
  * présentation.
  *
- * <p><b>Task v6-4-presentation-currency — squelette v6</b> : pour la conversion, on applique
+ * <p><b> — squelette v6</b> : pour la conversion, on applique
  * un taux moyen unique sur l'ensemble des flux de la période (postes du CR et variations BFR
  * et flux d'investissement / financement). La norme IAS 7 / IAS 21 recommande un taux moyen
  * par sous-période pour les flux, puis une consolidation, et un taux de clôture pour les
@@ -642,11 +647,11 @@ public class FinancialStatementsService {
  averageRate, rateDate, ExchangeRateSnapshot.TYPE_PERIOD_AVERAGE);
  }
 
- /** Calcule le tableau de flux de trésorerie en devise fonctionnelle (logique v5.5 inchangée). */
+ /** Calcule le tableau de flux de trésorerie en devise fonctionnelle (logique inchangée). */
  private jo.accountant.financialstatements.dto.CashFlowStatement computeCashFlowStatementFunctional(
  UUID companyId, LocalDate from, LocalDate to) {
 
- // (lot-C-perf-devops) — Réécriture avec agrégations SQL.
+ //Réécriture avec agrégations SQL.
  // Avant : chargeait findAllPostedBetweenDates(companyId, from, to) en mémoire puis
  // itérait en Java pour calculer produits/charges/amortissements/variations/flux.
  // Sur 100K+ lignes : heap > 50 MB, latence > 5s.
@@ -854,7 +859,7 @@ public class FinancialStatementsService {
  }
 
  // =====================================================================
- // Task v6-4-presentation-currency — Helpers de conversion de devise
+ // — Helpers de conversion de devise
  // =====================================================================
 
  /** Résultat du lookup d'un taux moyen sur une période. */

@@ -12,7 +12,12 @@ import org.springframework.stereotype.Service;
  *
  * <p>On ne stocke que le hash en base pour qu'une fuite de DB n'accorde pas immédiatement l'accès
  * aux sessions. Le token brut est donné à l'utilisateur une fois et n'est jamais persisté.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class TokenHasher {
 

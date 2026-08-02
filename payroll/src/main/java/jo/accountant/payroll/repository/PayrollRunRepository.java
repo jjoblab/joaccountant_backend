@@ -7,6 +7,14 @@ import jo.accountant.payroll.entity.PayrollRun;
 import jo.accountant.payroll.entity.PayrollRunType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA PayrollRun.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface PayrollRunRepository extends JpaRepository<PayrollRun, UUID> {
 
     List<PayrollRun> findByCompanyIdOrderByPeriodYearDescPeriodMonthDesc(UUID companyId);

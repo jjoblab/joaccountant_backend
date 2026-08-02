@@ -5,6 +5,14 @@ import java.util.UUID;
 import jo.accountant.company.entity.BusinessTypeModule;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA BusinessTypeModule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface BusinessTypeModuleRepository extends JpaRepository<BusinessTypeModule, UUID> {
 
     List<BusinessTypeModule> findByBusinessTypeCode(String businessTypeCode);

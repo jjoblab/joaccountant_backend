@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service de 3-way match entre une commande fournisseur et une facture fournisseur.
  *
- * <p>Le 3-way match est une pratique standard de contrôle interne (audit v4.7 §6.2) :
+ * <p>Le 3-way match est une pratique standard de contrôle interne:
  * <ol>
  * <li><b>Existence de commande</b> — au moins une commande (PurchaseOrder) existe pour le
  * fournisseur de la facture.</li>
@@ -45,7 +45,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Comparaison des quantités avec {@code compareTo} (BigDecimal exact, pas d'arrondi).</li>
  * <li>Comparaison des prix avec {@code compareTo} — le moindre écart lève PRICE_MISMATCH.</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ThreeWayMatchService {
 

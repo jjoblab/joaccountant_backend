@@ -28,12 +28,12 @@ import org.springframework.stereotype.Service;
  *
  * <p>Implémente trois formats conformes aux exigences des bailleurs institutionnels :
  * <ul>
- *   <li>{@link #exportUsaidSf425(UUID, UUID, int, int)} — USAID SF-425 Federal Financial Report
- *       (trimestriel, format CSV structuré Section A + Section B par cost category).</li>
- *   <li>{@link #exportEuPrag(UUID, UUID, int)} — EU PRAG Annual Financial Report (annuel,
- *       format CSV avec co-financing et EU contribution).</li>
- *   <li>{@link #exportWorldBank(UUID, UUID, int, int)} — Banque Mondiale Quarterly Financial
- *       Report (trimestriel, format CSV avec overheads et contingencies).</li>
+ * <li>{@link #exportUsaidSf425(UUID, UUID, int, int)} — USAID SF-425 Federal Financial Report
+ * (trimestriel, format CSV structuré Section A + Section B par cost category).</li>
+ * <li>{@link #exportEuPrag(UUID, UUID, int)} — EU PRAG Annual Financial Report (annuel,
+ * format CSV avec co-financing et EU contribution).</li>
+ * <li>{@link #exportWorldBank(UUID, UUID, int, int)} — Banque Mondiale Quarterly Financial
+ * Report (trimestriel, format CSV avec overheads et contingencies).</li>
  * </ul>
  *
  * <p><b>ÉTAT D'AVANCEMENT</b> : squelette. Le service agrège les
@@ -44,7 +44,12 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Encodage</b> : UTF-8 avec BOM (pour compatibilité Excel français — sinon les
  * caractères accentués sont mal interprétés), séparateur point-virgule, fins de ligne CRLF.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class DonorReportExporter {
 
@@ -75,15 +80,15 @@ public class DonorReportExporter {
      *
      * <p>Structure :
      * <ul>
-     *   <li>En-tête identifiant (Grant ID, Reporting Period, Recipient Name).</li>
-     *   <li>Section A — Status of Federal Funding (lignes 10a à 10i).</li>
-     *   <li>Section B — Expenditures by Cost Category (8 catégories + total).</li>
+     * <li>En-tête identifiant (Grant ID, Reporting Period, Recipient Name).</li>
+     * <li>Section A — Status of Federal Funding (lignes 10a à 10i).</li>
+     * <li>Section B — Expenditures by Cost Category (8 catégories + total).</li>
      * </ul>
      *
      * @param companyId ID du tenant (sécurité multi-tenant)
-     * @param grantId   ID de la subvention
-     * @param year      Année fiscale (ex: 2026)
-     * @param quarter   Trimestre 1-4
+     * @param grantId ID de la subvention
+     * @param year Année fiscale (ex: 2026)
+     * @param quarter Trimestre 1-4
      * @return CSV UTF-8 BOM, séparateur point-virgule, CRLF
      */
     public byte[] exportUsaidSf425(UUID companyId, UUID grantId, int year, int quarter) {
@@ -173,9 +178,9 @@ public class DonorReportExporter {
      *
      * <p>Structure :
      * <ul>
-     *   <li>En-tête (Grant Agreement, Beneficiary, Reporting Period).</li>
-     *   <li>Expenditures by Cost Category (8 catégories + total, avec pourcentage).</li>
-     *   <li>Co-financing, Total eligible expenditures, EU contribution.</li>
+     * <li>En-tête (Grant Agreement, Beneficiary, Reporting Period).</li>
+     * <li>Expenditures by Cost Category (8 catégories + total, avec pourcentage).</li>
+     * <li>Co-financing, Total eligible expenditures, EU contribution.</li>
      * </ul>
      *
      * <p><b>Note sur le cofinancing rate</b> : calculé ici comme
@@ -184,8 +189,8 @@ public class DonorReportExporter {
      * constatés. Si actualTotal = 0, on affiche 0% pour éviter une division par zéro.
      *
      * @param companyId ID du tenant
-     * @param grantId   ID de la subvention
-     * @param year      Année (ex: 2026)
+     * @param grantId ID de la subvention
+     * @param year Année (ex: 2026)
      * @return CSV UTF-8 BOM, séparateur point-virgule, CRLF
      */
     public byte[] exportEuPrag(UUID companyId, UUID grantId, int year) {
@@ -264,17 +269,17 @@ public class DonorReportExporter {
      * <p>Structure similaire à USAID SF-425 (Section A + Section B par catégorie) avec
      * les spécificités BM :
      * <ul>
-     *   <li>Terminologie : "Borrower/Recipient", "Grant No", "Withdrawal Applications".</li>
-     *   <li>Section B inclut une ligne "Contingencies" (skeleton = 0 — pas de
-     *       CostCategory dédiée, gérée via OTHER en v7 si nécessaire).</li>
-     *   <li>La catégorie {@link CostCategory#INDIRECT_COST} est libellée
-     *       "Overhead/Indirect Costs" (alignée sur la nomenclature BM).</li>
+     * <li>Terminologie : "Borrower/Recipient", "Grant No", "Withdrawal Applications".</li>
+     * <li>Section B inclut une ligne "Contingencies" (skeleton = 0 — pas de
+     * CostCategory dédiée, gérée via OTHER en v7 si nécessaire).</li>
+     * <li>La catégorie {@link CostCategory#INDIRECT_COST} est libellée
+     * "Overhead/Indirect Costs" (alignée sur la nomenclature BM).</li>
      * </ul>
      *
      * @param companyId ID du tenant
-     * @param grantId   ID de la subvention
-     * @param year      Année fiscale (ex: 2026)
-     * @param quarter   Trimestre 1-4
+     * @param grantId ID de la subvention
+     * @param year Année fiscale (ex: 2026)
+     * @param quarter Trimestre 1-4
      * @return CSV UTF-8 BOM, séparateur point-virgule, CRLF
      */
     public byte[] exportWorldBank(UUID companyId, UUID grantId, int year, int quarter) {
@@ -372,7 +377,7 @@ public class DonorReportExporter {
 
     /**
      * Charge une subvention et vérifie qu'elle appartient bien au tenant companyId
-     * (défense en profondeur — Section A, audit v4.7 §6.2).
+     * (défense en profondeur — Section A,.
      */
     private Grant loadGrant(UUID companyId, UUID grantId) {
         Grant grant = grantRepository.findById(grantId)
@@ -393,13 +398,13 @@ public class DonorReportExporter {
     /**
      * Agrège les {@link DonorReportLine} par {@link CostCategory}.
      *
-     * @param companyId        ID du tenant
-     * @param grantId          ID du grant
-     * @param year             Année
-     * @param quarter          Trimestre (1-4) ou null pour annual
+     * @param companyId ID du tenant
+     * @param grantId ID du grant
+     * @param year Année
+     * @param quarter Trimestre (1-4) ou null pour annual
      * @param quarterlyFallbackInclNull si true, inclut aussi les lignes où period_quarter
-     *                         est NULL (annual lines) — utile quand le job v7 n'a pas encore
-     *                         peuplé les lignes trimestrielles mais a peuplé l'annual.
+     * est NULL (annual lines) — utile quand le job v7 n'a pas encore
+     * peuplé les lignes trimestrielles mais a peuplé l'annual.
      */
     private Map<CostCategory, CategoryTotals> aggregateLines(UUID companyId, UUID grantId,
                                                               int year, Integer quarter,

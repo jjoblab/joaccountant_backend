@@ -7,11 +7,16 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Repository des règles de cotisation sociale (audit v4.7 §4.1 ).
+ * Repository des règles de cotisation sociale.
  *
  * <p>Cache applicatif Caffeine (TTL 10 min) — les règles changent rarement (1× par an pour
  * les taux URSSAF). Sans cache, chaque calcul de paie mensuel ferait N SELECT par employé.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ContributionRuleRepository extends JpaRepository<ContributionRule, UUID> {
 
  /**

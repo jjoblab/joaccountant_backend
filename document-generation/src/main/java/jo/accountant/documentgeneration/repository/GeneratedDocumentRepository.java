@@ -6,6 +6,14 @@ import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import jo.accountant.documentgeneration.entity.GeneratedDocument;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA GeneratedDocument.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface GeneratedDocumentRepository extends JpaRepository<GeneratedDocument, UUID> {
 
     /** Document déjà généré pour un (companyId, resourceId) — sert le PDF existant. */

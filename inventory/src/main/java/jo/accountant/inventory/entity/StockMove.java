@@ -11,21 +11,26 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Mouvement de stock (§13 Phase 9).
+ * Mouvement de stock (§13.
  *
  * <p>Chaque mouvement a une direction ({@link StockMoveDirection}) :
  * <ul>
- *   <li>{@link StockMoveDirection#IN} — entrée : augmente le stock, crée une couche FIFO ou
- *       met à jour le coût moyen</li>
- *   <li>{@link StockMoveDirection#OUT} — sortie : diminue le stock, calcule le COGS selon la
- *       méthode de valorisation, génère une écriture comptable</li>
- *   <li>{@link StockMoveDirection#TRANSFER} — transfert entre entrepôts</li>
+ * <li>{@link StockMoveDirection#IN} — entrée : augmente le stock, crée une couche FIFO ou
+ * met à jour le coût moyen</li>
+ * <li>{@link StockMoveDirection#OUT} — sortie : diminue le stock, calcule le COGS selon la
+ * méthode de valorisation, génère une écriture comptable</li>
+ * <li>{@link StockMoveDirection#TRANSFER} — transfert entre entrepôts</li>
  * </ul>
  *
  * <p>{@link #journalEntryId} référence l'écriture comptable générée pour les sorties
- * (COGS). Null pour les entrées (pas d'écriture comptable en Phase 9 — l'entrée de stock
- * est constatée au moment de la facture fournisseur, Phase 12) et pour les transferts.
- */
+ * (COGS). Null pour les entrées (pas d'écriture comptable enl'entrée de stock
+ * est constatée au moment de la facture fournisseur,et pour les transferts.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "stock_move")
 public class StockMove extends TenantAwareEntity {

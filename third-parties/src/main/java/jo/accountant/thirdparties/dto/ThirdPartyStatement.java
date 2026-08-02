@@ -9,7 +9,12 @@ import java.util.UUID;
  * Relevé de compte d'un tiers — {@code GET .../third-parties/{id}/statement}.
  *
  * <p>Liste toutes les écritures POSTED du tiers, avec le solde lettré et le solde non lettré.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ThirdPartyStatement(
     UUID thirdPartyId,
     String thirdPartyName,
@@ -30,7 +35,7 @@ public record ThirdPartyStatement(
         String description,
         BigDecimal debit,
         BigDecimal credit,
-        String matchCode,        // null si non lettrée
+        String matchCode, // null si non lettrée
         BigDecimal runningBalance
     ) {}
 }

@@ -31,7 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
  * :purchasing.
  *
  * <p>Le 3-way match (commande ↔ facture) est implémenté dans {@link ThreeWayMatchService}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class PurchaseOrdersService {
 

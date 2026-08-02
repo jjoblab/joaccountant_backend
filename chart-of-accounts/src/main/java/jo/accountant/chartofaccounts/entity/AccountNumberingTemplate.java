@@ -7,7 +7,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Gabarit de numérotation d'un plan comptable libre (§4, §13 Phase 3).
+ * Gabarit de numérotation d'un plan comptable libre (§4, §13.
  *
  * <p>Une seule ligne par entreprise (relation 1-1). Utilisée UNIQUEMENT pour les référentiels
  * à numérotation libre ({@link jo.accountant.core.framework.NumberingMode#FREE}) — IFRS full
@@ -15,7 +15,7 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * ce gabarit : leurs classes sont définies par le texte réglementaire, dans
  * {@link jo.accountant.core.framework.AccountingFramework#getMandatedClassSeedJson()}.
  *
- * <p><strong>À ne pas confondre</strong> avec {@code DocumentSequenceConfig} (Phase 2,
+ * <p><strong>À ne pas confondre</strong> avec {@code DocumentSequenceConfig},
  * {@code document-numbering}) qui génère des numéros de documents séquentiels (ex.
  * {@code FAC-2026-000142}). {@code AccountNumberingTemplate} génère des codes de comptes
  * hiérarchiques (ex. {@code 411000}). Les deux mécanismes ne partagent ni entité ni service,
@@ -23,11 +23,11 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Champs :
  * <ul>
- *   <li>{@link #codeLengthLevel1} à {@link #codeLengthLevel4} : longueur (en caractères) du
- *       code à chaque niveau. Ex. SYSCOHADA-like : 1, 2, 3, 6. Le code d'un compte de niveau
- *       4 est donc de longueur {@code codeLengthLevel4}.</li>
- *   <li>{@link #spacingStep} : pas d'espacement pour l'affichage (typiquement 3 — un espace
- *       tous les 3 caractères). Purement cosmétique, ne change pas le code stocké.</li>
+ * <li>{@link #codeLengthLevel1} à {@link #codeLengthLevel4} : longueur (en caractères) du
+ * code à chaque niveau. Ex. SYSCOHADA-like : 1, 2, 3, 6. Le code d'un compte de niveau
+ * 4 est donc de longueur {@code codeLengthLevel4}.</li>
+ * <li>{@link #spacingStep} : pas d'espacement pour l'affichage (typiquement 3 — un espace
+ * tous les 3 caractères). Purement cosmétique, ne change pas le code stocké.</li>
  * </ul>
  */
 @Entity
@@ -35,6 +35,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
     uniqueConstraints = @jakarta.persistence.UniqueConstraint(
         name = "uc_account_numbering_template_company",
         columnNames = "company_id"))
+/**
+ * AccountNumberingTemplate.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class AccountNumberingTemplate extends TenantAwareEntity {
 
     @Column(name = "accounting_framework_id", nullable = false)

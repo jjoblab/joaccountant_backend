@@ -8,12 +8,17 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 /**
- * Repository des secrets MFA TOTP (audit v4.7 §6.3 Finding MOYENNE — suite).
+ * Repository des secrets MFA TOTPFinding MOYENNE — suite).
  *
  * <p>Note : MfaSecret n'est PAS une {@link jo.accountant.core.tenant.TenantAwareEntity} car
  * la MFA est attachée à un utilisateur, pas à une company. Un utilisateur peut avoir des rôles
  * dans plusieurs companies — son secret MFA est global.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface MfaSecretRepository extends JpaRepository<MfaSecret, UUID> {
 
     /** Secret MFA d'un utilisateur (unique par utilisateur). */

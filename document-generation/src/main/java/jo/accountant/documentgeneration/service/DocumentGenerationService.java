@@ -33,21 +33,26 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.StringTemplateResolver;
 
 /**
- * Service de génération de documents PDF (§8, §13 Phase 11).
+ * Service de génération de documents PDF (§8, §13.
  *
  * <p>Utilise Thymeleaf pour le rendu HTML, puis openhtmltopdf pour la conversion HTML → PDF.
  * Le PDF généré est stocké via {@link FileStoragePort} avec une clé opaque.
  *
  * <p>Règles métier :
  * <ol>
- *   <li>Un PDF lié à un document déjà définitif est <strong>immuable</strong> — si un
- *       {@link GeneratedDocument} existe déjà pour ce resourceId, on le sert tel quel.</li>
- *   <li>Logo et en-tête d'entreprise stockés via FileStoragePort, avec repli sur un
- *       gabarit neutre si non configuré.</li>
- *   <li>Le PDF généré doit contenir le numéro de document, les montants et le tiers —
- *       testé explicitement par extraction de texte.</li>
+ * <li>Un PDF lié à un document déjà définitif est <strong>immuable</strong> — si un
+ * {@link GeneratedDocument} existe déjà pour ce resourceId, on le sert tel quel.</li>
+ * <li>Logo et en-tête d'entreprise stockés via FileStoragePort, avec repli sur un
+ * gabarit neutre si non configuré.</li>
+ * <li>Le PDF généré doit contenir le numéro de document, les montants et le tiers —
+ * testé explicitement par extraction de texte.</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class DocumentGenerationService {
 

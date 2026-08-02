@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Projection d'Impôt sur les Sociétés (IS) — audit v4.7 §4.1 .
+ * Projection d'Impôt sur les Sociétés (IS) —.
  *
  * <p>Calcul en 4 étapes :
  * <ol>
@@ -20,7 +20,12 @@ import java.util.UUID;
  *
  * <p>Les acomptes (4 par an en France : mars, juin, septembre, décembre) sont calculés
  * sur l'IS N-1. Le solde est versé au plus tard le 15 mai N+1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CorporateTaxProjection(
  UUID companyId,
  LocalDate from,
@@ -41,7 +46,7 @@ public record CorporateTaxProjection(
  * Réintégrations et déductions extra-comptables pour passer du résultat comptable
  * au résultat fiscal.
  *
- * <p>Audit v4.7 §4.1 — amendement Charasse (réintégration 5/105 des quotes-parts de frais
+ * <p>— amendement Charasse (réintégration 5/105 des quotes-parts de frais
  * financiers sur dividendes/CEC), amendements divers, plus-values LTPE exonérées à 80%, etc.
  */
  public record ExtraComptableAdjustments(

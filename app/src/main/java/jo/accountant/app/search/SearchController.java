@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * v2.5.0 — Task 16 : endpoint de recherche globale (Ctrl+K style).
+ * Task 16 : endpoint de recherche globale (Ctrl+K style).
  *
  * <p>{@code GET /api/v1/companies/{companyId}/search?q=<query>&limit=20}
  * interroge 5 modules en parallèle (MVP : séquentiel — la latence reste acceptable
@@ -37,16 +37,16 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Modules recherchés :
  * <ol>
- *   <li><strong>third-parties</strong> — recherche par nom (case-insensitive,
- *       partial match) ; 5 résultats max.</li>
- *   <li><strong>invoicing</strong> — recherche par numéro de facture
- *       ({@code invoiceNumber}) ; 5 résultats max.</li>
- *   <li><strong>accounting-engine</strong> — recherche par référence OU
- *       description d'écriture comptable ; 5 résultats max.</li>
- *   <li><strong>chart-of-accounts</strong> — recherche par code OU libellé
- *       de compte ; 5 résultats max.</li>
- *   <li><strong>employees</strong> — recherche par nom (via le tiers rattaché),
- *       matricule, poste ou département ; 5 résultats max.</li>
+ * <li><strong>third-parties</strong> — recherche par nom (case-insensitive,
+ * partial match) ; 5 résultats max.</li>
+ * <li><strong>invoicing</strong> — recherche par numéro de facture
+ * ({@code invoiceNumber}) ; 5 résultats max.</li>
+ * <li><strong>accounting-engine</strong> — recherche par référence OU
+ * description d'écriture comptable ; 5 résultats max.</li>
+ * <li><strong>chart-of-accounts</strong> — recherche par code OU libellé
+ * de compte ; 5 résultats max.</li>
+ * <li><strong>employees</strong> — recherche par nom (via le tiers rattaché),
+ * matricule, poste ou département ; 5 résultats max.</li>
  * </ol>
  *
  * <p>Le paramètre {@code limit} plafonne le nombre total de résultats (par défaut 20,
@@ -66,6 +66,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/companies/{companyId}/search")
 @Tag(name = "Global Search",
         description = "v2.5.0 — Task 16 : recherche globale Ctrl+K (tiers, factures, écritures, comptes, employés)")
+/**
+ * Contrôleur REST Search.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class SearchController {
 
     private static final Logger LOG = LoggerFactory.getLogger(SearchController.class);
@@ -101,8 +127,8 @@ public class SearchController {
      * Recherche globale sur 5 modules.
      *
      * @param companyId identifiant de l'entreprise (path variable)
-     * @param query     texte recherché (paramètre {@code q}, min 2 caractères)
-     * @param limit     nombre max de résultats à retourner (défaut 20, max 25)
+     * @param query texte recherché (paramètre {@code q}, min 2 caractères)
+     * @param limit nombre max de résultats à retourner (défaut 20, max 25)
      * @return réponse fusionnée contenant les résultats des 5 modules
      */
     @Operation(summary = "Recherche globale (Ctrl+K)",
@@ -242,7 +268,7 @@ public class SearchController {
     }
 
     // ────────────────────────────────────────────────────────────────────
-    //  Helpers — sous-titres lisibles par module
+    // Helpers — sous-titres lisibles par module
     // ────────────────────────────────────────────────────────────────────
 
     private static String thirdPartySubtitle(ThirdPartyType type) {

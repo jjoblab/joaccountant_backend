@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * Ligne de taxe associée à une {@link InvoiceLine} (v6-1-multi-tax-invoice-line).
  *
- * <p><b>Contexte fiscal Haïti</b> (lot-G validation-pme-expert — P0 BLOQUANT) : sur une facture
+ * <p><b>Contexte fiscal Haïti</b>validation-pme-expert — P0 BLOQUANT) : sur une facture
  * de prestation de services en Haïti, la <b>TVA 10%</b> (Code Fiscal art. 191) et la <b>TCA 10%</b>
  * (Code Fiscal art. 196) sont <b>cumulatives</b> sur la même ligne. Avant V78, {@code InvoiceLine}
  * ne portait qu'un seul champ {@code taxRate} → une seule taxe par ligne → les cabinets de services
@@ -26,11 +26,11 @@ import java.util.UUID;
  * <b>N taxes</b> (TVA + TCA + autres taxes sur chiffre d'affaires + accises). Le champ
  * {@code InvoiceLine.taxRate} est <b>conservé</b> pour la rétro-compatibilité :
  * <ul>
- *   <li>Si {@code InvoiceLine.taxes} (table invoice_line_tax) est <b>vide</b> pour la ligne,
- *       le service fallback sur {@code InvoiceLine.taxRate} comme TVA seule (comportement
- *       historique v5.x).</li>
- *   <li>Si {@code InvoiceLine.taxes} contient au moins une entrée, la TVA unique {@code taxRate}
- *       est ignorée (mais reste persistée pour audit et backward-compat lecture).</li>
+ * <li>Si {@code InvoiceLine.taxes} (table invoice_line_tax) est <b>vide</b> pour la ligne,
+ * le service fallback sur {@code InvoiceLine.taxRate} comme TVA seule (comportement
+ * historique v5.x).</li>
+ * <li>Si {@code InvoiceLine.taxes} contient au moins une entrée, la TVA unique {@code taxRate}
+ * est ignorée (mais reste persistée pour audit et backward-compat lecture).</li>
  * </ul>
  *
  * <p><b>Tenant-awareness</b> : cette entité n'est PAS directement tenant-aware (pas de
@@ -42,7 +42,12 @@ import java.util.UUID;
  * Le repo {@code InvoiceLineRepository} est inchangé. Cette entité est lue/écrite uniquement par
  * {@code InvoicingService} (création + génération écriture) et {@code TaxService} (agrégation
  * déclarative par {@code taxType}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "invoice_line_tax")
 public class InvoiceLineTax {

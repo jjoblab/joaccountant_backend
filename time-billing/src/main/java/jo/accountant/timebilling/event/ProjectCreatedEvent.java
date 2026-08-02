@@ -13,7 +13,12 @@ import jo.accountant.timebilling.entity.Project;
  * qui écoute l'interface {@code AuditableAction}). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 
 public record ProjectCreatedEvent(
  UUID companyId, UUID actorUserId, UUID projectId, String code, String label,

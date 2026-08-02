@@ -4,7 +4,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-/** V8.1 — Résumé d'une entreprise démo pour l'endpoint GET /api/v1/demos. */
+/** — Résumé d'une entreprise démo pour l'endpoint GET /api/v1/demos. 
+ *
+ * @author jo@Dev
+
+
+*/
 public record DemoCompanySummary(
     String demoCode,
     String name,

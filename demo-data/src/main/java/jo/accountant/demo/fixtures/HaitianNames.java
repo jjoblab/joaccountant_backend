@@ -1,6 +1,11 @@
 package jo.accountant.demo.fixtures;
 
-/** V8.1 — Fixtures de noms et prénoms haïtiens réalistes pour les données démo. */
+/** — Fixtures de noms et prénoms haïtiens réalistes pour les données démo. 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class HaitianNames {
 
   public static final String[] FIRST_NAMES = {

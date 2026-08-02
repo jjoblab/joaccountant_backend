@@ -26,17 +26,17 @@ import jo.accountant.core.framework.ReportingClass;
  * <p><b>Convention de mapping ReportingClass</b> :
  *
  * <ul>
- *   <li>Classe 1 (capitaux, réserves, report à nouveau, résultat) → {@link
- *       ReportingClass#CAPITAUX_PROPRES}
- *   <li>Classe 2 (immo corporelles + titres + amortissements) → {@link ReportingClass#ACTIF} (même
- *       les amortissements, qui ont un solde CREDIT mais restent classés ACTIF car ils sont des
- *       moins-values d'actif — convention PCN/SYSCOHADA)
- *   <li>Classe 3 (stocks) → {@link ReportingClass#ACTIF}
- *   <li>Classe 4 (tiers) → mixte ACTIF (clients, débiteurs) / PASSIF (fournisseurs, état, TVA
- *       collectée)
- *   <li>Classe 5 (trésorerie) → {@link ReportingClass#ACTIF}
- *   <li>Classe 6 (charges) → {@link ReportingClass#CHARGES}
- *   <li>Classe 7 (produits) → {@link ReportingClass#PRODUITS}
+ * <li>Classe 1 (capitaux, réserves, report à nouveau, résultat) → {@link
+ * ReportingClass#CAPITAUX_PROPRES}
+ * <li>Classe 2 (immo corporelles + titres + amortissements) → {@link ReportingClass#ACTIF} (même
+ * les amortissements, qui ont un solde CREDIT mais restent classés ACTIF car ils sont des
+ * moins-values d'actif — convention PCN/SYSCOHADA)
+ * <li>Classe 3 (stocks) → {@link ReportingClass#ACTIF}
+ * <li>Classe 4 (tiers) → mixte ACTIF (clients, débiteurs) / PASSIF (fournisseurs, état, TVA
+ * collectée)
+ * <li>Classe 5 (trésorerie) → {@link ReportingClass#ACTIF}
+ * <li>Classe 6 (charges) → {@link ReportingClass#CHARGES}
+ * <li>Classe 7 (produits) → {@link ReportingClass#PRODUITS}
  * </ul>
  *
  * <p><b>Comptes collectifs</b> : les comptes 401000 (Fournisseurs) et 411000 (Clients) sont marqués
@@ -47,9 +47,14 @@ import jo.accountant.core.framework.ReportingClass;
  * @param label libellé du compte (ex. "Clients")
  * @param reportingClass classification universelle (consommée par financial-statements)
  * @param normalBalance sens normal du solde (DEBIT pour actif/charges, CREDIT pour
- *     passif/capitaux/produits)
+ * passif/capitaux/produits)
  * @param collective true si compte collectif (regroupement de tiers)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AccountFixture(
     String code,
     String label,
@@ -58,7 +63,7 @@ public record AccountFixture(
     boolean collective) {
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 1 — Capitaux propres
+  // Classe 1 — Capitaux propres
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture CAPITAL_SOCIAL =
@@ -86,7 +91,7 @@ public record AccountFixture(
           false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 2 — Immobilisations
+  // Classe 2 — Immobilisations
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture TERRAINS =
@@ -121,7 +126,7 @@ public record AccountFixture(
           "280000", "Amortissements", ReportingClass.ACTIF, NormalBalance.CREDIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 3 — Stocks
+  // Classe 3 — Stocks
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture STOCKS_MARCHANDISES =
@@ -133,7 +138,7 @@ public record AccountFixture(
           "350000", "Stocks de produits finis", ReportingClass.ACTIF, NormalBalance.DEBIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 4 — Tiers
+  // Classe 4 — Tiers
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture FOURNISSEURS =
@@ -149,7 +154,7 @@ public record AccountFixture(
           "Personnel - rémunérations dues",
           ReportingClass.PASSIF,
           NormalBalance.CREDIT,
-          true);  // V8.3 — collective=true car utilisé comme collectiveAccountId pour les employés
+          true); // — collective=true car utilisé comme collectiveAccountId pour les employés
 
   public static final AccountFixture PRETS_CREANCES_PERSONNEL =
       new AccountFixture(
@@ -192,7 +197,7 @@ public record AccountFixture(
           "471000", "Débits et crédits divers", ReportingClass.PASSIF, NormalBalance.CREDIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 5 — Trésorerie
+  // Classe 5 — Trésorerie
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture BANQUE =
@@ -202,7 +207,7 @@ public record AccountFixture(
       new AccountFixture("530000", "Caisse", ReportingClass.ACTIF, NormalBalance.DEBIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 6 — Charges
+  // Classe 6 — Charges
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture ACHATS_MARCHANDISES =
@@ -292,7 +297,7 @@ public record AccountFixture(
           "671000", "Pertes exceptionnelles", ReportingClass.CHARGES, NormalBalance.DEBIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Classe 7 — Produits
+  // Classe 7 — Produits
   // ════════════════════════════════════════════════════════════════════════
 
   public static final AccountFixture VENTES_MARCHANDISES =
@@ -340,7 +345,7 @@ public record AccountFixture(
           "771000", "Produits exceptionnels", ReportingClass.PRODUITS, NormalBalance.CREDIT, false);
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Catalogue complet
+  // Catalogue complet
   // ════════════════════════════════════════════════════════════════════════
 
   /**
@@ -415,15 +420,15 @@ public record AccountFixture(
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Méthodes utilitaires — regroupements thématiques
+  // Méthodes utilitaires — regroupements thématiques
   // ════════════════════════════════════════════════════════════════════════
 
   /**
    * Comptes de tiers clients (collectifs).
    *
    * <ul>
-   *   <li>{@code 411000 Clients} — compte collectif des ventes à crédit
-   *   <li>{@code 422000 Prêts et créances sur le personnel} — avances et prêts salariés
+   * <li>{@code 411000 Clients} — compte collectif des ventes à crédit
+   * <li>{@code 422000 Prêts et créances sur le personnel} — avances et prêts salariés
    * </ul>
    */
   public static List<AccountFixture> clientAccounts() {
@@ -434,9 +439,9 @@ public record AccountFixture(
    * Comptes de tiers fournisseurs (collectifs et assimilés).
    *
    * <ul>
-   *   <li>{@code 401000 Fournisseurs} — compte collectif des achats à crédit
-   *   <li>{@code 471000 Débits et crédits divers} — tiers occasionnels (avocats, consultants
-   *       ponctuels)
+   * <li>{@code 401000 Fournisseurs} — compte collectif des achats à crédit
+   * <li>{@code 471000 Débits et crédits divers} — tiers occasionnels (avocats, consultants
+   * ponctuels)
    * </ul>
    */
   public static List<AccountFixture> supplierAccounts() {
@@ -447,10 +452,10 @@ public record AccountFixture(
    * Comptes de TVA / TCA — taxes sur le chiffre d'affaires haïtiennes.
    *
    * <ul>
-   *   <li>{@code 443000 TVA collectée} — TVA facturée aux clients (PASSIF, CREDIT)
-   *   <li>{@code 445000 TVA déductible} — TVA payée aux fournisseurs (ACTIF, DEBIT)
-   *   <li>{@code 446000 TCA collectée} — Taxe sur le Chiffre d'Affaires collectée (PASSIF, CREDIT)
-   *   <li>{@code 447000 TCA déductible} — TCA payée aux fournisseurs (ACTIF, DEBIT)
+   * <li>{@code 443000 TVA collectée} — TVA facturée aux clients (PASSIF, CREDIT)
+   * <li>{@code 445000 TVA déductible} — TVA payée aux fournisseurs (ACTIF, DEBIT)
+   * <li>{@code 446000 TCA collectée} — Taxe sur le Chiffre d'Affaires collectée (PASSIF, CREDIT)
+   * <li>{@code 447000 TCA déductible} — TCA payée aux fournisseurs (ACTIF, DEBIT)
    * </ul>
    */
   public static List<AccountFixture> vatAccounts() {
@@ -461,12 +466,12 @@ public record AccountFixture(
    * Comptes de paie (charges et passifs sociaux).
    *
    * <ul>
-   *   <li>{@code 421000 Personnel - rémunérations dues} — net à payer (PASSIF, CREDIT)
-   *   <li>{@code 431000 Sécurité sociale} — cotisations OFATMA dues (PASSIF, CREDIT)
-   *   <li>{@code 433000 Retenues fiscales} — impôt sur le salaire retenu à la source (PASSIF,
-   *       CREDIT)
-   *   <li>{@code 641000 Rémunérations du personnel} — brut salarial (CHARGES, DEBIT)
-   *   <li>{@code 645000 Charges de sécurité sociale} — part patronale OFATMA (CHARGES, DEBIT)
+   * <li>{@code 421000 Personnel - rémunérations dues} — net à payer (PASSIF, CREDIT)
+   * <li>{@code 431000 Sécurité sociale} — cotisations OFATMA dues (PASSIF, CREDIT)
+   * <li>{@code 433000 Retenues fiscales} — impôt sur le salaire retenu à la source (PASSIF,
+   * CREDIT)
+   * <li>{@code 641000 Rémunérations du personnel} — brut salarial (CHARGES, DEBIT)
+   * <li>{@code 645000 Charges de sécurité sociale} — part patronale OFATMA (CHARGES, DEBIT)
    * </ul>
    */
   public static List<AccountFixture> payrollAccounts() {
@@ -523,8 +528,8 @@ public record AccountFixture(
    * Comptes de trésorerie (classe 5).
    *
    * <ul>
-   *   <li>{@code 521000 Banque} — compte courant bancaire (ACTIF, DEBIT)
-   *   <li>{@code 530000 Caisse} — espèces (ACTIF, DEBIT)
+   * <li>{@code 521000 Banque} — compte courant bancaire (ACTIF, DEBIT)
+   * <li>{@code 530000 Caisse} — espèces (ACTIF, DEBIT)
    * </ul>
    */
   public static List<AccountFixture> treasuryAccounts() {
@@ -561,8 +566,8 @@ public record AccountFixture(
    * Comptes fiscaux (impôts différés / à payer).
    *
    * <ul>
-   *   <li>{@code 440000 État - impôts à payer} — IS et autres impôts dus (PASSIF, CREDIT)
-   *   <li>{@code 631000 Impôts et taxes} — impôts et taxes déductibles (CHARGES, DEBIT)
+   * <li>{@code 440000 État - impôts à payer} — IS et autres impôts dus (PASSIF, CREDIT)
+   * <li>{@code 631000 Impôts et taxes} — impôts et taxes déductibles (CHARGES, DEBIT)
    * </ul>
    */
   public static List<AccountFixture> taxAccounts() {

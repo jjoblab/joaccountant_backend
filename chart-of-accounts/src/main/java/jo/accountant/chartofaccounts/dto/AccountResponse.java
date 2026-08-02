@@ -9,7 +9,12 @@ import jo.accountant.core.framework.ReportingClass;
 
 /**
  * Réponse d'un compte, avec ses enfants optionnels (pour le format {@code tree}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AccountResponse(
     UUID id,
     UUID parentId,

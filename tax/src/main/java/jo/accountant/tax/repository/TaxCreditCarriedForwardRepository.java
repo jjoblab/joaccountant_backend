@@ -12,7 +12,12 @@ import org.springframework.stereotype.Repository;
  *
  * <p>Permet de lire le crédit de la période précédente pour pré-remplir la déclaration
  * courante, et de persister le crédit de fin de période pour la période suivante.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Repository
 public interface TaxCreditCarriedForwardRepository
  extends JpaRepository<TaxCreditCarriedForward, UUID> {

@@ -8,6 +8,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.core.tax.VatMode;
 
+/**
+ * CreateTaxRuleRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateTaxRuleRequest(
  @NotBlank String code,
  @NotBlank String label,

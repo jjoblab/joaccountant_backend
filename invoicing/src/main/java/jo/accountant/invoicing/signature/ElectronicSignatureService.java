@@ -42,7 +42,12 @@ import java.util.UUID;
  * <p>Voir {@code docs/ELECTRONIC_SIGNATURE.md} pour le détail du cadre légal, les autorités
  * de certification reconnues (eIDAS qualifiées : Universign, DocuSign, Chronodoc), et les
  * étapes d'intégration (obtention certificat, configuration keystore, TSA).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ElectronicSignatureService {
 
  /**

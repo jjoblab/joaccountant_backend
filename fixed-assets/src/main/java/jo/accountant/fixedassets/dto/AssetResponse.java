@@ -26,7 +26,12 @@ import jo.accountant.fixedassets.entity.DepreciationMethod;
  * (ex. 291). Null = fallback sur accumulatedDepreciationAccountId.
  * @param components liste des composants IAS 16 de l'immobilisation.
  * Vide si l'amortissement est calculé globalement sur l'asset.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AssetResponse(
  UUID id,
  UUID companyId,

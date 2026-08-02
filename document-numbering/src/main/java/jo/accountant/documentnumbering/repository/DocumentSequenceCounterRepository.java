@@ -22,7 +22,12 @@ import org.springframework.stereotype.Repository;
  * lui-même : le {@code ON CONFLICT DO UPDATE} est exécuté de manière atomique, le
  * {@code RETURNING last_value} renvoie la valeur après incrément. Aucun verrou applicatif
  * explicite n'est nécessaire.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Repository
 public class DocumentSequenceCounterRepository {
 
@@ -91,7 +96,7 @@ public class DocumentSequenceCounterRepository {
         // Flush pour s'assurer que la ligne est bien écrite avant le SELECT (au cas où Hibernate
         // aurait mis l'upsert en file d'attente)
         entityManager.flush();
-        entityManager.clear();  // force la relecture depuis la DB
+        entityManager.clear(); // force la relecture depuis la DB
 
         // 2. Lecture de la valeur post-incrément
         Object result = entityManager.createNativeQuery("""

@@ -13,7 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Lettrage — rapprochement d'écritures d'un compte de tiers entre elles (§13 Phase 7).
+ * Lettrage — rapprochement d'écritures d'un compte de tiers entre elles (§13.
  *
  * <p>Le lettrage consiste à associer une facture avec le règlement correspondant (ou plusieurs
  * factures avec un règlement groupé) pour faire apparaître le solde réellement dû.
@@ -24,15 +24,20 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>Statuts :
  * <ul>
- *   <li>{@link LettrageStatus#FULL} — les lignes lettrées s'équilibrent exactement
- *       (somme débits = somme crédits).</li>
- *   <li>{@link LettrageStatus#PARTIAL} — lettrage partiel : les lignes ne s'équilibrent pas
- *       (ex. facture 1000 lettrée avec règlement 800 — il reste 200 non lettrés).</li>
+ * <li>{@link LettrageStatus#FULL} — les lignes lettrées s'équilibrent exactement
+ * (somme débits = somme crédits).</li>
+ * <li>{@link LettrageStatus#PARTIAL} — lettrage partiel : les lignes ne s'équilibrent pas
+ * (ex. facture 1000 lettrée avec règlement 800 — il reste 200 non lettrés).</li>
  * </ul>
  *
  * <p>Le lettrage est typiquement utilisé sur les comptes de tiers (clients, fournisseurs),
  * mais peut aussi s'appliquer à d'autres comptes de régularisation.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "lettrage_match")
 public class LettrageMatch extends TenantAwareEntity {

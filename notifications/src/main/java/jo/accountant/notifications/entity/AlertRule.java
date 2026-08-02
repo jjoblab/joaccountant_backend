@@ -11,7 +11,12 @@ import java.util.UUID;
 
 /**
  * Règle d'alerte configurable par entreprise (§9).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "ntf_alert_rule")
 public class AlertRule {

@@ -10,12 +10,12 @@ import java.util.UUID;
  * <p>Une ligne par couple (projet, consultant) sur la période demandée. Les heures sont
  * ventilées en :
  * <ul>
- *   <li>{@code hoursLogged} — toutes les heures saisies sur la période (billables ou non,
- *       approuvées ou non, facturées ou non).</li>
- *   <li>{@code hoursBilled} — heures facturables (billable=true) approuvées (approved=true)
- *       et déjà facturées (invoiced=true). Comptabilisées au client.</li>
- *   <li>{@code hoursUnbilled} — heures facturables approuvées non encore facturées
- *       (invoiced=false) = WIP en cours.</li>
+ * <li>{@code hoursLogged} — toutes les heures saisies sur la période (billables ou non,
+ * approuvées ou non, facturées ou non).</li>
+ * <li>{@code hoursBilled} — heures facturables (billable=true) approuvées (approved=true)
+ * et déjà facturées (invoiced=true). Comptabilisées au client.</li>
+ * <li>{@code hoursUnbilled} — heures facturables approuvées non encore facturées
+ * (invoiced=false) = WIP en cours.</li>
  * </ul>
  *
  * <p>Le {@code utilizationRate} (%) = (hoursBilled + hoursUnbilled) / hoursLogged × 100
@@ -28,17 +28,22 @@ import java.util.UUID;
  * {@code consultant} est donc le {@code resourceUserId} sous forme de chaîne — à utiliser
  * comme clé de jointure côté frontend, pas comme libellé affichable.
  *
- * @param projectId       identifiant du projet
- * @param projectCode     code du projet (ex. "PRJ-001")
- * @param projectLabel    libellé du projet
- * @param consultantId    identifiant de l'utilisateur/consultant (resourceUserId)
- * @param consultant      identifiant du consultant sous forme de chaîne (UUID.toString())
- *                        — résolution du nom à faire côté client (voir note ci-dessus)
- * @param hoursLogged     toutes les heures saisies sur la période
- * @param hoursBilled     heures facturables + approuvées + facturées
- * @param hoursUnbilled   heures facturables + approuvées + non facturées (WIP)
+ * @param projectId identifiant du projet
+ * @param projectCode code du projet (ex. "PRJ-001")
+ * @param projectLabel libellé du projet
+ * @param consultantId identifiant de l'utilisateur/consultant (resourceUserId)
+ * @param consultant identifiant du consultant sous forme de chaîne (UUID.toString())
+ * — résolution du nom à faire côté client (voir note ci-dessus)
+ * @param hoursLogged toutes les heures saisies sur la période
+ * @param hoursBilled heures facturables + approuvées + facturées
+ * @param hoursUnbilled heures facturables + approuvées + non facturées (WIP)
  * @param utilizationRate taux d'utilisation en % (= billable / logged × 100)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record UtilizationLine(
     UUID projectId,
     String projectCode,

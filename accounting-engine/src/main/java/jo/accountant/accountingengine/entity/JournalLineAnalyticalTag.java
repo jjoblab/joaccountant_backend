@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Tag analytique rattaché à une {@link JournalLine ligne d'écriture} (§5, §13 Phase 5).
+ * Tag analytique rattaché à une {@link JournalLine ligne d'écriture} (§5, §13.
  *
  * <p>Permet de ventiler une même ligne entre plusieurs valeurs analytiques (par exemple
  * 70% sur le fonds "Subvention CRS 2026" et 30% sur le fonds "Dons généraux").
@@ -26,6 +26,14 @@ import java.util.UUID;
 @Table(name = "journal_line_analytical_tag",
     uniqueConstraints = @UniqueConstraint(name = "uc_jlat_line_plan_value",
         columnNames = {"journal_line_id", "plan_id", "value_id"}))
+/**
+ * JournalLineAnalyticalTag.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class JournalLineAnalyticalTag {
 
     @Id

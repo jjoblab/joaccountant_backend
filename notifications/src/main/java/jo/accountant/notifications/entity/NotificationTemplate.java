@@ -10,7 +10,12 @@ import jakarta.persistence.Version;
 
 /**
  * Gabarit de notification (§9). Seed de base, personnalisable par entreprise.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "ntf_template")
 public class NotificationTemplate {

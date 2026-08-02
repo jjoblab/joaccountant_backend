@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.datasource.AbstractDataSource;
 
 /**
- * (lot-A-securite) — Wrappe un {@link DataSource} (typiquement HikariCP) pour appliquer
+ *Wrappe un {@link DataSource} (typiquement HikariCP) pour appliquer
  * automatiquement {@code SET LOCAL app.current_tenant = ?} sur chaque connexion avant son
  * utilisation par Hibernate/JdbcTemplate.
  *
@@ -66,7 +66,12 @@ import org.springframework.jdbc.datasource.AbstractDataSource;
  *
  * @see TenantRlsDataSourcePostProcessor
  * @see TenantContext
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class TenantRlsConnectionCustomizer extends AbstractDataSource {
 
  private static final Logger LOG = LoggerFactory.getLogger(TenantRlsConnectionCustomizer.class);
@@ -189,7 +194,7 @@ public class TenantRlsConnectionCustomizer extends AbstractDataSource {
  return;
  }
  try (java.sql.Statement stmt = delegate.createStatement()) {
- // V8.2 — PostgreSQL n'accepte pas les paramètres bind (?) dans SET LOCAL.
+ // PostgreSQL n'accepte pas les paramètres bind (?) dans SET LOCAL.
  // L'UUID est déjà validé (toString() d'un java.util.UUID), pas d'injection SQL possible.
  // On utilise un Statement simple avec la valeur inline.
  stmt.execute("SET LOCAL app.current_tenant = '" + tenantId + "'");

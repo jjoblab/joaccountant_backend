@@ -15,7 +15,12 @@ import jo.accountant.documentnumbering.entity.DocumentType;
  * avant que l'utilisateur ne valide. L'utilisateur n'a aucune garantie que ce sera le numéro
  * réellement attribué : si une autre émission se produit entre l'aperçu et la validation, le
  * numéro réel sera différent. C'est acceptable : l'aperçu est purement informatif.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record NextNumberPreview(
     UUID companyId,
     DocumentType documentType,

@@ -2,9 +2,9 @@ package jo.accountant.core.audit;
 
 /**
  * Utilitaire de masquage des PII (Personally Identifiable Information) dans les événements
- * d'audit — audit v4.7 §6.3 Finding BAS.
+ * d'audit —Finding BAS.
  *
- * <p>La v4.7 stockait les PII (email, fullName) en clair dans {@code audit_log.new_value_json}.
+ * <p>la version précédente stockait les PII (email, fullName) en clair dans {@code audit_log.new_value_json}.
  * En cas de fuite de la base de données, ces informations seraient exposées. Désormais, les
  * PII sont masquées avant persistance : on conserve suffisamment d'info pour la forensique
  * (2 premiers caractères + domaine pour l'email, initiales pour le fullName) sans exposer
@@ -12,15 +12,20 @@ package jo.accountant.core.audit;
  *
  * <p>Exemples :
  * <ul>
- *   <li>{@code maskEmail("marie@joaccountant.dev")} → {@code "ma***@joaccountant.dev"}</li>
- *   <li>{@code maskFullName("Marie Joseph")} → {@code "M. J."}</li>
- *   <li>{@code maskPhone("+509 3701 2345")} → {@code "+509 ***"}</li>
+ * <li>{@code maskEmail("marie@joaccountant.dev")} → {@code "ma***@joaccountant.dev"}</li>
+ * <li>{@code maskFullName("Marie Joseph")} → {@code "M. J."}</li>
+ * <li>{@code maskPhone("+509 3701 2345")} → {@code "+509 ***"}</li>
  * </ul>
  *
  * <p>Note : le masquage est irréversible (one-way). Si l'audit forensique nécessite l'email
  * complet, il faut croiser avec la table {@code users} (qui n'est PAS masquée — c'est la
  * source de vérité pour l'identité).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class PiiMasker {
 
     private PiiMasker() {}

@@ -11,8 +11,13 @@ package jo.accountant.company.entity;
  * <p>Valeurs élargies (10 au total) pour couvrir plus de cas que les 4 anciens secteurs
  * (qui confondaient « nature de l'organisation » et « secteur d'activité »). L'ancienne
  * valeur {@code MIXTE} est retirée — son rôle fonctionnel est repris par le type métier
- * {@code CUSTOM} (sélection manuelle de modules à l'étape 8 du wizard).
- */
+ * {@code CUSTOM} (sélection manuelle de modules à l'du wizard).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum Sector {
     COMMERCE,
     SERVICE,

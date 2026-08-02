@@ -13,8 +13,7 @@ import jo.accountant.core.audit.AuditableAction;
  * <p>Consommé asynchronement par {@code :audit-trail} (§3.6). Trace QUI a demandé QUOI,
  * POURQUOI (actionType + montant), et QUAND.
  *
- * <p>C'est aussi cet événement qui pourrait être consommé par {@code :notifications} (Phase 15)
- * pour notifier les approbateurs éligibles — en Phase 4, la notification est faite directement
+ * <p>C'est aussi cet événement qui pourrait être consommé par {@code :notifications}* pour notifier les approbateurs éligibles — en, la notification est faite directement
  * par le service via {@link jo.accountant.core.port.NotificationChannelPort}.
  *
  * <p><b>(audit batch 1) — Events de domaine</b> : cet événement est <b>prêt pour
@@ -23,7 +22,12 @@ import jo.accountant.core.audit.AuditableAction;
  * l'interface <code>AuditableAction</code>). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ApprovalRequestedEvent(
  UUID companyId,
  UUID actorUserId,

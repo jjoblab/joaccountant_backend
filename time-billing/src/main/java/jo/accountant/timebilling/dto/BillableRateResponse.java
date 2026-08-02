@@ -4,6 +4,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * BillableRateResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record BillableRateResponse(
     UUID id,
     UUID companyId,

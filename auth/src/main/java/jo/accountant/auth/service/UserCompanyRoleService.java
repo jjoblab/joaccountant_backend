@@ -25,7 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>§3.4 : un utilisateur peut avoir un rôle différent dans chaque société. Le rôle est stocké
  * par (userId, companyId) et le JWT transporte la liste au login.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class UserCompanyRoleService {
 
@@ -46,27 +51,27 @@ public class UserCompanyRoleService {
     }
 
     /**
-     * Invite un utilisateur dans une société (V2.6.0 — wizard refonte).
+     * Invite un utilisateur dans une société (0 — wizard refonte).
      *
      * <p>Deux cas :
      * <ol>
-     *   <li><b>Utilisateur existant</b> ({@code email} trouvé en base) : on crée juste la
-     *       ligne {@link UserCompanyRole} ({@code acceptedAt = null} en attente d'acceptation).
-     *       {@code fullName} est ignoré (on conserve le {@code fullName} existant).</li>
-     *   <li><b>Utilisateur inexistant</b> : on crée le compte via
-     *       {@link AuthService#register} avec un mot de passe temporaire aléatoire fort
-     *       (24 chars, 4 classes de caractères — passe {@code PasswordValidator}).
-     *       {@code fullName} est alors <strong>requis</strong> (422
-     *       {@code FULL_NAME_REQUIRED} si blank). L'utilisateur devra utiliser le flux
-     *       « mot de passe oublié » pour définir son vrai mot de passe.</li>
+     * <li><b>Utilisateur existant</b> ({@code email} trouvé en base) : on crée juste la
+     * ligne {@link UserCompanyRole} ({@code acceptedAt = null} en attente d'acceptation).
+     * {@code fullName} est ignoré (on conserve le {@code fullName} existant).</li>
+     * <li><b>Utilisateur inexistant</b> : on crée le compte via
+     * {@link AuthService#register} avec un mot de passe temporaire aléatoire fort
+     * (24 chars, 4 classes de caractères — passe {@code PasswordValidator}).
+     * {@code fullName} est alors <strong>requis</strong> (422
+     * {@code FULL_NAME_REQUIRED} si blank). L'utilisateur devra utiliser le flux
+     * « mot de passe oublié » pour définir son vrai mot de passe.</li>
      * </ol>
      *
      * <p>Dans les deux cas, un email d'invitation est envoyé via
      * {@link NotificationChannelPort} (template {@code user-invitation}).
      *
-     * @throws ForbiddenException  si {@code role == OWNER} ({@code OWNER_NOT_INVITABLE}).
+     * @throws ForbiddenException si {@code role == OWNER} ({@code OWNER_NOT_INVITABLE}).
      * @throws ValidationException si l'utilisateur n'existe pas et {@code fullName} est blank.
-     * @throws ConflictException   si l'utilisateur a déjà un rôle dans la société.
+     * @throws ConflictException si l'utilisateur a déjà un rôle dans la société.
      */
     @Transactional
     public UserCompanyRole inviteUser(UUID companyId, String email, String fullName, UserRole role) {
@@ -133,9 +138,9 @@ public class UserCompanyRoleService {
      * (cas marginal — normalement le flux forgot password suffit).
      */
     private String generateTempPassword() {
-        String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // no I, O
-        String lower = "abcdefghijkmnpqrstuvwxyz";  // no l, o
-        String digit = "23456789";                   // no 0, 1
+        String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I, O
+        String lower = "abcdefghijkmnpqrstuvwxyz"; // no l, o
+        String digit = "23456789"; // no 0, 1
         String special = "!@#$%^&*-_=+";
         String all = upper + lower + digit + special;
         StringBuilder sb = new StringBuilder(24);
@@ -208,7 +213,7 @@ public class UserCompanyRoleService {
      * Convertit une ligne {@link UserCompanyRole} en {@link jo.accountant.auth.dto.CompanyUserResponse}
      * en résolvant l'utilisateur joint (email + fullName).
      *
-     * <p>V2.6.0 (wizard refonte) — exposé pour que les controllers {@code :company} n'aient
+     * <p>exposé pour que les controllers {@code :company} n'aient
      * pas à dépendre directement de {@link UserRepository} (principe de séparation des
      * couches : le module {@code :company} parle à {@code :auth} via ses services, pas via
      * ses repositories).

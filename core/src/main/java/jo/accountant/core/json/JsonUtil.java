@@ -15,7 +15,12 @@ import java.util.Map;
  * <p>En cas d'erreur de sérialisation, la méthode {@link #toJson(Object)} retourne
  * {@code null} plutôt que de propager une exception vérifiée — c'est volontaire : les
  * métadonnées d'audit ne doivent JAMAIS faire échouer l'opération métier.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class JsonUtil {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

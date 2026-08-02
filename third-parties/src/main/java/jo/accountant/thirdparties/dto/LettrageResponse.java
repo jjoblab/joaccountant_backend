@@ -9,7 +9,12 @@ import jo.accountant.thirdparties.entity.LettrageStatus;
 
 /**
  * Réponse d'un lettrage.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record LettrageResponse(
     UUID id,
     UUID thirdPartyId,

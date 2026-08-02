@@ -9,12 +9,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * Repository des snapshots de taux de change (Task v6-4-presentation-currency).
+ * Repository des snapshots de taux de change.
  *
  * <p>Permet de retrouver le taux de clôture (bilan IAS 21) ou le taux moyen de période
  * (compte de résultat / tableau de flux) pour convertir les états financiers de la devise
  * fonctionnelle vers la devise de présentation.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ExchangeRateSnapshotRepository extends JpaRepository<ExchangeRateSnapshot, UUID> {
 
     /** Recherche exacte par (company, from, to, rate_date). */
@@ -30,10 +35,10 @@ public interface ExchangeRateSnapshotRepository extends JpaRepository<ExchangeRa
      */
     @Query("SELECT s FROM ExchangeRateSnapshot s " +
            "WHERE s.companyId = :companyId " +
-           "  AND s.fromCurrency = :fromCurrency " +
-           "  AND s.toCurrency = :toCurrency " +
-           "  AND s.snapshotType = 'CLOSING' " +
-           "  AND s.rateDate <= :asOfDate " +
+           " AND s.fromCurrency = :fromCurrency " +
+           " AND s.toCurrency = :toCurrency " +
+           " AND s.snapshotType = 'CLOSING' " +
+           " AND s.rateDate <= :asOfDate " +
            "ORDER BY s.rateDate DESC, s.createdAt DESC")
     Optional<ExchangeRateSnapshot> findLatestClosingRate(
         @Param("companyId") UUID companyId,
@@ -49,11 +54,11 @@ public interface ExchangeRateSnapshotRepository extends JpaRepository<ExchangeRa
      */
     @Query("SELECT s FROM ExchangeRateSnapshot s " +
            "WHERE s.companyId = :companyId " +
-           "  AND s.fromCurrency = :fromCurrency " +
-           "  AND s.toCurrency = :toCurrency " +
-           "  AND s.snapshotType = 'PERIOD_AVERAGE' " +
-           "  AND s.periodYear = :year " +
-           "  AND s.periodMonth = :month")
+           " AND s.fromCurrency = :fromCurrency " +
+           " AND s.toCurrency = :toCurrency " +
+           " AND s.snapshotType = 'PERIOD_AVERAGE' " +
+           " AND s.periodYear = :year " +
+           " AND s.periodMonth = :month")
     Optional<ExchangeRateSnapshot> findAverageRateForPeriod(
         @Param("companyId") UUID companyId,
         @Param("fromCurrency") String fromCurrency,

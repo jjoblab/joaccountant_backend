@@ -85,7 +85,12 @@ import org.slf4j.LoggerFactory;
  * @see ElectronicSignatureService
  * @see SignatureProperties
  * @see SignatureConfig
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class XAdESSignatureService implements ElectronicSignatureService {
 
  private static final Logger LOG = LoggerFactory.getLogger(XAdESSignatureService.class);

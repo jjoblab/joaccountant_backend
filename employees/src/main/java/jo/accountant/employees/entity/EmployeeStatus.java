@@ -9,7 +9,12 @@ package jo.accountant.employees.entity;
  *
  * <p>Le filtre `status=ACTIVE` est utilisé par `:payroll` pour lister les salariés à
  * payer sur une période (voir `PayrollService.calculate`).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum EmployeeStatus {
  ACTIVE,
  ON_LEAVE,

@@ -11,9 +11,9 @@ import jo.accountant.core.tenant.TenantContext;
  *
  * <pre>{@code
  * try (var ctx = DemoTenantContext.of(companyId, userId)) {
- *     chartOfAccountsBootstrap.bootstrap(companyId, frameworkId, accounts);
- *     documentNumberingBootstrap.bootstrap(companyId);
- *     fiscalYearBootstrap.bootstrap(companyId);
+ * chartOfAccountsBootstrap.bootstrap(companyId, frameworkId, accounts);
+ * documentNumberingBootstrap.bootstrap(companyId);
+ * fiscalYearBootstrap.bootstrap(companyId);
  * }
  * // TenantContext.clear() a été appelé automatiquement à la sortie du try
  * }</pre>
@@ -28,7 +28,12 @@ import jo.accountant.core.tenant.TenantContext;
  * même en cas d'exception runtime, ce qui élimine ce risque de fuite.
  *
  * @see TenantContext
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class DemoTenantContext implements AutoCloseable {
 
   private final UUID previousCompanyId;
@@ -47,7 +52,7 @@ public final class DemoTenantContext implements AutoCloseable {
    *
    * @param companyId identifiant de l'entreprise démo (tenant)
    * @param userId identifiant de l'utilisateur système exécutant le seed (peut être {@code null}
-   *     pour un seed anonyme — l'audit-trail marquera alors {@code userId=null})
+   * pour un seed anonyme — l'audit-trail marquera alors {@code userId=null})
    * @return une instance AutoCloseable à utiliser dans un try-with-resources
    */
   public static DemoTenantContext of(UUID companyId, UUID userId) {

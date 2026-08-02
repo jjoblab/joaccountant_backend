@@ -17,14 +17,19 @@ import org.springframework.stereotype.Component;
  * <p>Lève 403 {@code MODULE_NOT_ENABLED} si {@link CompanyModuleService#isEnabled} renvoie
  * {@code false} pour la société et le module concernés. Le message indique explicitement
  * que le module peut être activé via {@code POST /companies/{id}/wizard/complete} ou
- * l'étape 8 du wizard (sélection manuelle pour le type métier {@code CUSTOM}).
+ * l'du wizard (sélection manuelle pour le type métier {@code CUSTOM}).
  *
  * <p>Les modules <em>always-on</em> (chart-of-accounts, accounting-engine, third-parties,
  * invoicing, document-numbering, approval-workflow, document-generation, notifications,
  * audit-trail, financial-statements, analytics, reporting) ne sont <strong>pas</strong>
  * concernés par ce garde-fou — ils sont toujours activés, le check y serait un no-op
  * permanent (§7.2 du prompt).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ModuleAccessGuard {
 
@@ -38,14 +43,14 @@ public class ModuleAccessGuard {
      * Lève 403 {@code MODULE_NOT_ENABLED} si le module n'est pas activé pour la société.
      *
      * @param companyId identifiant du tenant
-     * @param module    code du module à vérifier (ex. {@link ModuleCode#INVENTORY})
+     * @param module code du module à vérifier (ex. {@link ModuleCode#INVENTORY})
      */
     public void ensureEnabled(UUID companyId, ModuleCode module) {
         if (!companyModuleService.isEnabled(companyId, module)) {
             throw new ForbiddenException("MODULE_NOT_ENABLED",
                 "Le module " + module + " n'est pas activé pour cette société. "
                 + "Il peut être activé via POST /api/v1/companies/" + companyId
-                + "/wizard/complete (completion du wizard) ou via l'étape 8 du wizard "
+                + "/wizard/complete (completion du wizard) ou via l'du wizard "
                 + "(sélection manuelle pour le type métier CUSTOM).");
         }
     }

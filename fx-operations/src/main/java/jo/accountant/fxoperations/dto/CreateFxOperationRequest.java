@@ -25,7 +25,12 @@ import jo.accountant.fxoperations.entity.FxOperationType;
  * @param operationDate date de l'opération
  * @param description description libre (optionnel)
  * @param bankAccountId compte de trésorerie à débiter/créditer (optionnel — fallback sur compte CASH)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateFxOperationRequest(
     @NotNull FxOperationType type,
     @NotBlank String fromCurrency,

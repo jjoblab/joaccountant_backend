@@ -13,47 +13,46 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Compte du plan comptable d'une entreprise (§4, §13 Phase 3).
+ * Compte du plan comptable d'une entreprise (§4, §13.
  *
  * <p>Hiérarchie auto-référentielle sur 4 niveaux maximum :
  * <ul>
- *   <li>Niveau 1 — <strong>classe</strong> (ex. "1 - Ressources durables" en SYSCOHADA).
- *       Verrouillé, généré automatiquement à l'initialisation du plan.</li>
- *   <li>Niveau 2 — <strong>rubrique</strong> (ex. "10 - Capital"). Verrouillé, généré
- *       automatiquement à l'initialisation.</li>
- *   <li>Niveau 3 — <strong>compte principal</strong> (ex. "101 - Capital social").
- *       Généré par défaut mais éditable.</li>
- *   <li>Niveau 4 — <strong>compte divisionnaire / sous-compte</strong> (ex. "101100 -
- *       Capital souscrit - non appelé). Entièrement libre, jamais généré par défaut.</li>
+ * <li>Niveau 1 — <strong>classe</strong> (ex. "1 - Ressources durables" en SYSCOHADA).
+ * Verrouillé, généré automatiquement à l'initialisation du plan.</li>
+ * <li>Niveau 2 — <strong>rubrique</strong> (ex. "10 - Capital"). Verrouillé, généré
+ * automatiquement à l'initialisation.</li>
+ * <li>Niveau 3 — <strong>compte principal</strong> (ex. "101 - Capital social").
+ * Généré par défaut mais éditable.</li>
+ * <li>Niveau 4 — <strong>compte divisionnaire / sous-compte</strong> (ex. "101100 -
+ * Capital souscrit - non appelé). Entièrement libre, jamais généré par défaut.</li>
  * </ul>
  *
  * <p>La génération automatique des niveaux 1 et 2 dépend du référentiel
  * ({@link jo.accountant.core.framework.AccountingFramework#getNumberingMode()}) :
  * <ul>
- *   <li>{@code MANDATED} (SYSCOHADA, PCG, PCN, PCGR) — depuis le {@code mandatedClassSeed}
- *       du référentiel, qui liste les classes imposées par le texte réglementaire.</li>
- *   <li>{@code FREE} (IFRS full, IFRS SMEs) — selon le gabarit
- *       {@link AccountNumberingTemplate} configuré par l'entreprise.</li>
+ * <li>{@code MANDATED} (SYSCOHADA, PCG, PCN, PCGR) — depuis le {@code mandatedClassSeed}
+ * du référentiel, qui liste les classes imposées par le texte réglementaire.</li>
+ * <li>{@code FREE} (IFRS full, IFRS SMEs) — selon le gabarit
+ * {@link AccountNumberingTemplate} configuré par l'entreprise.</li>
  * </ul>
  *
- * <p>Règles métier (toutes testées, §13 Phase 3) :
- * <ul>
- *   <li>{@code code} unique par {@code companyId} (contrainte DB + validation applicative).</li>
- *   <li>Renommage/suppression d'un compte {@code locked = true} → 409.</li>
- *   <li>Pas de niveau &gt; 4 dans cette itération.</li>
- *   <li>Génération de code enfant sans collision, même en création concurrente
- *       (contrainte unique DB en filet de sécurité).</li>
- *   <li>Suppression physique <strong>toujours interdite</strong> ; seule la désactivation
- *       ({@code active = false}) est permise, et uniquement si le solde est nul
- *       (vérifié via {@link jo.accountant.chartofaccounts.guard.AccountBalanceGuard},
- *       implémenté en Phase 5).</li>
+ * <p>Règles métier (toutes testées, §13* <ul>
+ * <li>{@code code} unique par {@code companyId} (contrainte DB + validation applicative).</li>
+ * <li>Renommage/suppression d'un compte {@code locked = true} → 409.</li>
+ * <li>Pas de niveau &gt; 4 dans cette itération.</li>
+ * <li>Génération de code enfant sans collision, même en création concurrente
+ * (contrainte unique DB en filet de sécurité).</li>
+ * <li>Suppression physique <strong>toujours interdite</strong> ; seule la désactivation
+ * ({@code active = false}) est permise, et uniquement si le solde est nul
+ * (vérifié via {@link jo.accountant.chartofaccounts.guard.AccountBalanceGuard},
+ * implémenté en.</li>
  * </ul>
  *
  * <p>{@code path} est calculé à la création/modification — concaténation des codes depuis la
  * racine jusqu'au compte courant, séparés par des points (ex. {@code "1.10.101.101100"}).
  * Utile pour la recherche textuelle et l'affichage en arbre.
  *
- * <p>{@code requiresAnalyticalTagPlanIds} : liste d'IDs de plans analytiques (Phase 5) pour
+ * <p>{@code requiresAnalyticalTagPlanIds} : liste d'IDs de plans analytiquespour
  * lesquels une ligne d'écriture postée sur ce compte DOIT porter une valeur analytique.
  * Mécanisme générique qui permet par exemple d'imposer qu'aucune charge ne soit postée sur un
  * compte de subvention sans indiquer le fonds concerné (cas ONG). Stocké en JSONB — pas de
@@ -66,6 +65,14 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "account",
     uniqueConstraints = @UniqueConstraint(name = "uc_account_company_code",
         columnNames = {"company_id", "code"}))
+/**
+ * Account.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Account extends TenantAwareEntity {
 
     /** Parent direct dans la hiérarchie. {@code null} pour un compte de niveau 1 (la classe). */
@@ -116,7 +123,7 @@ public class Account extends TenantAwareEntity {
 
     /**
      * Si {@code true}, le compte est "collectif" — un compte de regroupement (ex. 411000
-     * "Clients"). Les écritures sont postées sur des comptes de tiers individuels (Phase 7),
+     * "Clients"). Les écritures sont postées sur des comptes de tiers individuels,
      * pas directement sur le compte collectif.
      */
     @Column(name = "is_collective", nullable = false)
@@ -130,14 +137,14 @@ public class Account extends TenantAwareEntity {
     private String path;
 
     /**
-     * Code de règle fiscale (Phase 16). Référence opaque vers {@code TaxRule.code} — pas de
+     * Code de règle fiscale. Référence opaque vers {@code TaxRule.code} — pas de
      * FK dure pour permettre la suppression d'une règle fiscale sans casser le plan comptable.
      */
     @Column(name = "tax_mapping_code", length = 30)
     private String taxMappingCode;
 
     /**
-     * Liste des IDs de plans analytiques (Phase 5) pour lesquels une ligne d'écriture postée
+     * Liste des IDs de plans analytiquespour lesquels une ligne d'écriture postée
      * sur ce compte DOIT porter une valeur analytique. Stocké en JSONB — pas de table de
      * jointure dédiée pour cette itération.
      */

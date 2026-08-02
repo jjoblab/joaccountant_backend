@@ -10,7 +10,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des périodes fiscales.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface FiscalPeriodRepository extends JpaRepository<FiscalPeriod, UUID> {
 
     /** Toutes les périodes d'un exercice, triées par date de début. */

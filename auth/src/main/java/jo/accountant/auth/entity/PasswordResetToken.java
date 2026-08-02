@@ -9,11 +9,16 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Token de réinitialisation de mot de passe (§13 Phase 1, « mot de passe oublié »).
+ * Token de réinitialisation de mot de passe (§13, « mot de passe oublié »).
  *
  * <p>§3.4 : à usage unique, expiration courte (1 heure). La colonne {@code usedAt} est positionnée
  * dès que le token est consommé ; toute tentative ultérieure d'utiliser le même token renvoie 403.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "password_reset_token")
 public class PasswordResetToken {

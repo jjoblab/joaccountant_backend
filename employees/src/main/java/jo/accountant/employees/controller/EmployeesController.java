@@ -34,7 +34,31 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Le module est <strong>toujours-actif</strong> (always-on — voir
  * `BusinessTypeModuleService.alwaysOnModules`). Pas de `ModuleAccessGuard` requise sur
  * ses endpoints (au même titre qu'`:invoicing`).
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/employees")
 @Tag(name = "Employees", description = "Employés / RH")

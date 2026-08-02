@@ -10,7 +10,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Ligne d'échéancier d'amortissement (§13 Phase 8).
+ * Ligne d'échéancier d'amortissement (§13.
  *
  * <p>Une ligne par période (mensuelle) de la durée de vie utile de l'actif. Générée
  * automatiquement à la création de l'actif — voir
@@ -32,6 +32,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "depreciation_schedule_line",
  uniqueConstraints = @UniqueConstraint(name = "uc_dsl_asset_period_component",
  columnNames = {"asset_id", "period_id", "component_id"}))
+/**
+ * DepreciationScheduleLine.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class DepreciationScheduleLine extends TenantAwareEntity {
 
  @Column(name = "asset_id", nullable = false)

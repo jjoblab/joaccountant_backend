@@ -26,11 +26,16 @@ import jo.accountant.payroll.repository.PayrollRunRepository;
 import jo.accountant.payroll.repository.PayslipRepository;
 
 /**
- * V8.1 — Base abstraite pour les seeders d'entreprises démo.
+ * Base abstraite pour les seeders d'entreprises démo.
  *
  * <p>Factorise la création des écritures comptables, campagnes de paie et 13e mois.
  * Les 4 seeders concrets étendent cette classe et implémentent {@link #seedSpecific(Company, ResolvedContext)}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public abstract class AbstractCompanySeeder implements CompanySeeder {
 
     protected final PayrollRunRepository payrollRunRepository;

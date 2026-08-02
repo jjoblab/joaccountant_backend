@@ -10,7 +10,12 @@ import org.springframework.stereotype.Component;
  * <p>Retourner un placeholder stable quand aucun tenant n'est positionné permet aux migrations et
  * aux requêtes de boot (qui s'exécutent hors requête) de réussir sans fuite de lignes — chaque
  * ligne métier porte un {@code company_id} non nul, le placeholder ne correspond donc à rien.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class CurrentTenantIdentifierResolverImpl implements CurrentTenantIdentifierResolver<String> {
 

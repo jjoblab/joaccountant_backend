@@ -14,7 +14,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p>Les méthodes de recherche sont par (companyId, ...) et non par (id, ...) pour
  * garantir le cloisonnement multi-tenant — un appelant ne peut jamais récupérer les
  * lignes d'un autre tenant même en connaissance d'ID.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface DonorReportLineRepository extends JpaRepository<DonorReportLine, UUID> {
 
     /**

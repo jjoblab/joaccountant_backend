@@ -16,7 +16,7 @@ import jo.accountant.invoicing.entity.InvoiceType;
 /**
  * Corps de requête pour {@code POST /invoices}.
  *
- * <p><b>Audit v4.7 §6.3 (session 8) — Validation DTOs</b> : ajout des annotations
+ * <p><b>(session 8) — Validation DTOs</b> : ajout des annotations
  * {@code @Positive} (via {@code @DecimalMin}) sur les montants pour rejeter les valeurs
  * négatives ou nulles côté API. Sans cette validation, un client pouvait envoyer
  * {@code quantity=-100} ou {@code unitPrice=-50} → écriture comptable négative incohérente.
@@ -25,24 +25,29 @@ import jo.accountant.invoicing.entity.InvoiceType;
  * 2 champs optionnels au niveau facture (pas au niveau ligne) pour appliquer une retenue
  * à la source sur la facture de vente :
  * <ul>
- *   <li>{@code withholdingRuleCode} — code d'une WithholdingRule existante (ex :
- *       {@code "RS_HT_PRESTATIONS_LOCAL"} pour 2% Haïti). Si fourni, le taux est résolu
- *       automatiquement depuis la règle.</li>
- *   <li>{@code withholdingRate} — taux forcé en % (ex : {@code 2.00}). Permet d'appliquer
- *       un taux sans règle associée (rare — usage test ou taux ad hoc).</li>
+ * <li>{@code withholdingRuleCode} — code d'une WithholdingRule existante (ex :
+ * {@code "RS_HT_PRESTATIONS_LOCAL"} pour 2% Haïti). Si fourni, le taux est résolu
+ * automatiquement depuis la règle.</li>
+ * <li>{@code withholdingRate} — taux forcé en % (ex : {@code 2.00}). Permet d'appliquer
+ * un taux sans règle associée (rare — usage test ou taux ad hoc).</li>
  * </ul>
  *
  * <p><b>Règles de résolution</b> :
  * <ul>
- *   <li>Si {@code withholdingRuleCode} est fourni : lookup de la WithholdingRule +
- *       calcul automatique via le taux de la règle.</li>
- *   <li>Sinon si {@code withholdingRate} est fourni : application directe du taux.</li>
- *   <li>Sinon (les deux null/absents) : pas de RS (backward compat — comportement par défaut).</li>
+ * <li>Si {@code withholdingRuleCode} est fourni : lookup de la WithholdingRule +
+ * calcul automatique via le taux de la règle.</li>
+ * <li>Sinon si {@code withholdingRate} est fourni : application directe du taux.</li>
+ * <li>Sinon (les deux null/absents) : pas de RS (backward compat — comportement par défaut).</li>
  * </ul>
  *
  * <p>Si les deux sont fournis, {@code withholdingRuleCode} prend priorité (le taux de la
  * règle écrase le {@code withholdingRate} de la requête).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateInvoiceRequest(
     @NotNull UUID thirdPartyId,
     InvoiceType type,

@@ -9,11 +9,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des demandes d'approbation.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest, UUID> {
 
     /** Demande PENDING pour une ressource donnée — utilisé par le consommateur pour vérifier
-     *  qu'une action n'est pas déjà en attente d'approbation. */
+     * qu'une action n'est pas déjà en attente d'approbation. */
     Optional<ApprovalRequest> findByCompanyIdAndResourceTypeAndResourceIdAndStatus(
         UUID companyId, String resourceType, UUID resourceId, ApprovalStatus status);
 

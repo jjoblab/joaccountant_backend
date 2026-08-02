@@ -118,7 +118,10 @@ import org.springframework.transaction.annotation.Transactional;
  * @see AccountingEngineService#postJournalEntry(UUID, UUID, List)
  * @see AccountingEngineService#reverseJournalEntry(UUID, UUID, String)
  * @see AccountingEngineService#loadJournalEntryResponse(UUID, UUID)
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Service
 public class JournalEntryLifecycleService {
 
@@ -197,7 +200,7 @@ public class JournalEntryLifecycleService {
  * </ol>
  *
  * @param approverEmails emails des approbateurs éligibles (résolus par l'appelant —
- * voir décision Phase 4 dans le worklog)
+ * voir décisiondans le worklog)
  */
  @Transactional
  public JournalEntryResponse postJournalEntry(UUID companyId, UUID entryId, List<String> approverEmails) {
@@ -410,7 +413,7 @@ public class JournalEntryLifecycleService {
  @EventListener
  @Transactional
  public void onApprovalDecided(ApprovalDecidedEvent event) {
- // Audit v4.7 §6.2 — defense-in-depth : récupérer companyId AVANT le findById pour filtrage
+ //— defense-in-depth : récupérer companyId AVANT le findById pour filtrage
  UUID companyId = event.companyId();
  ApprovalRequest request = approvalRequestRepository.findById(event.requestId())
  .filter(r -> r.getCompanyId().equals(companyId))
@@ -468,14 +471,14 @@ public class JournalEntryLifecycleService {
  /**
  * Contre-passe une écriture POSTED avec date de contre-passation paramétrable.
  *
- * <p><b>Audit v4.7 §3.1 FIX</b> :
+ * <p><b>FIX</b> :
  * <ul>
  * <li>La version originale utilisait {@code LocalDate.now()} comme date de contre-passation.
  * Si l'originale était en N (exercice CLOSED), la contre-passation était postée en N+1
  * avec une période fiscale incohérente (N LOCKED). Désormais, on accepte une date
  * paramétrable et on vérifie que la période correspondante est OPEN.</li>
  * <li>Empêche la contre-passation d'une contre-passation (reversal de reversal) — l'audit
- * v4.7 §3.1 notait que ce cas était accepté, créant des chaînes illisibles.</li>
+ * ce cas était accepté, créant des chaînes illisibles.</li>
  * </ul>
  *
  * @param reversalDate date de la contre-passation (null = date du jour). Doit tomber dans
@@ -489,7 +492,7 @@ public class JournalEntryLifecycleService {
  throw new ConflictException("ENTRY_NOT_POSTED",
  "Seules les écritures POSTED peuvent être contre-passées. Statut : " + original.getStatus());
  }
- // Audit v4.7 §3.1 empêcher reversal de reversal
+ //empêcher reversal de reversal
  if (original.getSourceModule() == JournalEntrySourceModule.REVERSAL) {
  throw new ConflictException("CANNOT_REVERSE_A_REVERSAL",
  "Une écriture de contre-passation ne peut pas être elle-même contre-passée. " +
@@ -497,7 +500,7 @@ public class JournalEntryLifecycleService {
  "avec référence à la contre-passation " + original.getReference() + ".");
  }
 
- // Audit v4.7 §3.1 date paramétrable + vérification période OPEN
+ //date paramétrable + vérification période OPEN
  LocalDate effectiveReversalDate = reversalDate != null ? reversalDate : LocalDate.now();
  FiscalPeriod reversalPeriod = findPeriodForDate(companyId, effectiveReversalDate);
  if (reversalPeriod == null) {
@@ -517,8 +520,8 @@ public class JournalEntryLifecycleService {
  JournalEntry reversal = new JournalEntry();
  reversal.setCompanyId(companyId);
  reversal.setJournalId(original.getJournalId());
- reversal.setFiscalPeriodId(reversalPeriod.getId()); // Audit v4.7 §3.1 — utiliser la période de la date effective
- reversal.setEntryDate(effectiveReversalDate); // Audit v4.7 §3.1 — date paramétrable
+ reversal.setFiscalPeriodId(reversalPeriod.getId()); //— utiliser la période de la date effective
+ reversal.setEntryDate(effectiveReversalDate); //— date paramétrable
  reversal.setDescription("Contre-passation de " + original.getReference()
  + (reason != null ? " — " + reason : ""));
  reversal.setStatus(JournalEntryStatus.DRAFT);
@@ -600,7 +603,7 @@ public class JournalEntryLifecycleService {
  line.getLineNumber(), line.getDescription(), tagResponses));
  }
 
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  Journal journal = journalRepository.findById(entry.getJournalId())
  .filter(j -> j.getCompanyId().equals(companyId))
  .orElse(null);
@@ -642,7 +645,7 @@ public class JournalEntryLifecycleService {
 
  // Valider que la valeur existe et appartient au plan
  analyticsService.validateValue(companyId, tag.getPlanId(), tag.getValueId());
- // Audit v4.7 §6.2 IDOR CRITICAL : valider que le plan appartient à la company
+ //IDOR CRITICAL : valider que le plan appartient à la company
  // (avant : analyticsService.findPlanById(planId) ne filtrait pas par companyId)
  if (analyticsService.findPlanById(companyId, tag.getPlanId()).isEmpty()) {
  throw new ValidationException("ANALYTICAL_PLAN_NOT_FOUND",

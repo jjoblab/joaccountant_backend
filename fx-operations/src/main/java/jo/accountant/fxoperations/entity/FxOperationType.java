@@ -9,7 +9,12 @@ package jo.accountant.fxoperations.entity;
  * (ex. vendre USD contre HTG : D 521-HTG / C 521-USD).
  * <p>{@link #REVALUATION} — réévaluation de fin de période des soldes en devises étrangères
  * au taux de clôture. Génère un gain ou une perte de change latent.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum FxOperationType {
  BUY,
  SELL,

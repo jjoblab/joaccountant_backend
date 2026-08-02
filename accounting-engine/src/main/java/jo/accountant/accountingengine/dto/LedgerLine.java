@@ -6,7 +6,12 @@ import java.util.UUID;
 
 /**
  * Ligne du grand livre (renvoyée par {@code GET .../ledger}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record LedgerLine(
     LocalDate entryDate,
     String reference,

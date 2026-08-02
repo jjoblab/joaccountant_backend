@@ -65,7 +65,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Code journal</b> : "OD" (opérations diverses) par défaut. Pas de journal dédié
  * "FX" au MVP — l'utilisateur peut le créer si nécessaire et les écritures de change
  * apparaîtront toujours dans OD (lisible côté mobile via le filtre {@code sourceModule=FX}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class FxOperationsService {
 
@@ -74,7 +79,7 @@ public class FxOperationsService {
  * Devise fonctionnelle par défaut si {@link Company#getFunctionalCurrency()} est null ou vide.
  * Conservé pour backward-compat (entreprises créées avant l'ajout du champ functionalCurrency).
  *
- * <p><b>Audit v4.7 §3.1 FIX CRITIQUE</b> : la version originale utilisait
+ * <p><b>la version originale utilisait
  * <code>FUNCTIONAL_CURRENCY_DEFAULT = "HTG"</code> pour TOUTES les entreprises, ignorant
  * complètement {@code Company.functionalCurrency}. Pour une entreprise PCGR_CANADA (CAD),
  * tous les montants FX étaient convertis en HTG au lieu de CAD. Désormais, on lit la vraie
@@ -110,7 +115,7 @@ public class FxOperationsService {
  /**
  * Résout la devise fonctionnelle réelle de l'entreprise.
  *
- * <p>Audit v4.7 §3.1 fix : lit {@link Company#getFunctionalCurrency()} au lieu de hardcoder
+ * <p>fix : lit {@link Company#getFunctionalCurrency()} au lieu de hardcoder
  * HTG. Fallback vers HTG uniquement si l'entreprise n'a pas configuré sa devise fonctionnelle
  * (backward-compat pour les entreprises créées avant l'ajout du champ).
  */
@@ -137,7 +142,7 @@ public class FxOperationsService {
  public FxOperationResponse create(UUID companyId, CreateFxOperationRequest req) {
  validateRequest(req);
 
- // Audit v4.7 §3.1 fix — lire la vraie devise fonctionnelle de l'entreprise au lieu de
+ //fix — lire la vraie devise fonctionnelle de l'entreprise au lieu de
  // hardcoder HTG. Pour une entreprise PCGR_CANADA (CAD), tous les montants FX doivent être
  // convertis en CAD, pas en HTG.
  String functionalCurrency = resolveFunctionalCurrency(companyId);
@@ -273,7 +278,7 @@ public class FxOperationsService {
  }
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();

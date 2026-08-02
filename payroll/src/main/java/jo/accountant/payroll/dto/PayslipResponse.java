@@ -5,6 +5,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * PayslipResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record PayslipResponse(
     UUID id,
     UUID companyId,

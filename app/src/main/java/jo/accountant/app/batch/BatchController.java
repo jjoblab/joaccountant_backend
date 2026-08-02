@@ -38,10 +38,10 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Deux endpoints :
  * <ul>
- *   <li>{@code POST /api/v1/companies/{companyId}/admin/batch/payroll?runId=} —
- *       lance {@code payrollJob} sur la campagne {@code runId}.</li>
- *   <li>{@code POST /api/v1/companies/{companyId}/admin/batch/closing?fiscalYearId=} —
- *       lance {@code fiscalYearClosingJob} sur l'exercice {@code fiscalYearId}.</li>
+ * <li>{@code POST /api/v1/companies/{companyId}/admin/batch/payroll?runId=} —
+ * lance {@code payrollJob} sur la campagne {@code runId}.</li>
+ * <li>{@code POST /api/v1/companies/{companyId}/admin/batch/closing?fiscalYearId=} —
+ * lance {@code fiscalYearClosingJob} sur l'exercice {@code fiscalYearId}.</li>
  * </ul>
  *
  * <p>Le {@link TenantContext} est positionné avant l'appel {@code jobLauncher.run(...)}
@@ -55,6 +55,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/admin/batch")
 @Tag(name = "Batch Admin", description = "Jobs Spring Batch (paie + clôture annuelle) — V63")
+/**
+ * Contrôleur REST Batch.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class BatchController {
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchController.class);
@@ -85,9 +112,9 @@ public class BatchController {
      * {@code PayrollRun} est mis à jour (totaux + status CALCULATED).
      *
      * @param companyId identifiant de l'entreprise (tenant)
-     * @param runId     identifiant de la campagne (PayrollRun) à calculer
+     * @param runId identifiant de la campagne (PayrollRun) à calculer
      * @return 202 Accepted avec le JobExecutionId (le Job s'exécute synchrone — au retour,
-     *         le Job est déjà terminé)
+     * le Job est déjà terminé)
      */
     @Operation(summary = "Lancer le Job batch de paie (payrollJob)",
         description = "Calcule les payslips pour tous les employés ACTIVE via PayrollCalculator "
@@ -128,7 +155,7 @@ public class BatchController {
             JobParameters params = new JobParametersBuilder()
                 .addString("companyId", companyId.toString())
                 .addString("runId", runId.toString())
-                .addDate("launchedAt", new Date())  // unicité — évite JobInstanceAlreadyComplete
+                .addDate("launchedAt", new Date()) // unicité — évite JobInstanceAlreadyComplete
                 .toJobParameters();
 
             LOG.info("Lancement payrollJob : company={} run={} user={}", companyId, runId, userId);
@@ -154,8 +181,8 @@ public class BatchController {
      * .createClosingSnapshots} (fige le bilan + le compte de résultat). Retry 1× en cas
      * d'erreur (la clôture est idempotente).
      *
-     * @param companyId     identifiant de l'entreprise (tenant)
-     * @param fiscalYearId  identifiant de l'exercice à clôturer
+     * @param companyId identifiant de l'entreprise (tenant)
+     * @param fiscalYearId identifiant de l'exercice à clôturer
      * @return 202 Accepted avec le JobExecutionId
      */
     @Operation(summary = "Lancer le Job batch de clôture d'exercice (fiscalYearClosingJob)",
@@ -208,7 +235,7 @@ public class BatchController {
             JobParameters params = new JobParametersBuilder()
                 .addString("companyId", companyId.toString())
                 .addString("fiscalYearId", fiscalYearId.toString())
-                .addDate("launchedAt", new Date())  // unicité
+                .addDate("launchedAt", new Date()) // unicité
                 .toJobParameters();
 
             LOG.info("Lancement fiscalYearClosingJob : company={} fy={} user={}",

@@ -32,40 +32,45 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service du workflow d'approbation "quatre yeux" (§7, §13 Phase 4).
+ * Service du workflow d'approbation "quatre yeux" (§7, §13.
  *
  * <p>Responsabilités :
  * <ul>
- *   <li>Création / listing des {@link ApprovalRule règles} par entreprise</li>
- *   <li><strong>Évaluation</strong> d'une action financière contre le seuil configuré
- *       ({@link #evaluate}) — point d'extension principal appelé par les modules Phase 5/12/14</li>
- *   <li>Décision sur les demandes en attente : {@link #approve}, {@link #reject},
- *       {@link #cancel}</li>
- *   <li>Notification des approbateurs éligibles via {@link NotificationChannelPort}</li>
+ * <li>Création / listing des {@link ApprovalRule règles} par entreprise</li>
+ * <li><strong>Évaluation</strong> d'une action financière contre le seuil configuré
+ * ({@link #evaluate}) — point d'extension principal appelé par les modules/12/14</li>
+ * <li>Décision sur les demandes en attente : {@link #approve}, {@link #reject},
+ * {@link #cancel}</li>
+ * <li>Notification des approbateurs éligibles via {@link NotificationChannelPort}</li>
  * </ul>
  *
  * <p>Règles métier §7 (chacune testée par un test qui échouerait si la règle était retirée) :
  * <ol>
- *   <li>Absence de règle active = aucune approbation requise (pas de blocage surprise
- *       pour une petite structure).</li>
- *   <li>Montant &le; seuil = postage/émission directs, sans passage par ce module.</li>
- *   <li>Montant &gt; seuil = création d'une {@link ApprovalRequest} PENDING, l'action cible
- *       doit être mise à l'état intermédiaire {@code PENDING_APPROVAL} côté consommateur.</li>
- *   <li><strong>Règle des quatre yeux</strong> : l'auteur d'une demande ne peut jamais être
- *       son propre approbateur ({@code requestedBy == decidedBy} → 403 sur approve/reject).</li>
- *   <li>Rejet → l'action cible revient à {@code DRAFT} côté consommateur, avec motif
- *       horodaté et visible.</li>
- *   <li>Chaque création de {@link ApprovalRequest} notifie tous les utilisateurs ayant un
- *       rôle listé dans {@code requiredApproverRoles} pour cette entreprise.</li>
+ * <li>Absence de règle active = aucune approbation requise (pas de blocage surprise
+ * pour une petite structure).</li>
+ * <li>Montant &le; seuil = postage/émission directs, sans passage par ce module.</li>
+ * <li>Montant &gt; seuil = création d'une {@link ApprovalRequest} PENDING, l'action cible
+ * doit être mise à l'état intermédiaire {@code PENDING_APPROVAL} côté consommateur.</li>
+ * <li><strong>Règle des quatre yeux</strong> : l'auteur d'une demande ne peut jamais être
+ * son propre approbateur ({@code requestedBy == decidedBy} → 403 sur approve/reject).</li>
+ * <li>Rejet → l'action cible revient à {@code DRAFT} côté consommateur, avec motif
+ * horodaté et visible.</li>
+ * <li>Chaque création de {@link ApprovalRequest} notifie tous les utilisateurs ayant un
+ * rôle listé dans {@code requiredApproverRoles} pour cette entreprise.</li>
  * </ol>
  *
  * <p>Note sur l'indépendance du module (principe 5) : {@code :approval-workflow} ne dépend
  * que de {@code :core} et {@code :audit-trail}. La notification des approbateurs est faite
  * via {@link NotificationChannelPort} — le port expose une méthode {@code sendEmail(to, ...)}
  * qui prend un email, pas un userId. La résolution userId → email est faite par l'appelant
- * (le contrôleur, qui a accès à {@code :auth}) AVANT d'appeler le service. En Phase 4, le
+ * (le contrôleur, qui a accès à {@code :auth}) AVANT d'appeler le service. En, le
  * service notifie via une méthode interne qui prend la liste des emails déjà résolus.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ApprovalWorkflowService {
 
@@ -151,17 +156,17 @@ public class ApprovalWorkflowService {
      * <strong>Point d'extension principal</strong> (§7) — évalue une action financière contre
      * le seuil configuré.
      *
-     * <p>Appelé par les modules Phase 5 ({@code JournalEntry.post}), 12
+     * <p>Appelé par les modules({@code JournalEntry.post}), 12
      * ({@code SalesInvoice.issue}), 14 ({@code Grant.close-fiscal-year}) avant la transition
      * qui rend l'action définitive.
      *
      * <p>Comportement :
      * <ul>
-     *   <li>Pas de règle active pour ce actionType → {@link EvaluateResult#autoApproved}.</li>
-     *   <li>Montant &le; seuil → {@link EvaluateResult#autoApproved}.</li>
-     *   <li>Montant &gt; seuil → crée une {@link ApprovalRequest} PENDING, notifie les
-     *       approbateurs éligibles (via {@link NotificationChannelPort}), publie un événement
-     *       audit, retourne {@link EvaluateResult#pending} avec le requestId.</li>
+     * <li>Pas de règle active pour ce actionType → {@link EvaluateResult#autoApproved}.</li>
+     * <li>Montant &le; seuil → {@link EvaluateResult#autoApproved}.</li>
+     * <li>Montant &gt; seuil → crée une {@link ApprovalRequest} PENDING, notifie les
+     * approbateurs éligibles (via {@link NotificationChannelPort}), publie un événement
+     * audit, retourne {@link EvaluateResult#pending} avec le requestId.</li>
      * </ul>
      *
      * @param companyId identifiant du tenant
@@ -170,9 +175,9 @@ public class ApprovalWorkflowService {
      * @param resourceId ID de l'entité cible
      * @param amount montant de l'action en devise fonctionnelle
      * @param approverEmails emails des approbateurs éligibles (résolus par l'appelant à
-     *        partir de {@code requiredApproverRoles} et de la liste des utilisateurs de
-     *        l'entreprise — la résolution userId→email n'est pas faite ici pour préserver
-     *        l'indépendance du module vis-à-vis de :auth)
+     * partir de {@code requiredApproverRoles} et de la liste des utilisateurs de
+     * l'entreprise — la résolution userId→email n'est pas faite ici pour préserver
+     * l'indépendance du module vis-à-vis de :auth)
      */
     @Transactional
     public EvaluateResult evaluate(UUID companyId, ApprovalActionType actionType,
@@ -375,7 +380,7 @@ public class ApprovalWorkflowService {
         ApprovalRequest request = requestRepository.findById(requestId)
             .orElseThrow(() -> new NotFoundException("ApprovalRequest", requestId));
         if (!request.getCompanyId().equals(companyId)) {
-            throw new NotFoundException("ApprovalRequest", requestId);  // §3.9 — 404 pas 403
+            throw new NotFoundException("ApprovalRequest", requestId); // §3.9 — 404 pas 403
         }
         return request;
     }

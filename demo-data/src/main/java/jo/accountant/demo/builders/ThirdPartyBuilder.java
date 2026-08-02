@@ -5,8 +5,13 @@ import jo.accountant.thirdparties.entity.ThirdParty;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
 
 /**
- * V8.1 — Builder fluent pour créer des tiers démo (clients, fournisseurs, bailleurs, employés).
- */
+ * Builder fluent pour créer des tiers démo (clients, fournisseurs, bailleurs, employés).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class ThirdPartyBuilder {
 
     private final ThirdParty tp = new ThirdParty();

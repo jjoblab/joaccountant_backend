@@ -8,17 +8,21 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 /**
- * Implémentation réelle de {@link AccountBalanceGuard} (Phase 5).
+ * Implémentation réelle de {@link AccountBalanceGuard}.
  *
- * <p>Remplace {@code DefaultAccountBalanceGuard} de Phase 3 qui retournait toujours false.
+ * <p>Remplace {@code DefaultAccountBalanceGuard} dequi retournait toujours false.
  * Cette implémentation interroge {@link JournalLineRepository} pour calculer le solde
  * d'un compte : somme des débits − somme des crédits.
  *
  * <p>Annotée {@link Primary} pour gagner l'injection quand deux beans
- * {@link AccountBalanceGuard} coexistent temporairement (le défaut de Phase 3 + celui-ci).
+ * {@link AccountBalanceGuard} coexistent temporairement (le défaut de+ celui-ci).
  * En pratique, on supprimera le défaut dans une migration de code ultérieure — pour
- * l'instant on garde les deux pour minimiser le risque de casser Phase 3.
- */
+ * l'instant on garde les deux pour minimiser le risque de casser
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 @Primary
 public class JournalBasedAccountBalanceGuard implements AccountBalanceGuard {
@@ -38,7 +42,7 @@ public class JournalBasedAccountBalanceGuard implements AccountBalanceGuard {
     }
 
     /**
-     * Audit v4.7 §3.2 Finding MOYENNE — FIX : vérifie si le solde est négatif (anormal).
+     *Finding MOYENNE — FIX : vérifie si le solde est négatif (anormal).
      *
      * <p>Un solde négatif signifie : pour un compte ACTIF (normalBalance=DEBIT), le crédit
      * dépasse le débit (ex: client avec un avoir > factures) ; pour un compte PASSIF

@@ -7,6 +7,14 @@ import jo.accountant.company.entity.CompanyModule;
 import jo.accountant.company.entity.ModuleCode;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA CompanyModule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface CompanyModuleRepository extends JpaRepository<CompanyModule, UUID> {
 
     List<CompanyModule> findByCompanyId(UUID companyId);

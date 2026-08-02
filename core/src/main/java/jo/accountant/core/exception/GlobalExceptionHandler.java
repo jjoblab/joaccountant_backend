@@ -20,7 +20,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  *
  * <p>§3.9 : ne JAMAIS renvoyer un 500 générique sur un cas prévisible. Le chemin 500 est réservé
  * aux erreurs réellement inattendues et est loggé au niveau ERROR avec l'id de corrélation.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -68,7 +73,7 @@ public class GlobalExceptionHandler {
             "An unexpected error occurred. Reference: " + correlationId, req);
     }
 
-    // v2.5.2 — NoResourceFoundException (Spring Boot 3.2+) : retourner 404 avec détail
+    // NoResourceFoundException (Spring Boot 3.2+) : retourner 404 avec détail
     // au lieu de laisser tomber dans Exception.class → 500 générique. Permet de
     // distinguer "endpoint n'existe pas" (404) des vraies erreurs serveur (500).
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)

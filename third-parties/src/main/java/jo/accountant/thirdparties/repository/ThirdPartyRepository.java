@@ -15,7 +15,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p><b>pagination Pageable</b> : variantes paginées ({@code Page<>}) disponibles
  * pour les endpoints volumineux. Les variantes {@code List<>} sont conservées pour
  * rétro-compatibilité (appels internes sans pagination).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ThirdPartyRepository extends JpaRepository<ThirdParty, UUID> {
 
  /** Tous les tiers de l'entreprise, triés par nom. */

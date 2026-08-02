@@ -31,10 +31,36 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Invitation utilisateur + gestion des rôles par société (§3.4, §13 Phase 1).
+ * Invitation utilisateur + gestion des rôles par société (§3.4, §13.
  *
  * <p>§3.8 : les paths utilisent {@code /api/v1/companies/{companyId}/users/{...}}.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code PATCH /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/users")
 @Tag(name = "Company.Users", description = "Invitation, role assignment per company")
@@ -48,7 +74,7 @@ public class UserCompanyRoleController {
  this.roleChecker = roleChecker;
  }
 
- @Operation(summary = "Invite a user to this company (V2.6.0 — wizard refonte)",
+ @Operation(summary = "Invite a user to this company (0 — wizard refonte)",
  description = "Sends an invitation email via NotificationChannelPort. The invited user has no access " +
  "until they accept. OWNER role cannot be assigned via invitation. " +
  "V2.6.0 : if the email does not match an existing account, a new user is created on-the-fly " +
@@ -70,7 +96,7 @@ public class UserCompanyRoleController {
  public ResponseEntity<CompanyUserResponse> invite(@CurrentUser UUID callerId,
  @PathVariable UUID companyId,
  @Valid @RequestBody InviteUserRequest req) {
- // V2.6.0 — OWNER > ADMIN, so ADMIN is the minimum role required to invite.
+ // OWNER > ADMIN, so ADMIN is the minimum role required to invite.
  // (Previously required OWNER — relaxed to ADMIN per wizard refonte spec.)
  roleChecker.ensureRole(companyId, "ADMIN");
  UserCompanyRole saved = userCompanyRoleService.inviteUser(
@@ -98,7 +124,7 @@ public class UserCompanyRoleController {
  @Operation(summary = "Accept an invitation to join this company",
  description = "The invited user accepts their own invitation. Before acceptance, the user " +
  "can see the company in their list but cannot access it. " +
- "Audit v4.7 §6.2 : seul l'utilisateur invité peut accepter sa propre invitation.")
+ ": seul l'utilisateur invité peut accepter sa propre invitation.")
  @ApiResponses({
  @ApiResponse(responseCode = "200"),
  @ApiResponse(responseCode = "403", description = "Caller is not the invited user",
@@ -112,7 +138,7 @@ public class UserCompanyRoleController {
  public Map<String, Object> acceptInvitation(@CurrentUser UUID callerId,
  @PathVariable UUID companyId,
  @PathVariable UUID userId) {
- // Audit v4.7 §6.2 BAC critique : callerId était capturé mais jamais comparé
+ //BAC critique : callerId était capturé mais jamais comparé
  // à userId. Sans ce garde-fou, n'importe quel membre de la company pouvait forcer-accepter
  // les invitations des autres utilisateurs.
  if (!callerId.equals(userId)) {
@@ -130,9 +156,9 @@ public class UserCompanyRoleController {
  );
  }
 
- @Operation(summary = "List users of this company with their roles (V2.6.0 — VIEWER allowed)",
+ @Operation(summary = "List users of this company with their roles (0 — VIEWER allowed)",
  description = "Returns the list of users (with email + fullName + role + invitedAt + acceptedAt) " +
- "for this company. V2.6.0 : access relaxed from ADMIN to VIEWER (a viewer can see " +
+ "for this company. : access relaxed from ADMIN to VIEWER (a viewer can see " +
  "who has access, but cannot invite or change roles). Returns " +
  "CompanyUserResponse records.")
  @ApiResponses({
@@ -145,7 +171,7 @@ public class UserCompanyRoleController {
  @GetMapping
  public List<CompanyUserResponse> listUsers(@CurrentUser UUID callerId,
  @PathVariable UUID companyId) {
- // V2.6.0 — VIEWER can list users (read-only); previously required ADMIN.
+ // VIEWER can list users (read-only); previously required ADMIN.
  roleChecker.ensureRole(companyId, "VIEWER");
  return userCompanyRoleService.listForCompanyAsResponse(companyId);
  }

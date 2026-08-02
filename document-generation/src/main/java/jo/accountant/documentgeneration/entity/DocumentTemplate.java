@@ -12,12 +12,17 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Gabarit de document PDF (§8, §13 Phase 11).
+ * Gabarit de document PDF (§8, §13.
  *
  * <p><strong>NOT</strong> a {@link jo.accountant.core.tenant.TenantAwareEntity} —
  * {@code companyId} est nullable (gabarit global par défaut quand null). Le mécanisme
  * TenantAwareEntity exige un companyId non-null, ce qui ne convient pas ici.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "document_template")
 public class DocumentTemplate {

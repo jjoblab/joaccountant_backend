@@ -26,15 +26,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de notifications (§9, §13 Phase 15).
+ * Service de notifications (§9, §13.
  *
- * <p>Devient l'implémentation de référence de {@link NotificationChannelPort} (posé en Phase 1).
+ * <p>Devient l'implémentation de référence de {@link NotificationChannelPort} (posé en.
  * Absorbe l'historique des envois (table {@link Notification}) — le contrat du port ne change pas,
  * seule l'implémentation gagne en richesse (persistance, préférences, canal in-app).
  *
  * <p>Pattern : même que :audit-trail — s'abonne aux événements de domaine, aucun module métier
  * n'appelle :notifications directement (principe 5).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class NotificationsService implements NotificationChannelPort {
 
@@ -60,7 +65,7 @@ public class NotificationsService implements NotificationChannelPort {
  /**
  * Implémentation de {@link NotificationChannelPort#sendEmail}.
  *
- * <p>En Phase 15, cette méthode crée une notification IN_APP + tente l'envoi EMAIL.
+ * <p>En, cette méthode crée une notification IN_APP + tente l'envoi EMAIL.
  * Le destinataire est identifié par son email — on crée une notification avec
  * recipientUserId = null (système) car on n'a pas accès à :auth pour résoudre
  * l'email en userId. L'email est stocké dans le payload.
@@ -144,7 +149,7 @@ public class NotificationsService implements NotificationChannelPort {
  public NotificationResponse markAsRead(UUID companyId, UUID notificationId, UUID userId) {
  Notification notif = notificationRepository.findById(notificationId)
  .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException("Notification", notificationId));
- // Audit v4.7 §6.2 — defense-in-depth : vérifier companyId ET recipientUserId
+ //— defense-in-depth : vérifier companyId ET recipientUserId
  // (avant : seul recipientUserId était vérifié, pas companyId → un user appartenant à
  // plusieurs companies pouvait marquer comme lu une notification d'une autre company)
  if (notif.getCompanyId() != null && !notif.getCompanyId().equals(companyId)) {
@@ -161,7 +166,7 @@ public class NotificationsService implements NotificationChannelPort {
 
  /**
  * @deprecated utiliser {@link #markAsRead(UUID, UUID, UUID)} avec companyId. Conservé pour
- * backward-compat pendant la migration des callers — sera supprimé en v4.8.
+ * backward-compat pendant la migration des callers — sera supprimé .
  */
  @Deprecated
  @Transactional

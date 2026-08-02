@@ -18,7 +18,12 @@ import jo.accountant.bankreconciliation.entity.BankStatementLine;
  * @param closingBalance solde de clôture (tag :62F:), null si absent. Même convention de signe.
  * @param lines lignes de transaction (une par tag :61:), potentiellement enrichies
  * avec les détails du tag :86: suivant dans la description
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record Mt940ParseResult(
  String account,
  BigDecimal openingBalance,

@@ -36,7 +36,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Le runner peut aussi être remplacé par {@code thirteenthMonthJob} Spring Batch
  * (déclenchable via {@code BatchController}) pour les environnements où Spring Batch est
  * disponible — observabilité, reprise sur incident, métriques.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ThirteenthMonthAsyncRunner {
 
@@ -79,7 +84,7 @@ public class ThirteenthMonthAsyncRunner {
         }
 
         try {
-            run.setStatus(PayrollRunStatus.CALCULATED);  // marque IN_PROGRESS virtuellement
+            run.setStatus(PayrollRunStatus.CALCULATED); // marque IN_PROGRESS virtuellement
             // (Pas de statut IN_PROGRESS dans l'enum ; CALCULATED = "calcul en cours ou terminé")
             runRepository.save(run);
 
@@ -119,7 +124,7 @@ public class ThirteenthMonthAsyncRunner {
                 BigDecimal socialDeductions = BigDecimal.ZERO;
                 for (ContributionRule rule : contributionRules) {
                     if ("ITS_HT".equals(rule.getCode()) || "ITS".equals(rule.getCode())) {
-                        continue;  // ITS traité séparément
+                        continue; // ITS traité séparément
                     }
                     if (rule.getContributionType() == ContributionRule.ContributionType.EMPLOYEE
                         || rule.getContributionType() == ContributionRule.ContributionType.EMPLOYEE_AND_EMPLOYER) {
@@ -129,7 +134,7 @@ public class ThirteenthMonthAsyncRunner {
                         try {
                             BigDecimal base = gross;
                             if (rule.getMonthlyCeiling() != null && base.compareTo(rule.getMonthlyCeiling()) > 0) {
-                                base = rule.getMonthlyCeiling();  // CAPPED_GROSS
+                                base = rule.getMonthlyCeiling(); // CAPPED_GROSS
                             }
                             if (base.compareTo(BigDecimal.ZERO) <= 0) continue;
                             BigDecimal amount;
@@ -202,7 +207,7 @@ public class ThirteenthMonthAsyncRunner {
         } catch (Exception e) {
             LOG.error("V8-7 — Échec 13e mois companyId={} runId={} : {}",
                 companyId, runId, e.getMessage(), e);
-            run.setStatus(PayrollRunStatus.DRAFT);  // retour arrière
+            run.setStatus(PayrollRunStatus.DRAFT); // retour arrière
             runRepository.save(run);
         }
     }

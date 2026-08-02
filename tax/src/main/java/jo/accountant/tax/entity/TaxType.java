@@ -21,7 +21,12 @@ package jo.accountant.tax.entity;
  * <p>La valeur par défaut {@link #VAT} préserve la rétro-compatibilité : toutes les règles
  * existantes (créées avant la ) sont interprétées comme de la TVA, ce qui correspond
  * au comportement historique.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum TaxType {
  /** Taxe sur la Valeur Ajoutée (défaut — préserve le comportement historique). */
  VAT,

@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * endpoint REST n'existait. Le mobile AuditLogFragment + AuditLogDetailFragment
  * appelaient GET /audit-trail qui 404. Ce controller corrige le phantom.
  *
- * <p><b>(lot-C-perf-devops) — pagination + filtres</b> : l'ancien endpoint
+ * <p><b>pagination + filtres</b> : l'ancien endpoint
  * chargeait {@code findByCompanyIdOrderByOccurredAtDesc(companyId)} — toutes les
  * lignes d'audit en mémoire → OOM certain sur 100M+ lignes. Désormais, l'endpoint
  * accepte {@code page}, {@code size}, {@code entityType}, {@code actorUserId},
@@ -35,6 +35,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/audit-trail")
 @Tag(name = "Audit Trail", description = "Journal d'audit forensique (lecture seule)")
+/**
+ * Contrôleur REST AuditTrail.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class AuditTrailController {
 
  /** Hard cap sur la taille de page — protège contre les requêtes malveillantes. */
@@ -86,7 +114,7 @@ public class AuditTrailController {
  * @deprecated ancien endpoint non paginé — conservé pour compatibilité, mais
  * délègue désormais à {@link #list(UUID, UUID, int, int, String, UUID, Instant, Instant)}
  * avec une taille de page = {@value #MAX_PAGE_SIZE}. Ne pas utiliser dans le frontend
- * mobile : préférez l'endpoint paginé. Sera supprimé en v4.9.
+ * mobile : préférez l'endpoint paginé. Sera supprimé .
  */
  @Deprecated
  @Operation(summary = "[DEPRECATED] Lister tous les logs d'audit (non paginé)",

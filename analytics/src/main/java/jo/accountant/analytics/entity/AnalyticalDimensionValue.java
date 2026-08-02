@@ -21,6 +21,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "analytical_dimension_value",
     uniqueConstraints = @UniqueConstraint(name = "uc_adv_plan_code",
         columnNames = {"plan_id", "code"}))
+/**
+ * AnalyticalDimensionValue.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class AnalyticalDimensionValue extends TenantAwareEntity {
 
     @Column(name = "plan_id", nullable = false)

@@ -10,7 +10,12 @@ import jo.accountant.accountingengine.entity.JournalEntryStatus;
 
 /**
  * Réponse pour une écriture comptable.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record JournalEntryResponse(
     UUID id,
     UUID companyId,

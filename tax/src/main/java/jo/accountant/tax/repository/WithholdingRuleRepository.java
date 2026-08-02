@@ -5,6 +5,14 @@ import java.util.UUID;
 import jo.accountant.tax.entity.WithholdingRule;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA WithholdingRule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface WithholdingRuleRepository extends JpaRepository<WithholdingRule, UUID> {
  List<WithholdingRule> findByCompanyId(UUID companyId);
 

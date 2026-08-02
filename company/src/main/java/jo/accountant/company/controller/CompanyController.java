@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints Company (§13 Phase 1 — restructurés 2026-07-24).
+ * Endpoints Company (§13restructurés 2026-07-24).
  *
  * <p>§3.8 : les paths utilisent {@code /api/v1/companies/*} (PAS scopés par companyId dans l'URL
  * car la société est la ressource créée/listée).
@@ -39,7 +39,30 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Restructuration : {@code POST /companies} ne porte plus que les champs d'identité
  * (name, country, functionalCurrency). Le reste est saisi via les étapes du wizard (étapes
  * 2, 3, 6 et 7 principalement).
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies")
 @Tag(name = "Company", description = "Company identity, wizard, business-type activation")
@@ -59,7 +82,7 @@ public class CompanyController {
 
     @Operation(summary = "List companies accessible to the current user",
         description = "Retourne toutes les sociétés auxquelles l'utilisateur courant a accès (via UserCompanyRole), " +
-                      "avec leur étape de wizard et champs légaux (siret/vatNumber/nif/address, V53).")
+                      "avec leurwizard et champs légaux (siret/vatNumber/nif/address, V53).")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = CompanyResponse.class),
@@ -119,12 +142,12 @@ public class CompanyController {
     }
 
     @Operation(summary = "Create a new company (wizard step 1 — identity only)",
-        description = "Restructuration 2026-07-24 : seuls name, country, functionalCurrency sont " +
+        description = "seuls name, country, functionalCurrency sont " +
                       "acceptés à ce stade. legalForm, sector, accountingFrameworkId et " +
                       "fiscalYearStartMonth doivent être saisis via les étapes 2, 3 et 6 du wizard. " +
                       "§12 : limited to 3 companies per user by default (configurable). " +
                       "Creator is auto-assigned OWNER role. " +
-                      "V2.6.0 (wizard refonte) : organizationNature et legalForm (nullables) " +
+                      "organizationNature et legalForm (nullables) " +
                       "sont désormais acceptés optionnellement pour saisir ces infos dès la création " +
                       "(defaults FOR_PROFIT / OTHER si null).")
     @ApiResponses({
@@ -138,7 +161,7 @@ public class CompanyController {
                 examples = @ExampleObject(value = """
                     {"type":"https://joaccountant.dev/errors/max_companies_reached","title":"Conflict","status":409,"detail":"You have reached the maximum number of companies (3). Current count: 3. Consider upgrading your subscription to create more.","code":"MAX_COMPANIES_REACHED"}
                     """))),
-        @ApiResponse(responseCode = "422", description = "Invalid input (incl. V2.6.0 organizationNature/legalForm hors domaine)",
+        @ApiResponse(responseCode = "422", description = "Invalid input (incl. organizationNature/legalForm hors domaine)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -200,7 +223,7 @@ public class CompanyController {
         return CompanyService.toResponse(companyService.getCompanyForUser(companyId, userId));
     }
 
-    @Operation(summary = "Update the legal fields of a company (Phase D — Audit v4.7 §4.2)",
+    @Operation(summary = "Update the legal fields of a company",
         description = "Mise à jour partielle des champs légaux (siret, vatNumber, nif, address) " +
                       "persistés par la migration V53. Ces champs restent éditables après " +
                       "wizardCompleted=true car ils relèvent de la conformité réglementaire " +
@@ -259,8 +282,8 @@ public class CompanyController {
     }
 
     @Operation(summary = "Update wizard step 1 (identité — ré-éditable)",
-        description = "V8.2 (audit Z.ai 2026-07-31) — Wizard refondu en 4 étapes. " +
-                      "Étape 1 (identité) est ré-éditable via cet endpoint : corriger " +
+        description = "V8.2 — Wizard refondu en 4 étapes. " +
+                      "(identité) est ré-éditable via cet endpoint : corriger " +
                       "name/country/functionalCurrency sans recréer la société. " +
                       "Les étapes 2 et 3 ont leurs propres endpoints dédiés " +
                       "(PATCH /wizard/2 et PATCH /wizard/3) avec DTO typés.")
@@ -306,7 +329,7 @@ public class CompanyController {
     @Operation(summary = "Update wizard step 3 (comptabilité & fiscalité)",
         description = "V8.2 — Fusionne les anciennes étapes 6 (framework+fiscal), 9 (VAT mode), " +
                       "10 (numbering). Stocke vatMode + numberingPrefixes dans extraAttributes " +
-                      "pour consommation à l'étape 4 (completeWizard). Accepte le DTO typé " +
+                      "pour consommation à l'(completeWizard). Accepte le DTO typé " +
                       "{@code WizardStep3Request} (validation @Valid).")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "Payload typé WizardStep3Request",
@@ -334,8 +357,8 @@ public class CompanyController {
         return CompanyService.toResponse(companyService.applyWizardStep3(companyId, userId, req));
     }
 
-    @Operation(summary = "Complete the wizard (V8.2 — activation atomique)",
-        description = "V8.2 (audit Z.ai 2026-07-31) — Active atomiquement en UNE SEULE transaction : " +
+    @Operation(summary = "Complete the wizard (— activation atomique)",
+        description = "V8.2 — Active atomiquement en UNE SEULE transaction : " +
                       "(1) modules always-on + sectoriels BusinessType + customModules si CUSTOM, " +
                       "(2) plan comptable (ChartOfAccountsService.initialize avec seed sectoriel), " +
                       "(3) exercice fiscal + 12 périodes mensuelles, " +
@@ -364,7 +387,7 @@ public class CompanyController {
     }
 
     @Operation(summary = "Activate a module for this company",
-        description = "Restructuration 2026-07-24 (suite — feature toggle) : permet à un " +
+        description = "(suite — feature toggle) : permet à un " +
                       "administrateur d'activer manuellement un module sectoriel non inclus " +
                       "par défaut dans le mapping BusinessType → modules. Ex. un cabinet " +
                       "comptable qui diversifie dans le retail peut activer INVENTORY sans " +
@@ -380,7 +403,7 @@ public class CompanyController {
     }
 
     @Operation(summary = "Deactivate a module for this company",
-        description = "Restructuration 2026-07-24 (suite — feature toggle) : permet à un " +
+        description = "(suite — feature toggle) : permet à un " +
                       "administrateur de désactiver un module sectoriel non utilisé. " +
                       "Refuse la désactivation d'un module always-on (409 " +
                       "MODULE_CANNOT_BE_DISABLED) — ces modules sont nécessaires au " +

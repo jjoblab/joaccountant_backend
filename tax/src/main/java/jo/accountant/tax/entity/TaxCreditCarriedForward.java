@@ -45,6 +45,14 @@ import java.util.UUID;
 @Table(name = "tax_credit_carried_forward",
  uniqueConstraints = @UniqueConstraint(name = "uc_tax_credit_period",
  columnNames = {"company_id", "tax_type", "period_year", "period_month"}))
+/**
+ * TaxCreditCarriedForward.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class TaxCreditCarriedForward {
 
  @Id

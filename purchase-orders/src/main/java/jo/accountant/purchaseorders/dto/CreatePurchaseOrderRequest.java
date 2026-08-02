@@ -17,7 +17,12 @@ import jo.accountant.purchaseorders.entity.PurchaseOrderStatus;
  * @param currency code ISO 4217 (défaut HTG)
  * @param status statut initial (défaut DRAFT)
  * @param lines lignes de la commande (au moins une)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreatePurchaseOrderRequest(
  @NotNull UUID supplierId,
  @NotBlank String orderNumber,

@@ -19,9 +19,9 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>{@code periodKey} dépend de {@link DocumentSequenceConfig#getResetPolicy()} :
  * <ul>
- *   <li>{@link ResetPolicy#NEVER} → {@code periodKey} reste vide (chaîne vide)</li>
- *   <li>{@link ResetPolicy#YEARLY} → {@code periodKey} = année sur 4 chiffres (ex. {@code "2026"})</li>
- *   <li>{@link ResetPolicy#MONTHLY} → {@code periodKey} = {@code "YYYY-MM"} (ex. {@code "2026-07"})</li>
+ * <li>{@link ResetPolicy#NEVER} → {@code periodKey} reste vide (chaîne vide)</li>
+ * <li>{@link ResetPolicy#YEARLY} → {@code periodKey} = année sur 4 chiffres (ex. {@code "2026"})</li>
+ * <li>{@link ResetPolicy#MONTHLY} → {@code periodKey} = {@code "YYYY-MM"} (ex. {@code "2026-07"})</li>
  * </ul>
  *
  * <p>Lorsque la période change, une NOUVELLE ligne est créée avec le nouveau {@code periodKey}
@@ -44,6 +44,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
         @jakarta.persistence.UniqueConstraint(name = "uc_doc_seq_counter",
             columnNames = {"sequence_config_id", "period_key"})
     })
+/**
+ * DocumentSequenceCounter.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class DocumentSequenceCounter extends TenantAwareEntity {
 
     @Column(name = "sequence_config_id", nullable = false)

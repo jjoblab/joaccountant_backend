@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Listener JPA de défense en profondeur pour l'isolation multi-tenant
- * (audit v4.7 §5.1 moyen terme, alternative à @TenantId Hibernate).
+ *moyen terme, alternative à @TenantId Hibernate).
  *
- * <p><b>Problème</b> : la v4.7 repose sur la discipline manuelle pour l'isolation multi-tenant.
+ * <p><b>Problème</b> : la version précédente repose sur la discipline manuelle pour l'isolation multi-tenant.
  * Chaque méthode de repository doit explicitement prendre un {@code companyId} en paramètre et
  * l'inclure dans la clause WHERE. Un seul développeur qui oublie ce paramètre expose les données
  * de tous les tenants (IDOR). L'audit a identifié 50+ occurrences de {@code findById} non scopés.
@@ -48,7 +48,12 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Activation</b> : automatique via {@code @EntityListeners} sur {@link TenantAwareEntity}.
  * Spring détecte le bean et l'injecte dans le cycle de vie JPA.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class TenantDefenseInDepthListener {
 

@@ -10,6 +10,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Repository JPA Employee.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     List<Employee> findByCompanyIdOrderByHireDateDesc(UUID companyId);
@@ -26,12 +34,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
      *
      * <p>Critères d'éligibilité (Code du Travail Haïti art. 153 + PayrollCalculator) :
      * <ul>
-     *   <li>{@code company_id = :companyId} — tenant.</li>
-     *   <li>{@code status = 'ACTIVE'} — employés actifs à la date du run.</li>
-     *   <li>{@code thirteenth_month_eligible = true} — flag métier explicit (permet d'exclure
-     *       les cadres dirigeants ou les consultants par exemple).</li>
-     *   <li>{@code hire_date <= :hireDateCutoff} — embauché au plus tard le 31/12/{@code year}
-     *       (sinon pas d'ancienneté sur l'année — pas de 13e mois dû).</li>
+     * <li>{@code company_id = :companyId} — tenant.</li>
+     * <li>{@code status = 'ACTIVE'} — employés actifs à la date du run.</li>
+     * <li>{@code thirteenth_month_eligible = true} — flag métier explicit (permet d'exclure
+     * les cadres dirigeants ou les consultants par exemple).</li>
+     * <li>{@code hire_date <= :hireDateCutoff} — embauché au plus tard le 31/12/{@code year}
+     * (sinon pas d'ancienneté sur l'année — pas de 13e mois dû).</li>
      * </ul>
      *
      * <p>Trié par {@code id} ASC pour un ordre stable (utile pour les logs et les tests
@@ -39,8 +47,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
      *
      * <p>Utilisé par :
      * <ul>
-     *   <li>le reader Spring Batch {@code thirteenthMonthReader} de BatchConfig (v8-7 Étape 2) ;</li>
-     *   <li>le runner async ThirteenthMonthAsyncRunner (v8-7 Étape 3, fallback @Async).</li>
+     * <li>le reader Spring Batch {@code thirteenthMonthReader} de BatchConfig (v8-7;</li>
+     * <li>le runner async ThirteenthMonthAsyncRunner (v8-7, fallback @Async).</li>
      * </ul>
      */
     @Query("SELECT e FROM Employee e " +
@@ -55,7 +63,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         @Param("hireDateCutoff") LocalDate hireDateCutoff);
 
     /**
-     * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur le nom du tiers
+     * Task 16 : recherche full-text (case-insensitive) sur le nom du tiers
      * (employé), le matricule, le poste ou le département, pour la recherche globale
      * (Ctrl+K).
      *
@@ -65,15 +73,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
      *
      * <p>Champs recherchés (OR) :
      * <ul>
-     *   <li>{@code third_party.name} — nom de l'employé (ex. « Jean Dupont ») ;</li>
-     *   <li>{@code employee.employee_number} — matricule (ex. « EMP-001 ») ;</li>
-     *   <li>{@code employee.position} — poste (ex. « Comptable senior ») ;</li>
-     *   <li>{@code employee.department} — département (ex. « Comptabilité »).</li>
+     * <li>{@code third_party.name} — nom de l'employé (ex. « Jean Dupont ») ;</li>
+     * <li>{@code employee.employee_number} — matricule (ex. « EMP-001 ») ;</li>
+     * <li>{@code employee.position} — poste (ex. « Comptable senior ») ;</li>
+     * <li>{@code employee.department} — département (ex. « Comptabilité »).</li>
      * </ul>
      *
      * @param companyId identifiant de l'entreprise (isolation multi-tenant)
-     * @param q         texte recherché (case-insensitive, partial match)
-     * @param pageable  pagination (typiquement {@code PageRequest.of(0, 5)})
+     * @param q texte recherché (case-insensitive, partial match)
+     * @param pageable pagination (typiquement {@code PageRequest.of(0, 5)})
      * @return page d'employés triés par date d'embauche décroissante
      */
     @Query(value = """

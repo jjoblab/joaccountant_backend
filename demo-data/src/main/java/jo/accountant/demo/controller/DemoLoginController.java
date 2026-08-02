@@ -30,19 +30,42 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><strong>Sécurité</strong> :
  *
  * <ul>
- *   <li>Ces credentials ne donnent accès qu'aux entreprises {@code is_demo=true}.
- *   <li>Le mot de passe "demo1234" respecte les règles de complexité (≥12 chars) — non, en fait il
- *       ne les respecte pas. Pour autoriser ce mot de passe faible, le seeder crée les users via
- *       {@code AuthService.register(...)} qui exige une politique de mot de passe stricte. En
- *       attendant, ce endpoint accepte le mot de passe "demo1234!" qui satisfait la politique (12
- *       chars, majuscule, minuscule, chiffre, spécial).
- *   <li>Toutes les opérations d'écriture sont auditées (audit-trail).
+ * <li>Ces credentials ne donnent accès qu'aux entreprises {@code is_demo=true}.
+ * <li>Le mot de passe "demo1234" respecte les règles de complexité (≥12 chars) — non, en fait il
+ * ne les respecte pas. Pour autoriser ce mot de passe faible, le seeder crée les users via
+ * {@code AuthService.register(...)} qui exige une politique de mot de passe stricte. En
+ * attendant, ce endpoint accepte le mot de passe "demo1234!" qui satisfait la politique (12
+ * chars, majuscule, minuscule, chiffre, spécial).
+ * <li>Toutes les opérations d'écriture sont auditées (audit-trail).
  * </ul>
  *
  * <p><strong>Important</strong> : ce endpoint est public (pas d'auth). Il ne doit JAMAIS être
  * déployé en production réelle — uniquement pour les environnements de démo publique (Render free
  * tier, démos commerciales).
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/demos")
 @Tag(
@@ -121,7 +144,7 @@ public class DemoLoginController {
   public ResponseEntity<?> demoLogin(@PathVariable String demoCode) {
     var company = demoService.findDemoCompany(demoCode);
     if (company.isEmpty()) {
-      // v2.5.2 — message explicite : la company démo n'existe pas en DB.
+      // message explicite : la company démo n'existe pas en DB.
       // Le seeder n'a probablement pas tourné → appeler POST /api/v1/demos/seed.
       ProblemDetail problem =
           ProblemDetail.forStatusAndDetail(
@@ -153,7 +176,7 @@ public class DemoLoginController {
               null);
       return ResponseEntity.ok(response);
     } catch (jo.accountant.core.exception.ForbiddenException e) {
-      // v2.5.2 — 403 avec détail au lieu de 500 générique. Cause probable :
+      // 403 avec détail au lieu de 500 générique. Cause probable :
       // user démo non créé (seeder incomplet) ou password mismatch.
       LOG.warn("Login démo échoué pour {} (email={}) : {}", demoCode, email, e.getMessage());
       ProblemDetail problem =

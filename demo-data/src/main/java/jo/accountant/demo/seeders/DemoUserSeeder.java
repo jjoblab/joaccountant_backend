@@ -14,14 +14,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * V8.2 — Crée les utilisateurs démo pour les 4 entreprises fictives.
+ * Crée les utilisateurs démo pour les 4 entreprises fictives.
  *
  * <p>Pour chaque entreprise démo, crée un utilisateur OWNER avec un email prédictif
  * et un mot de passe "demo1234" (hashé Argon2id).
  *
  * <p>Ces utilisateurs permettent au endpoint POST /auth/demo-login de générer
  * de vrais JWT tokens pour le mode démo mobile.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class DemoUserSeeder {
 
@@ -76,7 +81,7 @@ public class DemoUserSeeder {
 
     private void ensureOwnerRole(UUID companyId, UUID userId) {
         if (userCompanyRoleRepository.findByUserIdAndCompanyId(userId, companyId).isPresent()) {
-            return;  // déjà existe
+            return; // déjà existe
         }
         UserCompanyRole role = new UserCompanyRole();
         role.setId(UUID.randomUUID());

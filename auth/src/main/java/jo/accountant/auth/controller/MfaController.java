@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Contrôleur REST pour la MFA TOTP (audit v4.7 §6.3 — session 7).
+ * Contrôleur REST pour la MFA TOTP— session 7).
  *
  * <p>Expose les endpoints de setup, vérification et désactivation de la MFA.
  * Le {@link MfaService} (infrastructure complète RFC 6238) était implémenté mais non exposé
@@ -54,12 +54,41 @@ import org.springframework.web.bind.annotation.RestController;
  * </ol>
  *
  * <p><b>Note</b> : le flux login 2-step nécessite une modification de {@code AuthService.login()}
- * et du DTO {@code LoginResponse} — prévu en v4.8. Ce contrôleur expose déjà le CRUD MFA qui
+ * et du DTO {@code LoginResponse} — prévu . Ce contrôleur expose déjà le CRUD MFA qui
  * permet au mobile d'implémenter l'écran de setup + l'écran codes de récupération.
  */
 @RestController
 @RequestMapping("/api/v1/auth/mfa")
 @Tag(name = "MFA", description = "Authentification multi-facteurs TOTP (RFC 6238)")
+/**
+ * Contrôleur REST Mfa.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class MfaController {
 
  private final MfaService mfaService;
@@ -154,7 +183,7 @@ public class MfaController {
 
  @Operation(summary = "Vérifier un code TOTP (pour login 2-step ou opération sensible)",
  description = "Vérifie un code TOTP avec fenêtre de tolérance ±30s. Retourne true si valide. "
- + "Utilisé par le flux login 2-step (à implémenter côté AuthService en v4.8).",
+ + "Utilisé par le flux login 2-step (à implémenter côté AuthService).",
  parameters = @Parameter(name = "code", description = "Code TOTP à 6 chiffres", example = "123456"),
  responses = {
  @ApiResponse(responseCode = "200",

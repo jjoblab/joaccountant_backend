@@ -15,7 +15,12 @@ import jo.accountant.core.tax.WithholdingBracketType;
  * progressif (PAS FR), passer {@code bracketType = PROGRESSIVE} et {@code brackets}
  * (une liste de {@code {threshold, rate}}) ; le {@code rate} reste obligatoire pour la
  * rétro-compatibilité (valeur ignorée en PROGRESSIVE côté calcul).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateWithholdingRuleRequest(
  @NotBlank String code,
  @NotBlank String label,

@@ -31,29 +31,34 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Responsabilités :
  * <ul>
- *   <li>Création / mise à jour des configurations de séquence (une par
- *       (companyId, documentType, scopeKey))</li>
- *   <li>Génération atomique de numéros via verrou pessimiste
- *       ({@link DocumentSequenceCounterRepository#findBySequenceConfigIdAndPeriodKeyForUpdate})</li>
- *   <li>Aperçu non consommateur pour les UI ({@link #previewNextNumber})</li>
+ * <li>Création / mise à jour des configurations de séquence (une par
+ * (companyId, documentType, scopeKey))</li>
+ * <li>Génération atomique de numéros via verrou pessimiste
+ * ({@link DocumentSequenceCounterRepository#findBySequenceConfigIdAndPeriodKeyForUpdate})</li>
+ * <li>Aperçu non consommateur pour les UI ({@link #previewNextNumber})</li>
  * </ul>
  *
  * <p>Règles métier (§6, chacune testée par un test qui échouerait si la règle était retirée) :
  * <ol>
- *   <li><strong>Atomicité</strong> — deux créations concurrentes ne produisent jamais le même
- *       numéro. Testée par 50 threads réellement parallèles, pas simulés séquentiellement.</li>
- *   <li><strong>Aucune réutilisation</strong> — un document annulé conserve son numéro. Cette
- *       règle s'applique côté consommateurs (Phase 5, 12, 14), pas ici ; ce service ne fait
- *       qu'émettre des numéros strictement croissants.</li>
- *   <li><strong>Format configurable</strong> — prefix + année optionnelle + numéro paddé.</li>
- *   <li><strong>Aperçu non consommateur</strong> — {@link #previewNextNumber} ne touche jamais
- *       au compteur, ne pose aucun verrou.</li>
+ * <li><strong>Atomicité</strong> — deux créations concurrentes ne produisent jamais le même
+ * numéro. Testée par 50 threads réellement parallèles, pas simulés séquentiellement.</li>
+ * <li><strong>Aucune réutilisation</strong> — un document annulé conserve son numéro. Cette
+ * règle s'applique côté consommateurs, 12, 14), pas ici ; ce service ne fait
+ * qu'émettre des numéros strictement croissants.</li>
+ * <li><strong>Format configurable</strong> — prefix + année optionnelle + numéro paddé.</li>
+ * <li><strong>Aperçu non consommateur</strong> — {@link #previewNextNumber} ne touche jamais
+ * au compteur, ne pose aucun verrou.</li>
  * </ol>
  *
- * <p>Rappel (§6) : ce service est appelé par les modules Phase 5 ({@code JournalEntry.post}),
+ * <p>Rappel (§6) : ce service est appelé par les modules({@code JournalEntry.post}),
  * 12 ({@code SalesInvoice.issue}), 14 ({@code DonationReceipt.create}) au moment précis de la
  * transition qui rend le document définitif — JAMAIS à l'état brouillon.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class DocumentNumberingService {
 
@@ -75,8 +80,8 @@ public class DocumentNumberingService {
      * Crée une nouvelle configuration de séquence.
      *
      * @throws ConflictException si une config existe déjà pour le même (documentType, scopeKey)
-     *         dans le tenant courant — pas d'édition soft (cf. javadoc de
-     *         {@link jo.accountant.documentnumbering.dto.CreateSequenceRequest})
+     * dans le tenant courant — pas d'édition soft (cf. javadoc de
+     * {@link jo.accountant.documentnumbering.dto.CreateSequenceRequest})
      */
     @Transactional
     public DocumentSequenceConfig createSequence(UUID companyId,
@@ -97,7 +102,7 @@ public class DocumentNumberingService {
         }
 
         DocumentSequenceConfig config = new DocumentSequenceConfig();
-        config.setCompanyId(companyId);   // explicite —TenantAwareEntityListener ne fait que compléter si null
+        config.setCompanyId(companyId); // explicite —TenantAwareEntityListener ne fait que compléter si null
         config.setDocumentType(documentType);
         config.setScopeKey(normalizedScope);
         config.setPrefix(prefix.trim().toUpperCase());
@@ -164,16 +169,16 @@ public class DocumentNumberingService {
      * NOUVELLE ligne de compteur est créée avec {@code lastValue = 1}. L'ancienne ligne reste
      * pour audit (règle "aucune réutilisation de numéro").
      *
-     * <p>Doit être appelé par les modules Phase 5/12/14 au moment exact de la transition qui
+     * <p>Doit être appelé par les modules/12/14 au moment exact de la transition qui
      * rend le document définitif — JAMAIS pour un brouillon.
      *
-     * @param companyId   identifiant du tenant (depuis TenantContext, mais passé explicitement
-     *                    pour rendre l'API auto-documentée)
+     * @param companyId identifiant du tenant (depuis TenantContext, mais passé explicitement
+     * pour rendre l'API auto-documentée)
      * @param documentType type de document
-     * @param scopeKey    clé de portée (ex. code journal)
-     * @param asOfDate    date de référence pour le calcul du periodKey (typiquement la date du
-     *                    document, pas {@code now()} — un écriture datée du 31/12 doit prendre
-     *                    son numéro dans la séquence de cette date, pas dans celle du jour de saisie)
+     * @param scopeKey clé de portée (ex. code journal)
+     * @param asOfDate date de référence pour le calcul du periodKey (typiquement la date du
+     * document, pas {@code now()} — un écriture datée du 31/12 doit prendre
+     * son numéro dans la séquence de cette date, pas dans celle du jour de saisie)
      * @return le numéro émis et sa valeur numérique
      */
     @Transactional
@@ -254,9 +259,9 @@ public class DocumentNumberingService {
      * Calcule la clé de période en fonction de la {@code resetPolicy} et de la date de référence.
      *
      * <ul>
-     *   <li>{@link ResetPolicy#NEVER} → {@code ""} (chaîne vide)</li>
-     *   <li>{@link ResetPolicy#YEARLY} → {@code "2026"}</li>
-     *   <li>{@link ResetPolicy#MONTHLY} → {@code "2026-07"}</li>
+     * <li>{@link ResetPolicy#NEVER} → {@code ""} (chaîne vide)</li>
+     * <li>{@link ResetPolicy#YEARLY} → {@code "2026"}</li>
+     * <li>{@link ResetPolicy#MONTHLY} → {@code "2026-07"}</li>
      * </ul>
      */
     String periodKeyFor(ResetPolicy policy, Instant asOfDate) {

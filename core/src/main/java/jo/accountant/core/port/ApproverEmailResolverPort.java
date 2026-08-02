@@ -11,7 +11,12 @@ import java.util.UUID;
  *
  * <p>Implémenté dans :auth par {@code UserEmailResolver} qui a accès à UserRepository
  * et UserCompanyRoleRepository.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ApproverEmailResolverPort {
 
     /**

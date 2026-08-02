@@ -24,11 +24,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * rejetée avec 404 (§3.4 : vérifier rôle + appartenance company au niveau méthode, ici au niveau
  * requête).
  *
- * <p><b>V8.3 définitive</b> : le JWT est rafraîchi côté serveur au moment de la création de
+ * <p>le JWT est rafraîchi côté serveur au moment de la création de
  * company ({@code POST /companies} retourne un nouveau JWT avec le claim {@code companies} à
  * jour). Le client mobile stocke ce nouveau JWT — pas besoin de fall-back DB ni de re-login.
  * Le claim JWT fait foi : si la company n'y figure pas, c'est que l'utilisateur n'y a pas accès.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class TenantClaimFilter extends OncePerRequestFilter {
 
     private static final String COMPANY_PATH_PREFIX = "/api/v1/companies/";
@@ -51,7 +56,7 @@ public class TenantClaimFilter extends OncePerRequestFilter {
             UUID pathCompanyId = extractCompanyIdFromPath(request.getRequestURI());
             if (pathCompanyId != null) {
                 if (!userHasAccessToCompany(jwt, pathCompanyId)) {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);  // 404 pas 403 (§3.9)
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND); // 404 pas 403 (§3.9)
                     response.setContentType("application/problem+json");
                     response.getWriter().write("""
                         {"type":"https://joaccountant.dev/errors/not_found","title":"Not Found","status":404,"detail":"Resource not found","code":"NOT_FOUND"}""");

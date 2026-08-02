@@ -5,6 +5,14 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * TimesheetEntryResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record TimesheetEntryResponse(
     UUID id,
     UUID companyId,

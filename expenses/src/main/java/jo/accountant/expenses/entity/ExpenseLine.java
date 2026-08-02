@@ -13,7 +13,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Chaque ligne référence un compte de charge cible (optionnel — fallback sur un compte
  * de charge générique). La catégorie (`TRAVEL`/`MEALS`/`SUPPLIES`/`OTHER`) est purement
  * descriptive et n'affecte pas la comptabilisation (qui se fait via `expenseAccountId`).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "expense_line")
 public class ExpenseLine extends TenantAwareEntity {

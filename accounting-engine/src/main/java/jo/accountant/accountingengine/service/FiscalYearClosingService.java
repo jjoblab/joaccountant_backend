@@ -50,8 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <ul>
  * <li>{@link #closeFiscalYear(UUID, UUID)} — génère et poste les écritures de clôture (résultat
  * net → capitaux propres), vérifie qu'il n'y a pas d'écritures DRAFT/PENDING_APPROVAL
- * (audit v4.7 §3.1 ), génère l'écriture d'ouverture N+1 (audit v4.7 §3.1
- * ), verrouille l'exercice et ses périodes, et auto-switch l'exercice actif sur
+ *, génère l'écriture d'ouverture N+1* ), verrouille l'exercice et ses périodes, et auto-switch l'exercice actif sur
  * le prochain OPEN.</li>
  * <li>{@link #generateOpeningEntryNextYear(UUID, FiscalYear, List, Map, String)} — reporte les
  * soldes des comptes de bilan (ACTIF/PASSIF/CAPITAUX_PROPRES) vers la première période OPEN
@@ -76,7 +75,10 @@ import org.springframework.transaction.annotation.Transactional;
  * conservée comme façade qui délègue à {@link #closeFiscalYear(UUID, UUID)}. Les tests
  * d'intégration existants (ActiveFiscalYearIntegrationTest, AccountingEngineIntegrationTest)
  * appellent toujours {@code accountingService.closeFiscalYear(...)} — signature inchangée.
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Service
 public class FiscalYearClosingService {
 
@@ -130,8 +132,7 @@ public class FiscalYearClosingService {
  * <li>Poste l'écriture avec sourceModule=MANUAL et description "Clôture exercice {year}".</li>
  * </ol>
  *
- * <p>Note : les comptes de produits/charges ne sont pas réellement "soldés" en Phase 5 —
- * cette méthode génère une écriture de résultat qui équilibre le bilan. Les comptes
+ * <p>Note : les comptes de produits/charges ne sont pas réellement "soldés" en* cette méthode génère une écriture de résultat qui équilibre le bilan. Les comptes
  * de produits/charges conservent leur solde pour l'historique. Le bilan devient équilibré
  * car le résultat net est intégré aux capitaux propres via le compte de report à nouveau.
  *
@@ -141,7 +142,7 @@ public class FiscalYearClosingService {
  public JournalEntryResponse closeFiscalYear(UUID companyId, UUID fiscalYearId) {
  FiscalYear fy = loadFiscalYear(companyId, fiscalYearId);
 
- // ── Audit v4.7 §3.1 FIX : vérifier qu'il n'y a pas d'écritures DRAFT ou
+ // ──FIX : vérifier qu'il n'y a pas d'écritures DRAFT ou
  // PENDING_APPROVAL avant de clôturer. Sans ce check, ces écritures restent bloquées à vie
  // (la période sera LOCKED après clôture).
  List<UUID> periodIds = fiscalPeriodRepository.findByFiscalYearIdOrderByStartDateAsc(fy.getId())
@@ -194,7 +195,7 @@ public class FiscalYearClosingService {
  "Créer un compte de capitaux propres (idéalement marqué taxMappingCode=\"FISCAL_RESULT\") " +
  "ou initialiser le plan comptable de l'entreprise."));
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ //getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  // Écriture de clôture : on solde les produits et charges contre le compte de résultat
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
@@ -211,7 +212,7 @@ public class FiscalYearClosingService {
  // créer une ligne inverse pour le solder, contrepartie sur le compte de résultat
  List<LineDto> lines = new ArrayList<>();
  Map<String, BigDecimal> balancesByAccount = new HashMap<>();
- // Audit v4.7 §3.1 — pré-agrégation par accountCode (au lieu de findById dans la boucle)
+ //— pré-agrégation par accountCode (au lieu de findById dans la boucle)
  Map<UUID, Account> accountCache = new HashMap<>();
  for (JournalLine line : postedLines) {
  Account account = accountCache.computeIfAbsent(line.getAccountId(),
@@ -259,7 +260,7 @@ public class FiscalYearClosingService {
  JournalEntryResponse posted = accountingEngineService.postJournalEntry(
  companyId, entry.id(), List.of());
 
- // ── Audit v4.7 §3.1 FIX CRITIQUE : génération de l'écriture d'ouverture N+1.
+ // ──FIX CRITIQUE : génération de l'écriture d'ouverture N+1.
  // Sans cette écriture, la balance N+1 commence à zéro — les soldes clients/fournisseurs/
  // banque/trésorerie de N ne sont pas reportés. C'est un défaut majeur pour SYSCOHADA, PCG
  // et IFRS qui exigent des à-nouveau.
@@ -275,13 +276,13 @@ public class FiscalYearClosingService {
  fiscalPeriodRepository.save(p);
  });
 
- // ── Audit v4.7 §3.1 FIX : log warning si snapshot non créé. La création
+ // ──FIX : log warning si snapshot non créé. La création
  // effective du snapshot figé doit être déléguée à :financial-statements (qui n'est pas
  // accessible depuis :accounting-engine pour éviter le cycle de dépendance). L'appelant
  // (controller) doit appeler FinancialStatementsService.createSnapshot après closeFiscalYear.
  LOG.warn("closeFiscalYear terminé pour FY {} (company {}). IMPORTANT : l'appelant doit créer "
  + "les snapshots figés (bilan + CR) via FinancialStatementsService.createSnapshot pour "
- + "préserver la piste d'audit (audit v4.7 §3.1 ).", fiscalYearId, companyId);
+ + "préserver la piste d'audit.", fiscalYearId, companyId);
 
  // Auto-switch: if the closed FY was the active one, switch to the latest OPEN.
  try {
@@ -316,7 +317,7 @@ public class FiscalYearClosingService {
  * (classes 1-5 = ACTIF, PASSIF, CAPITAUX_PROPRES) de l'exercice clos vers la première
  * période OPEN de l'exercice suivant.
  *
- * <p><b>Audit v4.7 §3.1 FIX CRITIQUE</b> : sans cette écriture, la balance
+ * <p><b>sans cette écriture, la balance
  * N+1 commence à zéro — les soldes clients/fournisseurs/banque/trésorerie de N ne sont
  * pas reportés. C'est un défaut majeur pour SYSCOHADA, PCG et IFRS qui exigent des
  * à-nouveau (opening entries).
@@ -368,7 +369,7 @@ public class FiscalYearClosingService {
  if (nextFy == null) {
  LOG.warn("Aucun exercice OPEN avec startDate > {} trouvé pour company {} — écriture "
  + "d'ouverture N+1 non générée. L'utilisateur doit créer un exercice N+1 puis "
- + "générer manuellement l'écriture d'ouverture (audit v4.7 §3.1 ).",
+ + "générer manuellement l'écriture d'ouverture.",
  closedFy.getEndDate(), companyId);
  return;
  }

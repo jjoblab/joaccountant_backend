@@ -10,8 +10,13 @@ import jo.accountant.company.entity.Sector;
 import jo.accountant.company.entity.TaxExemptionStatus;
 
 /**
- * V8.1 — Builder fluent pour créer des entreprises démo.
- */
+ * Builder fluent pour créer des entreprises démo.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class CompanyBuilder {
 
     private final Company company = new Company();

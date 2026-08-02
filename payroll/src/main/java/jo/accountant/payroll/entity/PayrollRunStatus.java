@@ -21,7 +21,12 @@ package jo.accountant.payroll.entity;
  * génération du fichier de virement n'est pas dans le scope MVP).</li>
  * <li>{@link #CLOSED} — clôturée, plus modifiable.</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum PayrollRunStatus {
  DRAFT,
  IN_PROGRESS,

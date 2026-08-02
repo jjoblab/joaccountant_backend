@@ -24,7 +24,12 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>{@code netPay = grossSalary - sum(deductions.amount)}. Les charges patronales ne
  * impactent pas le net — elles sont supportées par l'employeur.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "payslip")
 public class Payslip extends TenantAwareEntity {

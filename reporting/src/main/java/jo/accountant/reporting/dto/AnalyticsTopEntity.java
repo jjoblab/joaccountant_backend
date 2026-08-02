@@ -15,7 +15,12 @@ import java.util.UUID;
  * @param name nom du tiers (ThirdParty.name)
  * @param amount somme des montants TTC des factures du tiers
  * @param rank rang (1-based, 1 = plus gros volume)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AnalyticsTopEntity(
  UUID id,
  String name,

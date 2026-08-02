@@ -38,7 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * V8.1 — Service central du module Démos.
+ * Service central du module Démos.
  *
  * <p>V9 — KPIs calculés depuis les <em>vraies écritures comptables</em> agrégées par compte via
  * {@link JournalLineRepository#aggregateByAccountBetweenDates(UUID, LocalDate, LocalDate)}. Les
@@ -48,11 +48,16 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Fallback estimé</b> : si l'agrégation SQL retourne une liste vide (seeder pas encore
  * exécuté, ou écritures DRAFT non postées), on retombe sur les valeurs estimées historiques de la
- * V8.1 (CA = 6M HTG pour BOUTIK_LAKAY, etc.) afin de ne jamais casser les dashboards publics.
+ * (CA = 6M HTG pour BOUTIK_LAKAY, etc.) afin de ne jamais casser les dashboards publics.
  *
  * <p>Expose les 4 entreprises démo et leurs KPIs via les endpoints publics GET /api/v1/demos/**
  * (lecture seule, sans auth).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 @Transactional(readOnly = true)
 public class DemoService {
@@ -98,7 +103,7 @@ public class DemoService {
   }
 
   /**
-   * v2.5.2 — Compte les entreprises démo présentes en DB. Utilisé par
+   * Compte les entreprises démo présentes en DB. Utilisé par
    * {@code GET /api/v1/demos/seed/status} pour vérifier si le seed automatique
    * a tourné au startup.
    */
@@ -108,7 +113,7 @@ public class DemoService {
         .count();
   }
 
-  /** v2.5.2 — Nombre total d'entreprises démo attendues (configurées via seeders). */
+  /** — Nombre total d'entreprises démo attendues (configurées via seeders). */
   public int expectedDemoCount() {
     return seeders.size();
   }
@@ -210,15 +215,15 @@ public class DemoService {
    * <p>Stratégie de requêtes SQL (4 requêtes max — vs 12 requêtes naïves par mois) :
    *
    * <ol>
-   *   <li>{@code aggregateByAccountBetweenDates(companyId, fyStart, fyEnd)} — agrégats annuels par
-   *       compte (pour CA / charges / netResult).
-   *   <li>{@code accountRepository.findByCompanyIdOrderByCode(companyId)} — pré-charge tous les
-   *       comptes (Map code→reportingClass) pour éviter 1 requête par agrégat.
-   *   <li>{@code aggregateByAccountUpToDate(companyId, fyEnd)} — solde cumulé trésorerie à la
-   *       clôture du FY (cashPosition).
-   *   <li>{@code findAllPostedBetweenDates(companyId, fyStart, fyEnd)} — toutes les lignes du FY,
-   *       groupées en Java par {@code entryDate.monthValue} pour les 12 MonthlyAmount (évite 12
-   *       requêtes SQL).
+   * <li>{@code aggregateByAccountBetweenDates(companyId, fyStart, fyEnd)} — agrégats annuels par
+   * compte (pour CA / charges / netResult).
+   * <li>{@code accountRepository.findByCompanyIdOrderByCode(companyId)} — pré-charge tous les
+   * comptes (Map code→reportingClass) pour éviter 1 requête par agrégat.
+   * <li>{@code aggregateByAccountUpToDate(companyId, fyEnd)} — solde cumulé trésorerie à la
+   * clôture du FY (cashPosition).
+   * <li>{@code findAllPostedBetweenDates(companyId, fyStart, fyEnd)} — toutes les lignes du FY,
+   * groupées en Java par {@code entryDate.monthValue} pour les 12 MonthlyAmount (évite 12
+   * requêtes SQL).
    * </ol>
    */
   private DemoDashboard buildRealDashboard(
@@ -260,7 +265,7 @@ public class DemoService {
     BigDecimal incomeTax = computeIncomeTax(company, netResult);
 
     // --- cashPosition : solde cumulé des comptes ACTIF de trésorerie (code commence par "5")
-    //     à la date de clôture du FY (521 Banque, 530 Caisse, etc.) ---
+    // à la date de clôture du FY (521 Banque, 530 Caisse, etc.) ---
     BigDecimal cashPosition;
     try {
       List<AccountAggregate> upToFyEnd =
@@ -377,7 +382,7 @@ public class DemoService {
           e.getMessage());
     }
     if (recentTxs.isEmpty()) {
-      // Fallback : 2 transactions placeholder (déjà présente en V8.1)
+      // Fallback : 2 transactions placeholder (déjà présente)
       BigDecimal monthlyRev = totalRevenue.divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
       BigDecimal monthlyExp = totalExpenses.divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
       recentTxs =
@@ -448,9 +453,9 @@ public class DemoService {
    * Fiscal Haïti art. 195) :
    *
    * <ul>
-   *   <li>{@code STANDARD} — IS 30% sur le résultat fiscal.
-   *   <li>{@code FREE_ZONE} — IS réduit 15% (zone franche CODEVI/SONAPI).
-   *   <li>{@code NGO_EXEMPT} — IS 0% (ONG agréée).
+   * <li>{@code STANDARD} — IS 30% sur le résultat fiscal.
+   * <li>{@code FREE_ZONE} — IS réduit 15% (zone franche CODEVI/SONAPI).
+   * <li>{@code NGO_EXEMPT} — IS 0% (ONG agréée).
    * </ul>
    *
    * <p>Si le résultat est négatif ou nul, l'IS est de 0 (pas de minimum IS — simplification démo).
@@ -505,7 +510,7 @@ public class DemoService {
   }
 
   // ==========================================================================
-  // Fallback estimé (V8.1) — utilisé si aucun agrégat réel n'est disponible
+  // Fallback estimé — utilisé si aucun agrégat réel n'est disponible
   // ==========================================================================
 
   private DemoDashboard buildEstimatedDashboard(CompanySeeder seeder, Company company, String fy) {

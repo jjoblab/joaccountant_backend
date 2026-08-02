@@ -28,9 +28,14 @@ import jo.accountant.core.framework.ReportingClass;
  * @param reportingSubcategory sous-catégorie universelle (nullable pour les comptes de regroupement)
  * @param normalBalance sens normal du solde (requis)
  * @param isCollective true si compte collectif (compte de regroupement de tiers)
- * @param taxMappingCode code de règle fiscale (Phase 16, optionnel)
- * @param requiresAnalyticalTagPlanIds liste d'IDs de plans analytiques obligatoires (Phase 5, optionnel)
- */
+ * @param taxMappingCode code de règle fiscale, optionnel)
+ * @param requiresAnalyticalTagPlanIds liste d'IDs de plans analytiques obligatoires, optionnel)
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateChildRequest(
     @Size(max = 30) String code,
     @NotBlank @Size(max = 200) String label,

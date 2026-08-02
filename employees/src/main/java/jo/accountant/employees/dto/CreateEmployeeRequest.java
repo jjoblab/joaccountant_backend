@@ -35,13 +35,18 @@ import jo.accountant.employees.entity.ContractType;
  * @param bankAccountNumber Numéro de compte bancaire pour virement (nullable)
  * @param overtimeHours25 Heures supplémentaires majorées à +25% (, défaut 0)
  * @param overtimeHours50 Heures supplémentaires majorées à +50% (, défaut 0)
- * @param overtimeHours100 Heures supplémentaires majorées à +100% (lot-B, Haïti >56h/dimanche/férié, défaut 0)
+ * @param overtimeHours100 Heures supplémentaires majorées à +100%, Haïti >56h/dimanche/férié, défaut 0)
  * @param absenceDays Jours d'absence non rémunérés sur la période (, défaut 0)
  * @param paidLeaveDays Jours de congés payés pris sur la période (, défaut 0)
- * @param cnssNumber Matricule CNSS Haïti (10 chiffres, lot-B, nullable)
- * @param ofatmaSectorCode Code secteur OFATMA pour taux accidents variable 0.5-6% (lot-B, nullable)
+ * @param cnssNumber Matricule CNSS Haïti (10 chiffres,, nullable)
+ * @param ofatmaSectorCode Code secteur OFATMA pour taux accidents variable 0.5-6%, nullable)
  * @param thirteenthMonthEligible Éligibilité 13ᵉ mois (Code Travail art. 153, défaut true si pays=HT)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateEmployeeRequest(
  UUID thirdPartyId,
  String thirdPartyName,

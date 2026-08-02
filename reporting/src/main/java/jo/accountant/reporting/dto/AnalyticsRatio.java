@@ -19,7 +19,12 @@ package jo.accountant.reporting.dto;
  * @param value valeur numérique arrondie à 2 décimales
  * @param formula formule de calcul (ex. "Actif courant ÷ Passif courant")
  * @param interpretation verdict localisé (ex. "Bonne liquidité (≥ 1,5)")
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AnalyticsRatio(
  String label,
  double value,

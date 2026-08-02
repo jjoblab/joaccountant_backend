@@ -53,7 +53,12 @@ import jo.accountant.core.framework.ReportingClass;
  *
  * @see SectorAccountTemplate
  * @see jo.accountant.core.framework.ReportingClass#OTHER
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class PcnHaitiAccountTemplate {
 
  private PcnHaitiAccountTemplate() {}

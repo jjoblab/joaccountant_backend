@@ -5,6 +5,14 @@ import java.util.UUID;
 import jo.accountant.notifications.entity.AlertType;
 import java.math.BigDecimal;
 
+/**
+ * CreateAlertRuleRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateAlertRuleRequest(
     @NotNull AlertType type,
     BigDecimal thresholdValue,

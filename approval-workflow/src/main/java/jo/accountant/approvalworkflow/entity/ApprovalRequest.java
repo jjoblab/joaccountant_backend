@@ -17,18 +17,18 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Cycle de vie :
  * <ol>
- *   <li>{@link ApprovalStatus#PENDING} à la création (par {@code evaluate}).</li>
- *   <li>Puis transition vers un état terminal :
- *     <ul>
- *       <li>{@link ApprovalStatus#APPROVED} — l'action cible peut être finalisée par le
- *           consommateur. La décision ne peut pas être prise par le demandeur lui-même
- *           (règle des quatre yeux, §7).</li>
- *       <li>{@link ApprovalStatus#REJECTED} — l'action cible revient à {@code DRAFT} côté
- *           consommateur, avec motif horodaté.</li>
- *       <li>{@link ApprovalStatus#CANCELLED} — typiquement par le demandeur lui-même avant
- *           décision. L'action cible revient aussi à {@code DRAFT}.</li>
- *     </ul>
- *   </li>
+ * <li>{@link ApprovalStatus#PENDING} à la création (par {@code evaluate}).</li>
+ * <li>Puis transition vers un état terminal :
+ * <ul>
+ * <li>{@link ApprovalStatus#APPROVED} — l'action cible peut être finalisée par le
+ * consommateur. La décision ne peut pas être prise par le demandeur lui-même
+ * (règle des quatre yeux, §7).</li>
+ * <li>{@link ApprovalStatus#REJECTED} — l'action cible revient à {@code DRAFT} côté
+ * consommateur, avec motif horodaté.</li>
+ * <li>{@link ApprovalStatus#CANCELLED} — typiquement par le demandeur lui-même avant
+ * décision. L'action cible revient aussi à {@code DRAFT}.</li>
+ * </ul>
+ * </li>
  * </ol>
  *
  * <p>Une fois dans un état terminal, la demande est immuable. Toute tentative de re-décision
@@ -36,26 +36,31 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Champs :
  * <ul>
- *   <li>{@code actionType} — type d'action (ex. {@link ApprovalActionType#JOURNAL_ENTRY_POST}).
- *       À comparer avec {@link ApprovalRule#getActionType()}.</li>
- *   <li>{@code resourceType} + {@code resourceId} — identifie l'entité cible côté
- *       consommateur (ex. {@code "JournalEntry"} + l'UUID de l'écriture). Le consommateur
- *       est responsable de la transition d'état de cette entité en fonction du statut de la
- *       demande.</li>
- *   <li>{@code amount} — montant de l'action en devise fonctionnelle, tel que passé à
- *       {@code evaluate}. Conservé pour audit.</li>
- *   <li>{@code requestedBy} — auteur de la demande (l'utilisateur qui a déclenché l'action).</li>
- *   <li>{@code decidedBy} — décideur (null tant que {@code status = PENDING}). Doit être
- *       différent de {@code requestedBy} pour {@code APPROVED} et {@code REJECTED}
- *       (règle des quatre yeux). Peut être égal à {@code requestedBy} pour
- *       {@code CANCELLED} (le demandeur annule sa propre demande).</li>
- *   <li>{@code comment} — motif de la décision (rejet, annulation). Null ou vide pour
- *       approbation simple.</li>
+ * <li>{@code actionType} — type d'action (ex. {@link ApprovalActionType#JOURNAL_ENTRY_POST}).
+ * À comparer avec {@link ApprovalRule#getActionType()}.</li>
+ * <li>{@code resourceType} + {@code resourceId} — identifie l'entité cible côté
+ * consommateur (ex. {@code "JournalEntry"} + l'UUID de l'écriture). Le consommateur
+ * est responsable de la transition d'état de cette entité en fonction du statut de la
+ * demande.</li>
+ * <li>{@code amount} — montant de l'action en devise fonctionnelle, tel que passé à
+ * {@code evaluate}. Conservé pour audit.</li>
+ * <li>{@code requestedBy} — auteur de la demande (l'utilisateur qui a déclenché l'action).</li>
+ * <li>{@code decidedBy} — décideur (null tant que {@code status = PENDING}). Doit être
+ * différent de {@code requestedBy} pour {@code APPROVED} et {@code REJECTED}
+ * (règle des quatre yeux). Peut être égal à {@code requestedBy} pour
+ * {@code CANCELLED} (le demandeur annule sa propre demande).</li>
+ * <li>{@code comment} — motif de la décision (rejet, annulation). Null ou vide pour
+ * approbation simple.</li>
  * </ul>
  *
  * <p>Entité {@link TenantAwareEntity} : le {@code companyId} est injecté depuis
  * {@link jo.accountant.core.tenant.TenantContext}, jamais accepté dans le corps d'une requête.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "approval_request")
 public class ApprovalRequest extends TenantAwareEntity {

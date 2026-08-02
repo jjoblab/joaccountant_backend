@@ -18,7 +18,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>PR1-bis (fix) : peuple aussi la MDC (Mapped Diagnostic Context) de SLF4J pour que les logs
  * structurés incluent automatiquement {@code correlationId}, {@code userId}, {@code companyId}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TenantContextFilter extends OncePerRequestFilter {
@@ -33,7 +38,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
             correlationId = UUID.randomUUID().toString();
         }
         TenantContext.setCorrelationId(correlationId);
-        MDC.put("correlationId", correlationId);  // PR1-bis fix
+        MDC.put("correlationId", correlationId); // PR1-bis fix
         response.setHeader(CORRELATION_HEADER, correlationId);
 
         try {

@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>Exemple : 99.99 HT × TVA 10% = 9.999
  * <ul>
- *   <li>HTG (2 décimales) : TVA = 10.00</li>
- *   <li>XOF (0 décimales) : TVA = 10 (entier)</li>
- *   <li>USD (2 décimales) : TVA = 10.00</li>
+ * <li>HTG (2 décimales) : TVA = 10.00</li>
+ * <li>XOF (0 décimales) : TVA = 10 (entier)</li>
+ * <li>USD (2 décimales) : TVA = 10.00</li>
  * </ul>
  *
  * <p>Le cache interne évite de recharger l'entité {@link Currency} à chaque appel.
@@ -32,9 +32,14 @@ import org.springframework.stereotype.Component;
  * BigDecimal lineHt = quantity.multiply(unitPrice);
  * lineHt = roundingService.round(currencyCode, lineHt);
  * BigDecimal lineTax = roundingService.round(currencyCode,
- *     lineHt.multiply(taxRate).divide(HUNDRED, 6, RoundingMode.HALF_UP));
+ * lineHt.multiply(taxRate).divide(HUNDRED, 6, RoundingMode.HALF_UP));
  * }</pre>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class CurrencyRoundingService {
 

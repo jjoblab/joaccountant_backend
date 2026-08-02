@@ -12,8 +12,13 @@ import java.util.UUID;
  * @param disposalDate date de cession
  * @param disposalAmount prix de cession HT (en devise fonctionnelle)
  * @param cashAccountId compte de trésorerie à débiter (ex. 521 Banque). Si null, utilise le
- *                      compte d'actif par défaut (comportement Phase 8 — à éviter en production).
- */
+ * compte d'actif par défaut (comportementà éviter en production).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record DisposeAssetRequest(
     @NotNull LocalDate disposalDate,
     @NotNull @PositiveOrZero BigDecimal disposalAmount,

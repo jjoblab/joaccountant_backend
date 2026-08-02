@@ -11,7 +11,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * Repository des règles d'approbation.
  *
  * <p>L'isolation multi-tenant est faite explicitement par le service via {@code companyId}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ApprovalRuleRepository extends JpaRepository<ApprovalRule, UUID> {
 
     /** Règle active pour un actionType donné, dans l'entreprise donnée. */

@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Rate limiting sur les endpoints d'authentification (Vague 1, item 1.3 + audit v4.7 §6.2).
+ * Rate limiting sur les endpoints d'authentification (Vague 1, item 1.3 +.
  *
  * <p>Limites appliquées :
  * <ul>
@@ -39,7 +39,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * sur ce couple (mitige le brute-force ciblé sur un compte spécifique).</li>
  * </ul>
  *
- * <p><b>Audit v4.7 §6.2 FIX</b> :
+ * <p><b>FIX</b> :
  * <ul>
  * <li><b>XFF spoofing</b> : la version originale lisait {@code X-Forwarded-For} sans valider
  * qu'il vient d'un proxy de confiance. Désormais, on utilise
@@ -57,7 +57,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * maison) par <a href="https://bucket4j.com/">Bucket4j 8.10.1</a>. L'API est plus propre
  * et prépare la migration vers Redis.
  *
- * <p><b>(lot-C-perf-devops) — Rate-limiting distribué via Redis</b> :
+ * <p><b>Rate-limiting distribué via Redis</b> :
  * <p>L'implémentation in-memory (ConcurrentHashMap de {@link Bucket}) est correcte pour un
  * déploiement mono-instance, mais pour 3 replicas, chaque instance avait sa propre map →
  * la limite effective était 3× la limite configurée (3 × 10 = 30 tentatives/min/IP au lieu
@@ -75,7 +75,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Redis standard). Le filtre crée son propre client Lettuce (indépendant de la
  * {@code RedisConnectionFactory} auto-configurée par Spring) afin de maîtriser le cycle de
  * vie et le codec ({@code String}/{@code byte[]}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -182,23 +187,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
  private boolean isAuthEndpoint(String path) {
  if (path == null) return false;
- // (lot-A-securite) — ajout de /api/v1/auth/login/mfa dans la liste des endpoints
+ //ajout de /api/v1/auth/login/mfa dans la liste des endpoints
  // rate-limités. Avant, un attaquant pouvait brute-forcer le code TOTP à 6 chiffres
  // (1M de combinaisons) sans être ralenti par le filtre. Avec la limite de 10 tentatives
  // par minute par IP, l'attaque prendrait ~28 jours (1M / 10 / 60 / 24 ≈ 28) au lieu
  // de quelques secondes — soit largement au-delà du TTL de 5 min du challenge token.
  return path.endsWith("/api/v1/auth/login")
- || path.endsWith("/api/v1/auth/login/mfa") // (lot-A-securite)
- || path.endsWith("/api/v1/auth/forgot-password")
+ || path.endsWith("/api/v1/auth/login/mfa") //|| path.endsWith("/api/v1/auth/forgot-password")
  || path.endsWith("/api/v1/auth/register")
- || path.endsWith("/api/v1/auth/refresh") // Audit v4.7 §6.2 — ajout
- || path.endsWith("/api/v1/auth/reset-password"); // Audit v4.7 §6.2 — ajout
+ || path.endsWith("/api/v1/auth/refresh") //— ajout
+ || path.endsWith("/api/v1/auth/reset-password"); //— ajout
  }
 
  /**
  * Récupère l'IP du client de manière sécurisée.
  *
- * <p>Audit v4.7 §6.2 — FIX XFF spoofing : la version originale lisait X-Forwarded-For
+ * <p>— FIX XFF spoofing : la version originale lisait X-Forwarded-For
  * sans validation. Désormais, on s'appuie sur Tomcat RemoteIpValve (activé via
  * {@code server.forward-headers-strategy: framework} + {@code trusted-proxies}).
  * Si forward-headers n'est pas activé, on utilise {@code getRemoteAddr()} qui retourne
@@ -264,7 +268,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
  }
 
  /**
- * (lot-C-perf-devops) — Implémentation Redis basée sur bucket4j-redis + Lettuce.
+ *Implémentation Redis basée sur bucket4j-redis + Lettuce.
  *
  * <p>Le {@link LettuceBasedProxyManager} maintient un bucket distribué par clé dans
  * Redis. Toutes les instances partagent le même état → la limite s'applique globalement

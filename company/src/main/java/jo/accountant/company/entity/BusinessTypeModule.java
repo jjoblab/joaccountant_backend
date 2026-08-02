@@ -24,6 +24,14 @@ import java.time.Instant;
 @Table(name = "business_type_module",
     uniqueConstraints = @UniqueConstraint(name = "uc_business_type_module",
         columnNames = {"business_type_code", "module_code"}))
+/**
+ * BusinessTypeModule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class BusinessTypeModule {
 
     @Id

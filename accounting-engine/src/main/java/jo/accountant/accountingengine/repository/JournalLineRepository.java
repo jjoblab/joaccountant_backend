@@ -17,7 +17,12 @@ import org.springframework.stereotype.Repository;
  *
  * <p>Inclut des méthodes d'agrégation pour le grand livre et la balance générale, ainsi que
  * l'implémentation de {@link AccountBalanceGuard} (calcul du solde d'un compte).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Repository
 public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> {
 
@@ -96,7 +101,7 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
  * Lignes POSTED d'un tiers donné dans une entreprise — utilisées par le relevé de compte
  * tiers ({@code ThirdPartiesService.getStatement}).
  *
- * <p><b>Audit v4.7 §7.2 FIX N+1 CRITIQUE</b> : la v4.7 chargeait
+ * <p><b>la version précédente chargeait
  * {@code findAllPosted(companyId)} (TOUTES les écritures POSTED de l'entreprise, potentiellement
  * 50K lignes → ~50 MB heap) puis filtrait côté Java par {@code thirdPartyId}. Latence P99
  * estimée à 5-15s sur 10K lignes, >60s sur 50K (probable OOM).
@@ -133,7 +138,7 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
  @Param("to") LocalDate to);
 
  // =========================================================================
- // (lot-C-perf-devops) — Agrégations SQL pour états financiers / balance
+ //Agrégations SQL pour états financiers / balance
  // =========================================================================
  //
  // Les méthodes ci-dessous remplacent le pattern "charger toutes les lignes en
@@ -177,7 +182,7 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
  * Avant : chargeait toutes les lignes via {@link #findAllPostedBetweenDates} puis
  * agrégeait en Java. Maintenant : 1 requête SQL GROUP BY.
  *
- * <p><b>V8.3</b> — Correction du pattern {@code :param is null OR col >= :param} qui
+ * <p>Correction du pattern {@code :param is null OR col >= :param} qui
  * pose problème avec Hibernate 6 + PostgreSQL (« could not determine data type of
  * parameter » → HTTP 500 sur dashboard, cf. fff.txt). On utilise
  * {@code COALESCE(:param, col) <= col} / {@code COALESCE(:param, col) >= col} qui

@@ -20,7 +20,12 @@ import java.util.UUID;
  *
  * <p>Si le sector_code est null/blank/inconnu, le taux par défaut 2,00% est utilisé (règle
  * OFATMA_HT_ACCIDENT existante en V68).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "ofatma_sector_rate")
 public class OfatmaSectorRate {

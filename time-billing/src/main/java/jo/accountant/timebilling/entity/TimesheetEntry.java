@@ -9,26 +9,31 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Entrée de feuille de temps (§13 Phase 10).
+ * Entrée de feuille de temps (§13.
  *
  * <p>Une entrée représente du temps passé par une ressource sur un projet à une date donnée.
  *
  * <p>Champs clés :
  * <ul>
- *   <li>{@link #billable} — si {@code false}, le temps est saisi pour information mais ne
- *       sera jamais facturé (ex. formation interne, pause)</li>
- *   <li>{@link #approved} — si {@code false}, l'entrée est en attente d'approbation par
- *       un responsable. Seules les entrées {@code approved = true} ET {@code billable = true}
- *       sont facturables (règle §13 Phase 10).</li>
- *   <li>{@link #invoiced} — si {@code true}, l'entrée a déjà été facturée et ne peut pas
- *       être réutilisée sur une autre facture (idempotence métier, §13 Phase 10).</li>
+ * <li>{@link #billable} — si {@code false}, le temps est saisi pour information mais ne
+ * sera jamais facturé (ex. formation interne, pause)</li>
+ * <li>{@link #approved} — si {@code false}, l'entrée est en attente d'approbation par
+ * un responsable. Seules les entrées {@code approved = true} ET {@code billable = true}
+ * sont facturables (règle §13.</li>
+ * <li>{@link #invoiced} — si {@code true}, l'entrée a déjà été facturée et ne peut pas
+ * être réutilisée sur une autre facture (idempotence métier, §13.</li>
  * </ul>
  *
  * <p>Le WIP (travail en cours) = somme des heures approuvées, billables, non facturées,
  * multipliée par le taux applicable. Pas d'écriture comptable tant que non facturé — sauf
- * si l'entreprise active la reconnaissance de revenu à l'avancement (option Phase 10,
+ * si l'entreprise active la reconnaissance de revenu à l'avancement (option,
  * désactivée par défaut, non implémentée).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "tb_timesheet_entry")
 public class TimesheetEntry extends TenantAwareEntity {

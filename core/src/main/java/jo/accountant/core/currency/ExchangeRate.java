@@ -22,6 +22,14 @@ import java.util.UUID;
 @Table(name = "exchange_rate",
     uniqueConstraints = @UniqueConstraint(name = "uc_er_company_from_to_date",
         columnNames = {"company_id", "from_currency", "to_currency", "as_of_date"}))
+/**
+ * ExchangeRate.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class ExchangeRate {
 
     @Id

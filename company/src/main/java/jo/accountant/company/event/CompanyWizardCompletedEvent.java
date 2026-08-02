@@ -12,7 +12,12 @@ import jo.accountant.core.audit.AuditableAction;
  * qui écoute l'interface {@code AuditableAction}). Les consommateurs métier (notifications,
  * workflows, exports réglementaires, KPI temps-réel) seront câblés quand le besoin se
  * matérialisera — cf. audit batch 1.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 
 public record CompanyWizardCompletedEvent(UUID companyId, UUID userId, Instant occurredAt)
  implements AuditableAction {

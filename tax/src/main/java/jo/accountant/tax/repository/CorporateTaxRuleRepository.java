@@ -7,11 +7,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
- * Repository des règles d'IS (audit v4.7 §4.1 ).
+ * Repository des règles d'IS.
  *
  * <p><b>v8-1 — IS Zone Franche 15% + ONG 0%</b> : ajout de 2 méthodes de lookup par pays
  * pour résoudre les règles globales ZF et ONG (Code Fiscal Haïti art. 195).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Repository
 public interface CorporateTaxRuleRepository extends JpaRepository<CorporateTaxRule, UUID> {
 

@@ -14,6 +14,14 @@ import java.util.UUID;
 @Table(name = "ntf_preference",
     uniqueConstraints = @UniqueConstraint(name = "uc_ntf_pref",
         columnNames = {"user_id", "company_id", "type"}))
+/**
+ * NotificationPreference.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class NotificationPreference {
 
     @Id

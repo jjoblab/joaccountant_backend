@@ -33,6 +33,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "payroll_run",
  uniqueConstraints = @UniqueConstraint(name = "uc_pr_company_period",
  columnNames = {"company_id", "period_year", "period_month"}))
+/**
+ * PayrollRun.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class PayrollRun extends TenantAwareEntity {
 
  @Column(name = "period_month", nullable = false)

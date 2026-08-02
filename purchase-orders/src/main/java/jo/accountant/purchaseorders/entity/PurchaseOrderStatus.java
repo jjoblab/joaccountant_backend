@@ -10,7 +10,12 @@ package jo.accountant.purchaseorders.entity;
  * <li>{@link #RECEIVED} — commande reçue (marchandises livrées), prête pour 3-way match</li>
  * <li>{@link #CLOSED} — commande cloturée (facture reçue et rapprochée)</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum PurchaseOrderStatus {
  DRAFT,
  SUBMITTED,

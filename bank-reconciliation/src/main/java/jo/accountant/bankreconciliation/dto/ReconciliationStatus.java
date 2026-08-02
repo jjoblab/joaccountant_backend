@@ -4,6 +4,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * ReconciliationStatus.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record ReconciliationStatus(
     UUID bankAccountId,
     String label,

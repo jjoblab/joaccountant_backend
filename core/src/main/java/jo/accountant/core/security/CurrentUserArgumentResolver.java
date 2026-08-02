@@ -17,7 +17,12 @@ import org.springframework.web.method.support.ModelAndViewContainer;
  *
  * <p>Rejette les requêtes non authentifiées avec 403 (pas d'accès anonyme sur les endpoints qui
  * prennent un paramètre {@code @CurrentUser}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
 

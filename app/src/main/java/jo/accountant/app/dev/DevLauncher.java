@@ -14,10 +14,10 @@ import org.springframework.context.ConfigurableApplicationContext;
  *
  * <p>Avantages :
  * <ul>
- *   <li>pas d'installation PostgreSQL requise ;</li>
- *   <li>mêmes migrations Flyway qu'en production (pgcrypto, uuidv7()) ;</li>
- *   <li>même dialecte SQL, même planner, mêmes types que la prod ;</li>
- *   <li>idéal pour démos, dev local, tests manuels end-to-end.</li>
+ * <li>pas d'installation PostgreSQL requise ;</li>
+ * <li>mêmes migrations Flyway qu'en production (pgcrypto, uuidv7()) ;</li>
+ * <li>même dialecte SQL, même planner, mêmes types que la prod ;</li>
+ * <li>idéal pour démos, dev local, tests manuels end-to-end.</li>
  * </ul>
  *
  * <p>Inconvénient : le binaire PostgreSQL embarqué (~50 Mo) est téléchargé au 1er lancement
@@ -30,7 +30,12 @@ import org.springframework.context.ConfigurableApplicationContext;
  * <p>Pour autoriser l'usage runtime, on triche : on déplace la dépendance :test-support
  * vers {@code implementation} dans le profil dev. En pratique, on lance via le classpath
  * de test qui inclut déjà :test-support.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class DevLauncher {
 
     public static void main(String[] args) throws IOException {
@@ -39,9 +44,9 @@ public class DevLauncher {
         int port = pg.getPort();
         System.out.println();
         System.out.println("╔══════════════════════════════════════════════════════════════╗");
-        System.out.println("║  JOAccountant Dev Mode — PostgreSQL embarqué (Zonky)         ║");
-        System.out.println("║  JDBC: jdbc:postgresql://localhost:" + port + "/postgres           ║");
-        System.out.println("║  User: postgres / postgres                                   ║");
+        System.out.println("║ JOAccountant Dev Mode — PostgreSQL embarqué (Zonky) ║");
+        System.out.println("║ JDBC: jdbc:postgresql://localhost:" + port + "/postgres ║");
+        System.out.println("║ User: postgres / postgres ║");
         System.out.println("╚══════════════════════════════════════════════════════════════╝");
         System.out.println();
 
@@ -53,11 +58,11 @@ public class DevLauncher {
         System.setProperty("spring.main.allow-bean-definition-overriding", "true");
 
         // 3. Démarre Spring Boot avec les profils dev + demo
-        // V8.3 — le profil "demo" active DemoDataSeeder qui charge 4 entreprises fictives
+        // le profil "demo" active DemoDataSeeder qui charge 4 entreprises fictives
         // haïtiennes au démarrage. Cela permet de tester l'app mobile immédiatement sans
         // avoir à créer manuellement une entreprise. Les démos sont idempotentes (is_demo=true).
         SpringApplication app = new SpringApplication(JoAccountantDevApp.class);
-        // v2.7.0 (2026-08-02) : le profil "demo" peut être désactivé via SKIP_DEMO=true
+        // (2026-08-02) : le profil "demo" peut être désactivé via SKIP_DEMO=true
         // pour économiser de la RAM sur les machines contraintes (4 GB).
         boolean skipDemo = Boolean.parseBoolean(System.getenv().getOrDefault("SKIP_DEMO", "false"));
         if (skipDemo) {
@@ -79,7 +84,7 @@ public class DevLauncher {
         ConfigurableApplicationContext ctx = app.run(args);
         System.out.println();
         System.out.println("✓ Backend ready on http://localhost:8080");
-        System.out.println("✓ Swagger UI:   http://localhost:8080/swagger-ui.html");
+        System.out.println("✓ Swagger UI: http://localhost:8080/swagger-ui.html");
         System.out.println("✓ OpenAPI JSON: http://localhost:8080/v3/api-docs");
         System.out.println();
         System.out.println("Press Ctrl+C to stop.");

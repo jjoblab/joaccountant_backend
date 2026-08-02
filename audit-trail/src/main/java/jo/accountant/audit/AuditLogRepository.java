@@ -8,6 +8,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Repository JPA AuditLog.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
  @Query("select count(a) from AuditLog a where a.companyId = :companyId and a.entityType = :entityType and a.entityId = :entityId")
@@ -18,20 +26,20 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
  /**
  * Charge toutes les lignes d'audit d'une entreprise, triées par {@code occurredAt} desc.
  *
- * <p><b>(lot-C-perf-devops) — @Deprecated</b> : cette méthode charge TOUTES les
+ * <p><b>@Deprecated</b> : cette méthode charge TOUTES les
  * lignes d'audit en mémoire. Sur 100M+ de lignes d'audit (charge prévue en production),
  * cela provoque un OOM certain. Utiliser
  * {@link #findByCompanyIdWithFilters(UUID, String, UUID, Instant, Instant, Pageable)} à la
  * place, qui pagine et filtre côté DB.
  *
- * <p>Conservée pour compatibilité avec d'éventuels callers existants — sera supprimée en v4.9.
+ * <p>Conservée pour compatibilité avec d'éventuels callers existants — sera supprimée .
  */
  @Deprecated
  @org.springframework.data.jpa.repository.Query("select a from AuditLog a where a.companyId = :companyId order by a.occurredAt desc")
  java.util.List<AuditLog> findByCompanyIdOrderByOccurredAtDesc(@Param("companyId") UUID companyId);
 
  /**
- * (lot-C-perf-devops) — Liste paginée et filtrée des logs d'audit.
+ *Liste paginée et filtrée des logs d'audit.
  *
  * <p>Tous les filtres sont appliqués côté DB via JPQL — l'application ne charge que la
  * page demandée. Le tri est toujours {@code occurredAt DESC}.
@@ -41,7 +49,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
  * Specifications (qui auraient nécessité une interface JpaSpecificationExecutor) tout en
  * restant lisible et performante (Hibernate cache le plan JPQL).
  *
- * <p><b>V8.3 — Correction du pattern {@code :param is null OR col = :param}</b> :
+ * <p><b>Correction du pattern {@code :param is null OR col = :param}</b> :
  * ce pattern pose problème avec Hibernate 6 + PostgreSQL : quand {@code :param} est null,
  * Hibernate ne peut pas inférer le type du paramètre pour la seconde branche
  * {@code col = :param} et lève une {@code PSQLException} (« could not determine data type

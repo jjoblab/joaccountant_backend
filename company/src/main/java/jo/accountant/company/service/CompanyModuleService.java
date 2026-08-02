@@ -21,13 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
  * activée (par ex. :inventory avant de poster un mouvement de stock). Le check se fait TOUJOURS
  * via ce service, jamais en lisant {@code Company.sector} directement (principe 7).
  *
- * <p>Restructuration 2026-07-24 (suite — feature toggle) : la méthode {@link #disable}
+ * <p>(suite — feature toggle) : la méthode {@link #disable}
  * permet à un administrateur de désactiver un module sectoriel que son entreprise n'utilise
  * pas (ex. une boutique de détail sans warehouse peut désactiver {@code INVENTORY}). Les
  * modules always-on (socle commun) ne peuvent PAS être désactivés — ils sont nécessaires
  * au fonctionnement transverse du système (ex. {@code ACCOUNTING_ENGINE} est requis par
  * tous les modules qui génèrent des écritures).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class CompanyModuleService {
 
@@ -63,7 +68,7 @@ public class CompanyModuleService {
     /**
      * Désactive un module pour une société.
      *
-     * <p>Restructuration 2026-07-24 (suite — feature toggle) : permet à un administrateur
+     * <p>(suite — feature toggle) : permet à un administrateur
      * de désactiver un module sectoriel non utilisé. Refuse la désactivation d'un module
      * always-on (le socle commun est nécessaire au fonctionnement transverse du système).
      *

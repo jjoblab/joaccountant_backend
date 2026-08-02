@@ -92,35 +92,40 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Spécificités NGO</b> :
  *
  * <ul>
- *   <li><b>Multi-currency USD</b> — toutes les factures/dons/paies sont en USD (devise
- *       fonctionnelle). Les dépenses locales nécessitent une conversion USD→HTG via FxOperation.
- *   <li><b>TVA exonérée</b> — les factures d'achat ont {@code taxRate=0} (VAT_EXEMPT_NGO). Aucune
- *       TVA collectée ni déductible n'apparaît sur les écritures.
- *   <li><b>Funds-grants</b> — 4 Grants (3 RESTRICTED + 1 UNRESTRICTED) avec DonationReceipt cash et
- *       en nature (V8-5 IN_KIND). Le {@code CreateDonationReceiptRequest} n'exposant pas le champ
- *       {@code donationType}, les reçus en nature sont créés via le service (génère une écriture
- *       cash D 521 / C 740) puis patchés via {@link DonationReceiptRepository} pour setter {@code
- *       donationType=IN_KIND} — l'écriture comptable reste cash (limitation documentée, ne bloque
- *       pas la compilation ni le seed).
- *   <li><b>Fx-operations</b> — 1 taux de change USD/HTG créé par trimestre via {@link
- *       ExchangeRateService#createRate} (source BRH, valeurs issues de {@link
- *       ExchangeRateFixtures}) + 1 FxOperation SELL USD→HTG par trimestre (conversion pour dépenses
- *       locales).
+ * <li><b>Multi-currency USD</b> — toutes les factures/dons/paies sont en USD (devise
+ * fonctionnelle). Les dépenses locales nécessitent une conversion USD→HTG via FxOperation.
+ * <li><b>TVA exonérée</b> — les factures d'achat ont {@code taxRate=0} (VAT_EXEMPT_NGO). Aucune
+ * TVA collectée ni déductible n'apparaît sur les écritures.
+ * <li><b>Funds-grants</b> — 4 Grants (3 RESTRICTED + 1 UNRESTRICTED) avec DonationReceipt cash et
+ * en nature (V8-5 IN_KIND). Le {@code CreateDonationReceiptRequest} n'exposant pas le champ
+ * {@code donationType}, les reçus en nature sont créés via le service (génère une écriture
+ * cash D 521 / C 740) puis patchés via {@link DonationReceiptRepository} pour setter {@code
+ * donationType=IN_KIND} — l'écriture comptable reste cash (limitation documentée, ne bloque
+ * pas la compilation ni le seed).
+ * <li><b>Fx-operations</b> — 1 taux de change USD/HTG créé par trimestre via {@link
+ * ExchangeRateService#createRate} (source BRH, valeurs issues de {@link
+ * ExchangeRateFixtures}) + 1 FxOperation SELL USD→HTG par trimestre (conversion pour dépenses
+ * locales).
  * </ul>
  *
  * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
  * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
  *
- * <p><b>Bug historique corrigé</b> — la V8.1 pointait par erreur sur le framework {@code ...004}
+ * <p><b>Bug historique corrigé</b> — la version précédente pointait par erreur sur le framework {@code ...004}
  * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V3__core_seeds.sql ligne 26).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class NgoHumanitarianSeeder implements CompanySeeder {
 
   private static final Logger LOG = LoggerFactory.getLogger(NgoHumanitarianSeeder.class);
 
   /**
-   * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la V8.1
+   * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la version précédente
    * pointait par erreur sur ...004 = PCG_FRANCE).
    */
   private static final UUID PCN_HAITI_FRAMEWORK_ID =
@@ -170,7 +175,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
   private final ExchangeRateService exchangeRateService;
 
   /**
-   * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+   * rls-proper-fix — Self-injection via le proxy Spring.
    *
    * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID)} depuis {@link #seed()} en traversant
    * le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData} sera
@@ -247,7 +252,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
    *
    * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
    *
-   * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+   * <p>La méthode n'est PLUS {@code @Transactional}. La Company +
    * l'user owner sont créés via les méthodes {@code @Transactional} par défaut des repositories
    * Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables non
    * RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
@@ -303,7 +308,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
   }
 
   /**
-   * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+   * rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
    * (COA, journaux, exercices, séquences, bailleurs, fournisseurs, bénéficiaires, employés, banque
    * USD, subventions, 12 mois d'opérations NGO multi-currency USD).
    *
@@ -318,7 +323,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
    *
    * @param companyId identifiant de la company démo (tenant)
    * @param ownerId identifiant de l'user owner (passé pour transparence du contexte tenant — non
-   *     utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
+   * utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
    * @return nombre d'enregistrements créés
    */
   @Transactional
@@ -385,7 +390,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return totalCreated;
   }
 
-  // ══ Étape 2 — Création Company ══
+  // ══Création Company ══
 
   private Company createCompany() {
     Company company = new Company();
@@ -541,7 +546,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
         companyId);
   }
 
-  // ══ Étape d — Bailleurs (4 DONOR) ══
+  // ══Bailleurs (4 DONOR) ══
 
   private List<ThirdPartyResponse> createDemoDonors(UUID companyId, UUID donorsCollectiveId) {
     // 4 bailleurs institutionnels : USAID, EU, World Bank, CRS
@@ -592,7 +597,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape e — Fournisseurs locaux (8 SUPPLIER) ══
+  // ══Fournisseurs locaux (8 SUPPLIER) ══
 
   private List<ThirdPartyResponse> createDemoSuppliers(UUID companyId, UUID suppliersAccountId) {
     // 8 fournisseurs locaux typiques d'une ONG humanitaire
@@ -632,7 +637,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape f — Bénéficiaires/partenaires (12 CLIENT) ══
+  // ══Bénéficiaires/partenaires (12 CLIENT) ══
 
   private List<ThirdPartyResponse> createDemoClients(UUID companyId, UUID clientsAccountId) {
     // 12 bénéficiaires/partenaires : mairies, ONG locales, écoles, hôpitaux communautaires.
@@ -669,7 +674,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape g — Employés (35 : 5 staff HQ + 30 field workers) ══
+  // ══Employés (35 : 5 staff HQ + 30 field workers) ══
 
   private List<EmployeeResponse> createDemoEmployees(UUID companyId, UUID personnelAccountId) {
     List<EmployeeResponse> created = new ArrayList<>(35);
@@ -741,7 +746,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return null;
   }
 
-  // ══ Étape h — Compte bancaire (Capital Bank, USD) ══
+  // ══Compte bancaire (Capital Bank, USD) ══
 
   private void createDemoBankAccount(UUID companyId, UUID banqueAccountId) {
     try {
@@ -758,7 +763,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     }
   }
 
-  // ══ Étape i — Subventions (4 Grants) ══
+  // ══Subventions (4 Grants) ══
 
   private List<GrantResponse> createDemoGrants(UUID companyId, List<ThirdPartyResponse> donors) {
     if (donors.size() < 4) {
@@ -826,7 +831,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape j — 12 mois d'opérations sur FY2025-2026 ══
+  // ══12 mois d'opérations sur FY2025-2026 ══
 
   /**
    * Génère 12 mois d'opérations (Oct 2025 → Sep 2026). Chaque mois est isolé dans un try/catch : un
@@ -1143,11 +1148,11 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
    * <p>Étapes :
    *
    * <ol>
-   *   <li>Crée (ou met à jour) le taux de change USD→HTG pour la date d'opération via {@link
-   *       ExchangeRateService#createRate} (source BRH, valeur issue de {@link
-   *       ExchangeRateFixtures}).
-   *   <li>Crée une {@code FxOperation SELL USD→HTG} via {@link FxOperationsService#create} (vend
-   *       USD pour acheter HTG). Montant 5k-15k USD par trimestre.
+   * <li>Crée (ou met à jour) le taux de change USD→HTG pour la date d'opération via {@link
+   * ExchangeRateService#createRate} (source BRH, valeur issue de {@link
+   * ExchangeRateFixtures}).
+   * <li>Crée une {@code FxOperation SELL USD→HTG} via {@link FxOperationsService#create} (vend
+   * USD pour acheter HTG). Montant 5k-15k USD par trimestre.
    * </ol>
    *
    * <p>L'écriture comptable générée est D 521 HTG / C 521 USD (avec gain/perte de change nul car le

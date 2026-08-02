@@ -18,10 +18,10 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Le format du numéro généré est : {@code {prefix}[-{year}]-{number padded}} où :
  * <ul>
- *   <li>{@code prefix} = {@link #prefix} (ex. {@code "FAC"}, {@code "VT"}, {@code "DON"})</li>
- *   <li>{@code year} = année courante sur 4 chiffres si {@link #includeYear} = vrai</li>
- *   <li>{@code number} = valeur du compteur, complétée par des zéros à gauche pour atteindre
- *       {@link #padding} chiffres</li>
+ * <li>{@code prefix} = {@link #prefix} (ex. {@code "FAC"}, {@code "VT"}, {@code "DON"})</li>
+ * <li>{@code year} = année courante sur 4 chiffres si {@link #includeYear} = vrai</li>
+ * <li>{@code number} = valeur du compteur, complétée par des zéros à gauche pour atteindre
+ * {@link #padding} chiffres</li>
  * </ul>
  *
  * <p>Exemple : prefix=FAC, includeYear=true, padding=6 → {@code "FAC-2026-000142"}.
@@ -33,6 +33,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "document_sequence_config",
     uniqueConstraints = @UniqueConstraint(name = "uc_doc_seq_config",
         columnNames = {"company_id", "document_type", "scope_key"}))
+/**
+ * Configuration Spring DocumentSequence.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class DocumentSequenceConfig extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)

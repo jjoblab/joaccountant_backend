@@ -30,11 +30,37 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de génération de documents PDF (§8, §13 Phase 11).
- */
+ * Endpoints de génération de documents PDF (§8, §13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/document-generation")
-@Tag(name = "DocumentGeneration", description = "Rendu PDF partagé via Thymeleaf + openhtmltopdf (§8, §13 Phase 11)")
+@Tag(name = "DocumentGeneration", description = "Rendu PDF partagé via Thymeleaf + openhtmltopdf (§8, §13")
 public class DocumentGenerationController {
 
     private final DocumentGenerationService service;

@@ -12,13 +12,18 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
- * V8.1 — Orchestrateur principal du module Démos.
+ * Orchestrateur principal du module Démos.
  *
  * <p>Au démarrage avec le profil Spring {@code demo}, seed automatiquement les 4 entreprises
  * fictives si elles n'existent pas déjà (idempotence via vérification du nom + isDemo=true).
  *
  * <p>Peut aussi être déclenché manuellement via POST /api/v1/demos/seed (rôle ADMIN).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 @Profile("demo")
 public class DemoDataSeeder {
@@ -34,7 +39,7 @@ public class DemoDataSeeder {
   @EventListener(ApplicationReadyEvent.class)
   @Order(100)
   @Async
-  // v2.5.2 fix RLS — RETIRÉ @Transactional de la méthode globale. Chaque
+  // fix RLS — RETIRÉ @Transactional de la méthode globale. Chaque
   // CompanySeeder.seed() a déjà sa propre @Transactional → le SET LOCAL
   // app.current_tenant sera appliqué au début de CHAQUE transaction seed,
   // APRES que DemoTenantContext.of() ait positionné le ThreadLocal dans
@@ -47,19 +52,19 @@ public class DemoDataSeeder {
   }
 
   /**
-   * v2.5.2 — Déclenche le seed manuellement (depuis POST /api/v1/demos/seed).
+   * Déclenche le seed manuellement (depuis POST /api/v1/demos/seed).
    * Synchrone (pas @Async) pour que l'appelant reçoive le résultat.
    * Idempotent : les seeders vérifient l'existence par nom + isDemo=true.
    */
-  // v2.5.2 fix RLS — pas de @Transactional ici (cf. seedAllOnStartup).
+  // fix RLS — pas de @Transactional ici (cf. seedAllOnStartup).
   public int seedAllManually() {
     return seedAll("seed manuel (POST /api/v1/demos/seed)");
   }
 
   private int seedAll(String source) {
     LOG.info("═══════════════════════════════════════════════════════════");
-    LOG.info("  V8.1 Module Démos — {}", source);
-    LOG.info("  {} entreprises × 2 exercices fiscaux (FY2024-2025 + FY2025-2026)", seeders.size());
+    LOG.info(" Module Démos — {}", source);
+    LOG.info(" {} entreprises × 2 exercices fiscaux (FY2024-2025 + FY2025-2026)", seeders.size());
     LOG.info("═══════════════════════════════════════════════════════════");
 
     int totalRecords = 0;
@@ -78,8 +83,8 @@ public class DemoDataSeeder {
     }
 
     LOG.info("═══════════════════════════════════════════════════════════");
-    LOG.info("  V8.1 Module Démos — Seed terminé ({} enregistrements au total)", totalRecords);
-    LOG.info("  Endpoints publics : /api/v1/demos/**");
+    LOG.info(" Module Démos — Seed terminé ({} enregistrements au total)", totalRecords);
+    LOG.info(" Endpoints publics : /api/v1/demos/**");
     LOG.info("═══════════════════════════════════════════════════════════");
     return totalRecords;
   }

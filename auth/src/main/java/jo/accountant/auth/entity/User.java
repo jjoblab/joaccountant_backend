@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Utilisateur applicatif (§13 Phase 1).
+ * Utilisateur applicatif (§13.
  *
  * <p>N'EST PAS une {@link jo.accountant.core.tenant.TenantAwareEntity} : un utilisateur est
  * transverse — il peut appartenir à 1..N sociétés (N ≤
@@ -18,7 +18,12 @@ import java.util.UUID;
  *
  * <p>{@code maxCompaniesOverride} est nullable pour qu'un futur tier payant puisse lever la
  * limite par utilisateur sans redéployer le guard.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "users")
 public class User {

@@ -30,6 +30,14 @@ import java.time.Instant;
 @Table(name = "business_type_required_field",
     uniqueConstraints = @UniqueConstraint(name = "uc_bt_required_field",
         columnNames = {"business_type_code", "field_key"}))
+/**
+ * BusinessTypeRequiredField.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class BusinessTypeRequiredField {
 
     @Id

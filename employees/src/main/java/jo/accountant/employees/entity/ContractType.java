@@ -7,7 +7,12 @@ package jo.accountant.employees.entity;
  * {@code FIXED_TERM} — CDD (contrat à durée déterminée).
  * {@code CONSULTANT} — consultant externe (pas un salarié au sens strict, mais rattaché
  * au module pour centraliser la gestion des paiements périodiques via `:payroll`).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum ContractType {
  PERMANENT,
  FIXED_TERM,

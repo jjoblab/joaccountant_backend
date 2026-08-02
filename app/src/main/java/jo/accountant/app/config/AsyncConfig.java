@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * (lot-C-perf-devops) — Configuration du {@link ThreadPoolTaskExecutor} pour les méthodes
+ *Configuration du {@link ThreadPoolTaskExecutor} pour les méthodes
  * {@code @Async} (audit, security audit, forensic, domain events).
  *
  * <p><b>Problème</b> : sans {@code TaskExecutor} explicite, Spring Boot utilise
@@ -59,7 +59,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * migration Java 21 sera faite, ce {@code ThreadPoolTaskExecutor} pourra être remplacé
  * par un {@code SimpleAsyncTaskExecutor} avec virtual threads (milliers de threads cheap,
  * pas de pool sizing à tuner).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 @EnableAsync
 public class AsyncConfig {
@@ -76,7 +81,7 @@ public class AsyncConfig {
  * pourra avoir un sizing différent sans interférer.
  */
  /**
- * v2.5.2 — Alias "taskExecutor" sur audit-async-executor pour éviter le warning
+ * Alias "taskExecutor" sur audit-async-executor pour éviter le warning
  * "More than one TaskExecutor bean found" au startup. Spring @Async sans qualifier
  * utilise le bean nommé "taskExecutor" par défaut.
  */
@@ -108,7 +113,7 @@ public class AsyncConfig {
  }
 
  /**
- * v2.5.2 fix — Bean "thirteenthMonthTaskExecutor" référencé par
+ * fix — Bean "thirteenthMonthTaskExecutor" référencé par
  * {@code @Async("thirteenthMonthTaskExecutor")} sur
  * {@link jo.accountant.payroll.service.ThirteenthMonthAsyncRunner#runAsync}.
  *

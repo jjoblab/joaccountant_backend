@@ -10,7 +10,12 @@ import java.util.UUID;
  * ligne, et le {@code @TenantId} d'Hibernate lit depuis
  * {@link CurrentTenantIdentifierResolverImpl} (également adossé à cette classe) pour borner les
  * requêtes automatiquement.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class TenantContext {
 
     private static final ThreadLocal<UUID> COMPANY_ID = new ThreadLocal<>();

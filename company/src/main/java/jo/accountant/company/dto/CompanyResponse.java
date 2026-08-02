@@ -13,11 +13,16 @@ import jo.accountant.company.entity.Sector;
  * <p>Ajoute les nouveaux champs {@code organizationNature}, {@code businessTypeCode},
  * {@code primaryActivityLabel} et {@code extraAttributes} par rapport à l'ancien contrat.
  *
- * <p><b>Audit v4.7 §4.2 (session 7)</b> : ajout des champs légaux {@code siret},
+ * <p><b>(session 7)</b> : ajout des champs légaux {@code siret},
  * {@code vatNumber}, {@code nif}, {@code address} pour conformité mentions légales factures
  * (CGI art. 289) et Factur-X. Ces champs sont persistés (migration V53) mais n'étaient pas
  * exposés dans le DTO de réponse — le mobile ne pouvait ni les lire ni les afficher.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CompanyResponse(
  UUID id,
  String name,
@@ -33,7 +38,7 @@ public record CompanyResponse(
  int fiscalYearStartMonth,
  int wizardStep,
  boolean wizardCompleted,
- // Audit v4.7 §4.2 — champs légaux pour Factur-X + mentions légales factures
+ //— champs légaux pour Factur-X + mentions légales factures
  String siret,
  String vatNumber,
  String nif,

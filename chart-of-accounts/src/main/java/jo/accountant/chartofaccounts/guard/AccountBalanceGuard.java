@@ -5,8 +5,8 @@ import java.util.UUID;
 /**
  * Garde-fou anti-désactivation d'un compte non soldé (§13 Phase 3).
  *
- * <p>Définie dans {@code :chart-of-accounts} (Phase 3) mais <strong>implémentée</strong> dans
- * {@code :accounting-engine} (Phase 5). Cette séparation permet à {@code chart-of-accounts}
+ * <p>Définie dans {@code :chart-of-accounts} mais <strong>implémentée</strong> dans
+ * {@code :accounting-engine}. Cette séparation permet à {@code chart-of-accounts}
  * de vérifier qu'un compte est soldé avant sa désactivation SANS dépendre de
  * {@code accounting-engine} — ce qui violerait le principe 5 du prompt maître
  * ("un module ne doit jamais accéder directement aux tables internes d'un autre module").
@@ -23,7 +23,10 @@ import java.util.UUID;
  * (accounting-engine). À noter que accounting-engine dépendra de chart-of-accounts (pour
  * référencer les comptes), pas l'inverse — c'est la flèche de dépendance de l'implémentation
  * qui s'inverse, pas celle du code.
- */
+ 
+ *
+ * @author jo@Dev
+*/
 public interface AccountBalanceGuard {
 
     /**
@@ -32,7 +35,7 @@ public interface AccountBalanceGuard {
      *
      * <p>Un compte non soldé ne peut pas être désactivé. Le solde est calculé en devise
      * fonctionnelle — toutes devises de transaction confondues, converties au taux en vigueur
-     * au moment de l'écriture (Phase 5).
+     * au moment de l'écriture.
      *
      * @param companyId identifiant de l'entreprise (tenant)
      * @param accountId identifiant du compte à vérifier
@@ -43,7 +46,7 @@ public interface AccountBalanceGuard {
     /**
      * Retourne {@code true} si le compte donné a un solde négatif (anormal) pour l'entreprise.
      *
-     * <p><b>Audit v4.7 §3.2 Finding MOYENNE — FIX</b> : la v4.7 ne vérifiait pas les soldes
+     * <p><b>audit applicatif Finding MOYENNE — FIX</b> : la version précédente ne vérifiait pas les soldes
      * négatifs anormaux. Un compte client (ACTIF, normalBalance=DEBIT) avec un solde créditeur
      * négatif indique un bug (ex: règlement reçu avant la facture, ou double règlement). De même,
      * un compte fournisseur (PASSIF, normalBalance=CREDIT) avec un solde débiteur négatif
@@ -61,6 +64,6 @@ public interface AccountBalanceGuard {
      * @return {@code true} si le solde est négatif (anormal), {@code false} sinon
      */
     default boolean hasNegativeBalance(UUID companyId, UUID accountId) {
-        return false;  // défaut : pas de vérification (rétro-compat Phase 3)
+        return false; // défaut : pas de vérification (rétro-compat Phase 3)
     }
 }

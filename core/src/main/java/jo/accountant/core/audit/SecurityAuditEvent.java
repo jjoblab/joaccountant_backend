@@ -11,7 +11,7 @@ import java.util.UUID;
  * PASSWORD_RESET_CONSUMED, ROLE_INVITED, ROLE_UPDATED, ROLE_ACCEPTED, ACCESS_DENIED,
  * ACCOUNT_DISABLED.
  *
- * <p><b>Audit v4.7 §6.2 FIX CRITIQUE</b> : la v4.7 n'auditait QUE les mutations
+ * <p><b>la version précédente n'auditait QUE les mutations
  * métier (28 événements REGISTER/CREATE/POST/REVERSE/ISSUE/APPROVE via {@link AuditableAction}).
  * Aucun événement de sécurité n'était tracé — en cas d'incident (compromission, brute-force,
  * élévation de privilège), la forensique était impossible.
@@ -40,7 +40,12 @@ import java.util.UUID;
  * @param metadata métadonnées additionnelles (IP, user-agent, etc.) — sérialisées en JSON
  * @param occurredAt instant de l'événement
  * @param correlationId ID de corrélation MDC (pour croiser avec les logs)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record SecurityAuditEvent(
  String eventType,
  UUID actorUserId,

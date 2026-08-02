@@ -21,18 +21,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * V8.1 — Contexte de données démo pour une entreprise.
+ * Contexte de données démo pour une entreprise.
  *
  * <p>Résout et cache les références nécessaires aux seeders :
  * <ul>
- *   <li>Comptes collectifs par type de tiers (CLIENT → 411, SUPPLIER → 401, DONOR → 4xx, EMPLOYEE → 421)</li>
- *   <li>Journaux par code (VT ventes, AC achats, BQ banque, OD opérations diverses)</li>
- *   <li>Exercices fiscaux + périodes par date</li>
+ * <li>Comptes collectifs par type de tiers (CLIENT → 411, SUPPLIER → 401, DONOR → 4xx, EMPLOYEE → 421)</li>
+ * <li>Journaux par code (VT ventes, AC achats, BQ banque, OD opérations diverses)</li>
+ * <li>Exercices fiscaux + périodes par date</li>
  * </ul>
  *
  * <p>Évite aux seeders de répéter la logique de résolution — un seul appel {@link #forCompany(Company)}
  * pré-charge tout le contexte.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class DemoDataContext {
 
@@ -128,7 +133,7 @@ public class DemoDataContext {
             });
     }
 
-    /** V8.1 — Wrapper safe qui catche les erreurs de cache (null non autorisé). */
+    /** — Wrapper safe qui catche les erreurs de cache (null non autorisé). */
     private Optional<Account> safeFindAccountByCode(UUID companyId, String codePrefix) {
         try {
             return findAccountByCode(companyId, codePrefix);
@@ -138,7 +143,7 @@ public class DemoDataContext {
         }
     }
 
-    /** V8.1 — Wrapper safe pour findByCompanyIdAndCode (cache peut rejeter null). */
+    /** — Wrapper safe pour findByCompanyIdAndCode (cache peut rejeter null). */
     private Optional<Account> safeFindByCompanyIdAndCode(UUID companyId, String code) {
         try {
             return accountRepository.findByCompanyIdAndCode(companyId, code);
@@ -148,7 +153,7 @@ public class DemoDataContext {
         }
     }
 
-    /** V8.1 — Wrapper safe pour findByCompanyIdOrderByCode. */
+    /** — Wrapper safe pour findByCompanyIdOrderByCode. */
     private List<Account> safeFindByCompanyIdOrderByCode(UUID companyId) {
         try {
             return accountRepository.findByCompanyIdOrderByCode(companyId);

@@ -6,6 +6,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.fundsgrants.entity.RestrictionType;
 
+/**
+ * GrantResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record GrantResponse(
     UUID id, UUID companyId, UUID donorThirdPartyId, String code, String label,
     BigDecimal totalAmount, String currency, LocalDate startDate, LocalDate endDate,

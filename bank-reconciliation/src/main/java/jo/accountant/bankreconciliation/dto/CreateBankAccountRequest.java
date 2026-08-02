@@ -4,6 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
+/**
+ * CreateBankAccountRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateBankAccountRequest(
     @NotNull UUID treasuryAccountId,
     @NotBlank String label,

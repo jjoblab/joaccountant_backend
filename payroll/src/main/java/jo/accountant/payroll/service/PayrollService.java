@@ -70,7 +70,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Approbation délègue à `JOURNAL_ENTRY_POST`</b> (§2.4 du prompt — choix de
  * cohérence avec §2.2). La transition APPROVED → génération d'écriture se fait en une
- * seule étape côté service.
+ * seuleservice.
  *
  * <p><b>Résolution des comptes référentiel-agnostique</b> (calquée sur audit B4) :
  * <ul>
@@ -86,7 +86,12 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  *
  * <p><b>Code journal `PA` (paie)</b> — doit exister (sinon `422 JOURNAL_PA_NOT_FOUND`).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class PayrollService {
 
@@ -98,14 +103,14 @@ public class PayrollService {
  private final EmployeeRepository employeeRepository;
  private final ThirdPartyRepository thirdPartyRepository;
  private final WithholdingRuleRepository withholdingRuleRepository;
- private final jo.accountant.tax.repository.ContributionRuleRepository contributionRuleRepository; // Audit v4.7 §4.1 #3
+ private final jo.accountant.tax.repository.ContributionRuleRepository contributionRuleRepository; //#3
  private final AccountRepository accountRepository;
  private final JournalRepository journalRepository;
  private final DocumentNumberingService documentNumberingService;
  private final AccountingEngineService accountingEngineService;
  private final DocumentGenerationService documentGenerationService;
  private final ObjectMapper objectMapper;
- private final PayrollCalculator payrollCalculator; // Audit v4.7 §4.1 #3
+ private final PayrollCalculator payrollCalculator; //#3
  // Lot B repository Company pour lire monthlyLegalHours (173.33 France / 208 Haïti).
  private final jo.accountant.company.repository.CompanyRepository companyRepository;
  // Audit #3 — AccountResolver centralisé (remplace la cascade de fallbacks)
@@ -205,7 +210,7 @@ public class PayrollService {
  BigDecimal totalNet = BigDecimal.ZERO;
  BigDecimal totalEmployerContributions = BigDecimal.ZERO;
 
- // Audit v4.7 §4.1 FIX CRITIQUE : utiliser ContributionRule (moteur par tranches)
+ //FIX CRITIQUE : utiliser ContributionRule (moteur par tranches)
  // si l'entreprise en a configuré, sinon fallback sur WithholdingRule (ancien calcul simpliste).
  List<jo.accountant.tax.entity.ContributionRule> contributionRules =
  contributionRuleRepository.findByCompanyIdAndActiveTrue(companyId);
@@ -345,7 +350,7 @@ public class PayrollService {
  BigDecimal totalNet = BigDecimal.ZERO;
  BigDecimal totalEmployerContributions = BigDecimal.ZERO;
 
- // Audit v4.7 §4.1 FIX CRITIQUE : utiliser ContributionRule (moteur par tranches)
+ //FIX CRITIQUE : utiliser ContributionRule (moteur par tranches)
  // si l'entreprise en a configuré, sinon fallback sur WithholdingRule + taux patronal paramétré.
  List<jo.accountant.tax.entity.ContributionRule> contributionRules =
  contributionRuleRepository.findByCompanyIdAndActiveTrue(companyId);
@@ -518,7 +523,7 @@ public class PayrollService {
  "433000", "433");
  }
 
- // État — retenues fiscales (audit v4.7 §4.2 Finding MOYENNE — FIX : ne plus réutiliser
+ // État — retenues fiscalesFinding MOYENNE — FIX : ne plus réutiliser
  // VAT_COLLECTED qui mélange natures TVA + retenues salariales. Désormais on cherche un
  // compte dédié taxMappingCode="PAYROLL_TAX_PAYABLE" (442 en PCG = "Etat, impôts et taxes
  // à payer"), fallback 442000 puis 442, puis 443000/443 pour rétro-compat SYSCOHADA).
@@ -540,11 +545,11 @@ public class PayrollService {
  "Aucun compte d'État pour retenues fiscales trouvé. Configurer un compte " +
  "PASSIF marqué taxMappingCode=\"PAYROLL_TAX_PAYABLE\" (442 en PCG = État, " +
  "impôts à payer). Ne PAS utiliser VAT_COLLECTED (443) qui mélange TVA et " +
- "retenues salariales — audit v4.7 §4.2.",
+ "retenues salariales —.",
  "442000", "442", "443000", "443");
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.PAIE).getCode();
@@ -566,11 +571,11 @@ public class PayrollService {
  Employee emp = employeeRepository.findById(ps.getEmployeeId())
  .orElseThrow(() -> new ValidationException("EMPLOYEE_NOT_FOUND",
  "Employé introuvable : " + ps.getEmployeeId()));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!emp.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Employee", ps.getEmployeeId().toString());
  }
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  ThirdParty tp = thirdPartyRepository.findById(emp.getThirdPartyId())
  .filter(t -> t.getCompanyId().equals(companyId))
  .orElse(null);
@@ -655,7 +660,7 @@ public class PayrollService {
  * Liste les campagnes de paie d'une entreprise, triées par {@code periodYear} DESC puis
  * {@code periodMonth} DESC.
  *
- * <p>Restructuration 2026-07-25 (suite 4) : la paie n'est pas rattachée à un exercice fiscal
+ * <p>(suite 4) : la paie n'est pas rattachée à un exercice fiscal
  * (les campagnes sont identifiées par année+mois, indépendamment des exercices). Pour éviter
  * de retourner la totalité de l'historique sur une entreprise avec plusieurs années de paie,
  * l'endpoint applique un défaut de <strong>12 campagnes maximum</strong> lorsque
@@ -682,8 +687,7 @@ public class PayrollService {
 
  /**
  * @deprecated Utiliser {@link #listRuns(UUID, Integer)} à la place. Conservé pour
- * rétro-compatibilité — délègue avec un défaut de 12 campagnes (restructuration 2026-07-25
- * suite 4).
+ * rétro-compatibilité — délègue avec un défaut de 12 campagnes* suite 4).
  */
  @Deprecated
  @Transactional(readOnly = true)
@@ -714,11 +718,11 @@ public class PayrollService {
  }
  Employee emp = employeeRepository.findById(ps.getEmployeeId())
  .orElseThrow(() -> new NotFoundException("Employee", ps.getEmployeeId()));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!emp.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Employee", ps.getEmployeeId());
  }
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  ThirdParty tp = thirdPartyRepository.findById(emp.getThirdPartyId())
  .filter(t -> t.getCompanyId().equals(companyId))
  .orElse(null);
@@ -743,7 +747,7 @@ public class PayrollService {
  }
 
  // =========================================================================
- // step7-backend — Reports Hub v2.5.0 : agrégation CNSS_RETURN (JSON)
+ // Reports Hub : agrégation CNSS_RETURN (JSON)
  // =========================================================================
 
  /**
@@ -761,7 +765,7 @@ public class PayrollService {
  private static final Set<String> SOCIAL_CONTRIBUTION_PREFIXES = Set.of("CNSS_HT", "OFATMA_HT", "AST_HT");
 
  /**
- * step7-backend — Reports Hub v2.5.0 : Construit le bordereau CNSS/OFATMA/AST agrégé
+ * Reports Hub : Construit le bordereau CNSS/OFATMA/AST agrégé
  * par employé sur une période.
  *
  * <p>Étapes :
@@ -817,7 +821,7 @@ public class PayrollService {
  // 4. Agréger par employé.
  Map<UUID, CnssAggregator> byEmployee = new LinkedHashMap<>();
  for (Payslip ps : allPayslips) {
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId (les payslips sont censés
+ //— defense-in-depth : filtrer par companyId (les payslips sont censés
  // appartenir au tenant via le run, mais on vérifie quand même).
  if (!companyId.equals(ps.getCompanyId())) continue;
 
@@ -860,7 +864,7 @@ public class PayrollService {
  Set<UUID> employeeIds = byEmployee.keySet();
  Map<UUID, Employee> empById = new HashMap<>();
  for (Employee emp : employeeRepository.findAllById(employeeIds)) {
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (companyId.equals(emp.getCompanyId())) {
  empById.put(emp.getId(), emp);
  }
@@ -871,7 +875,7 @@ public class PayrollService {
  }
  Map<UUID, ThirdParty> tpById = new HashMap<>();
  for (ThirdParty tp : thirdPartyRepository.findAllById(tpIds)) {
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (companyId.equals(tp.getCompanyId())) {
  tpById.put(tp.getId(), tp);
  }
@@ -1029,7 +1033,7 @@ public class PayrollService {
  }
 
  private PayslipResponse loadPayslipResponse(UUID companyId, Payslip ps) {
- // Audit v4.7 §6.2 — defense-in-depth : filtrer Employee et ThirdParty par companyId
+ //— defense-in-depth : filtrer Employee et ThirdParty par companyId
  Employee emp = employeeRepository.findById(ps.getEmployeeId())
  .filter(e -> e.getCompanyId().equals(companyId))
  .orElse(null);

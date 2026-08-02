@@ -97,24 +97,24 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Données générées (idempotent) :
  *
  * <ul>
- *   <li>1 Company (HT, USD, IFRS_FULL, FREE_ZONE, freeZone=true, fiscalYearStartMonth=10)
- *   <li>1 user owner + UserCompanyRole OWNER
- *   <li>Plan comptable IFRS-compatible (50 comptes PCN-style + 1 compte 681000 Dotations aux
- *       amortissements) — voir {@link #ensureIfrsFallbackAccounts(UUID)}
- *   <li>6 journaux (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux (FY2024-2025 + FY2025-2026)
- *   <li>14 séquences documentaires (10 génériques + 4 extras SALES_INVOICE/VT, CREDIT_NOTE/VT,
- *       PURCHASE_INVOICE/AC, PAYSLIP/PA)
- *   <li>5 FixedAsset (bâtiment CODEVI, machines à coudre industrielles, véhicules logistiques,
- *       informatique, installations techniques) — méthode STRAIGHT_LINE
- *   <li>15 ThirdParty CLIENT importateurs USA (H&M, Target, Walmart, Gap, etc.)
- *   <li>8 ThirdParty SUPPLIER matières premières (coton, fils, accessoires)
- *   <li>1 Warehouse + 6 Item matières premières + stock initial IN
- *   <li>1 BankAccount Capital Bank USD
- *   <li>30 Employee réalistes (1 directeur + 5 managers + 12 chefs d'équipe + 12 ouvriers types) en
- *       USD avec thirteenthMonthEligible=true
- *   <li>12 mois d'opérations sur FY2025-2026 (Oct 2025 → Sep 2026) : 5-10 SalesInvoice TVA 0%
- *       (export), 3-5 PurchaseInvoice TVA 0% (imports en franchise), 2-3 ExpenseReport, 1
- *       PayrollRun/mois, et un lancement async du 13e mois en décembre 2025.
+ * <li>1 Company (HT, USD, IFRS_FULL, FREE_ZONE, freeZone=true, fiscalYearStartMonth=10)
+ * <li>1 user owner + UserCompanyRole OWNER
+ * <li>Plan comptable IFRS-compatible (50 comptes PCN-style + 1 compte 681000 Dotations aux
+ * amortissements) — voir {@link #ensureIfrsFallbackAccounts(UUID)}
+ * <li>6 journaux (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux (FY2024-2025 + FY2025-2026)
+ * <li>14 séquences documentaires (10 génériques + 4 extras SALES_INVOICE/VT, CREDIT_NOTE/VT,
+ * PURCHASE_INVOICE/AC, PAYSLIP/PA)
+ * <li>5 FixedAsset (bâtiment CODEVI, machines à coudre industrielles, véhicules logistiques,
+ * informatique, installations techniques) — méthode STRAIGHT_LINE
+ * <li>15 ThirdParty CLIENT importateurs USA (H&M, Target, Walmart, Gap, etc.)
+ * <li>8 ThirdParty SUPPLIER matières premières (coton, fils, accessoires)
+ * <li>1 Warehouse + 6 Item matières premières + stock initial IN
+ * <li>1 BankAccount Capital Bank USD
+ * <li>30 Employee réalistes (1 directeur + 5 managers + 12 chefs d'équipe + 12 ouvriers types) en
+ * USD avec thirteenthMonthEligible=true
+ * <li>12 mois d'opérations sur FY2025-2026 (Oct 2025 → Sep 2026) : 5-10 SalesInvoice TVA 0%
+ * (export), 3-5 PurchaseInvoice TVA 0% (imports en franchise), 2-3 ExpenseReport, 1
+ * PayrollRun/mois, et un lancement async du 13e mois en décembre 2025.
  * </ul>
  *
  * <p><b>Spécificité IFRS_FULL</b> — le référentiel IFRS_FULL ({@code ...001}) est en mode {@code
@@ -137,7 +137,12 @@ import org.springframework.transaction.annotation.Transactional;
  * réalistes couvrant tous les profils types (1 directeur + 5 managers + 12 chefs d'équipe + 12
  * ouvriers types) — les 1170 autres seraient créés en production via un batch dédié (par exemple le
  * {@code thirteenthMonthJob} Spring Batch ou un job ad hoc).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class FreeZoneIndustrySeeder implements CompanySeeder {
 
@@ -206,7 +211,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
   private final FixedAssetsService fixedAssetsService;
 
   /**
-   * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+   * rls-proper-fix — Self-injection via le proxy Spring.
    *
    * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID)} depuis {@link #seed()} en traversant
    * le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData} sera
@@ -283,7 +288,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    *
    * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
    *
-   * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+   * <p>La méthode n'est PLUS {@code @Transactional}. La Company +
    * l'user owner sont créés via les méthodes {@code @Transactional} par défaut des repositories
    * Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables non
    * RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
@@ -342,7 +347,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
   }
 
   /**
-   * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+   * rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
    * (COA IFRS-compatible, journaux, exercices, séquences, immobilisations, clients importateurs
    * USA, fournisseurs matières premières, entrepôt + articles + stock initial, banque USD, 30
    * employés, 12 mois d'opérations sur FY2025-2026 + 13e mois).
@@ -358,7 +363,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    *
    * @param companyId identifiant de la company démo (tenant)
    * @param ownerId identifiant de l'user owner (passé pour transparence du contexte tenant — non
-   *     utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
+   * utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
    * @return nombre d'enregistrements créés
    */
   @Transactional
@@ -429,7 +434,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return totalCreated;
   }
 
-  // ══ Étape 2 — Création Company ══
+  // ══Création Company ══
 
   private Company createCompany() {
     Company company = new Company();
@@ -516,13 +521,13 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * l'absence de classes de niveau 1 et on crée manuellement :
    *
    * <ol>
-   *   <li>Les 7 classes de niveau 1 (codes "1" à "7", alignées sur la structure PCN_HAITI — cette
-   *       simplification est documentée : les codes 1xxx-7xxx du PCN restent compatibles avec la
-   *       structure IFRS simplifiée pour les besoins démo).
-   *   <li>Les 50 comptes feuilles {@link AccountFixture#all()} via {@link
-   *       ChartOfAccountsService#createChild} (qui valide level ≤ 4 et publie AccountCreatedEvent).
-   *   <li>1 compte extra {@code 681000 Dotations aux amortissements} (CHARGES) requis par {@link
-   *       FixedAssetsService#createAsset} comme {@code depreciationExpenseAccountId}.
+   * <li>Les 7 classes de niveau 1 (codes "1" à "7", alignées sur la structure PCN_HAITI — cette
+   * simplification est documentée : les codes 1xxx-7xxx du PCN restent compatibles avec la
+   * structure IFRS simplifiée pour les besoins démo).
+   * <li>Les 50 comptes feuilles {@link AccountFixture#all()} via {@link
+   * ChartOfAccountsService#createChild} (qui valide level ≤ 4 et publie AccountCreatedEvent).
+   * <li>1 compte extra {@code 681000 Dotations aux amortissements} (CHARGES) requis par {@link
+   * FixedAssetsService#createAsset} comme {@code depreciationExpenseAccountId}.
    * </ol>
    *
    * <p>Idempotent : si les classes de niveau 1 existent déjà, ne fait rien.
@@ -715,7 +720,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     }
   }
 
-  // ══ Étape d — Immobilisations (5) ══
+  // ══Immobilisations (5) ══
 
   /**
    * Crée 5 immobilisations industrielles (bâtiment CODEVI, machines à coudre, véhicules,
@@ -811,7 +816,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape e — Clients importateurs USA (15) ══
+  // ══Clients importateurs USA (15) ══
 
   private List<ThirdPartyResponse> createDemoClients(UUID companyId, UUID clientsAccountId) {
     String[][] defs = {
@@ -856,7 +861,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape f — Fournisseurs matières premières (8) ══
+  // ══Fournisseurs matières premières (8) ══
 
   private List<ThirdPartyResponse> createDemoSuppliers(UUID companyId, UUID suppliersAccountId) {
     String[][] defs = {
@@ -892,7 +897,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape g — Entrepôt + 6 articles matières premières + stock initial ══
+  // ══Entrepôt + 6 articles matières premières + stock initial ══
 
   private List<ItemResponse> createDemoItems(UUID companyId, Warehouse warehouse) {
     // 6 matières premières typiques d'une usine textile en zone franche
@@ -959,7 +964,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape h — Compte bancaire (Capital Bank USD) ══
+  // ══Compte bancaire (Capital Bank USD) ══
 
   private void createDemoBankAccount(UUID companyId, UUID banqueAccountId) {
     try {
@@ -976,7 +981,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     }
   }
 
-  // ══ Étape i — Employés (30 réalistes) ══
+  // ══Employés (30 réalistes) ══
 
   /**
    * Crée 30 employés réalistes couvrant tous les profils types de l'usine. Les 1170 autres employés
@@ -1113,7 +1118,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     return empIdx + 1;
   }
 
-  // ══ Étape j — 12 mois d'opérations sur FY2025-2026 ══
+  // ══12 mois d'opérations sur FY2025-2026 ══
 
   /**
    * Génère 12 mois d'opérations (Oct 2025 → Sep 2026). Chaque mois est isolé dans un try/catch : un
@@ -1196,9 +1201,9 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * <p>Spécificités zone franche :
    *
    * <ul>
-   *   <li>{@code currency="USD"} (devise fonctionnelle)
-   *   <li>{@code taxRate=0} sur chaque ligne (TVA 0% export)
-   *   <li>{@code taxes=[VAT_EXEMPT_ZF]} sur chaque ligne (marqueur d'exonération v8-6)
+   * <li>{@code currency="USD"} (devise fonctionnelle)
+   * <li>{@code taxRate=0} sur chaque ligne (TVA 0% export)
+   * <li>{@code taxes=[VAT_EXEMPT_ZF]} sur chaque ligne (marqueur d'exonération v8-6)
    * </ul>
    */
   private boolean createExportSalesInvoice(
@@ -1259,8 +1264,8 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * <p>Spécificités zone franche :
    *
    * <ul>
-   *   <li>{@code currency="USD"} (imports depuis USA)
-   *   <li>{@code taxRate=0} sur chaque ligne (TVA 0% — imports en franchise douanière)
+   * <li>{@code currency="USD"} (imports depuis USA)
+   * <li>{@code taxRate=0} sur chaque ligne (TVA 0% — imports en franchise douanière)
    * </ul>
    */
   private boolean createFreeZonePurchaseInvoice(

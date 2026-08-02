@@ -1,6 +1,11 @@
 package jo.accountant.company.entity;
 
-/** Code de module métier — utilisé par CompanyModule pour tracker l'activation (§11). */
+/** Code de module métier — utilisé par CompanyModule pour tracker l'activation (§11). 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum ModuleCode {
  // Always-on (socle commun)
  CHART_OF_ACCOUNTS,
@@ -25,7 +30,7 @@ public enum ModuleCode {
 
  // Modules sectoriels — pilotés par business_type_module (PURCHASING, FX_OPERATIONS) ou
  // always-on (EMPLOYEES, EXPENSES, PAYROLL — voir BusinessTypeModuleService.alwaysOnModules).
- // Restructuration 2026-07-24 (suite) — 4 nouveaux modules bonus + FX.
+ //(suite) — 4 nouveaux modules bonus + FX.
  PURCHASING,
  EMPLOYEES,
  EXPENSES,

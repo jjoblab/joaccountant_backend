@@ -21,13 +21,13 @@ import org.springframework.stereotype.Service;
  * <p>Responsabilités :
  *
  * <ol>
- *   <li><b>Création des 5 journaux comptables</b> standards (VT, AC, BQ, OD, PA) — un par type
- *       d'opération métier. Ces codes journaux DOIVENT matcher les {@code scopeKey} des séquences
- *       {@code JOURNAL_ENTRY} créées par {@link DocumentNumberingBootstrap} (sinon la numérotation
- *       automatique des écritures échouerait).
- *   <li><b>Création des 2 exercices fiscaux</b> démo : FY2024-2025 (01/10/2024 → 30/09/2025) et
- *       FY2025-2026 (01/10/2025 → 30/09/2026), conformes à l'exercice haïtien (année fiscale
- *       commençant au 1er octobre — cf. Code Fiscal haïtien).
+ * <li><b>Création des 5 journaux comptables</b> standards (VT, AC, BQ, OD, PA) — un par type
+ * d'opération métier. Ces codes journaux DOIVENT matcher les {@code scopeKey} des séquences
+ * {@code JOURNAL_ENTRY} créées par {@link DocumentNumberingBootstrap} (sinon la numérotation
+ * automatique des écritures échouerait).
+ * <li><b>Création des 2 exercices fiscaux</b> démo : FY2024-2025 (01/10/2024 → 30/09/2025) et
+ * FY2025-2026 (01/10/2025 → 30/09/2026), conformes à l'exercice haïtien (année fiscale
+ * commençant au 1er octobre — cf. Code Fiscal haïtien).
  * </ol>
  *
  * <p><b>Exercice haïtien</b> : contrairement à la France (01/01 → 31/12) ou aux États-Unis
@@ -38,10 +38,10 @@ import org.springframework.stereotype.Service;
  * <p><b>Idempotence</b> :
  *
  * <ul>
- *   <li>Journaux — vérification via {@link JournalRepository#findByCompanyIdAndCode(UUID, String)}
- *       avant création. Si déjà existant, skip.
- *   <li>Exercices — vérification via {@link AccountingEngineService#listFiscalYears(UUID)} filtrée
- *       sur la plage de dates. Si un exercice chevauchant la plage existe déjà, skip.
+ * <li>Journaux — vérification via {@link JournalRepository#findByCompanyIdAndCode(UUID, String)}
+ * avant création. Si déjà existant, skip.
+ * <li>Exercices — vérification via {@link AccountingEngineService#listFiscalYears(UUID)} filtrée
+ * sur la plage de dates. Si un exercice chevauchant la plage existe déjà, skip.
  * </ul>
  *
  * <p><b>Auto-activation</b> : {@code AccountingEngineService.createFiscalYear} active
@@ -50,7 +50,12 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Thread-safety</b> — le service est stateless. Le contexte tenant doit être posé par
  * l'appelant (typiquement via {@link DemoTenantContext}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class FiscalYearBootstrap {
 
@@ -94,8 +99,8 @@ public class FiscalYearBootstrap {
    * <p><b>Coverage</b> :
    *
    * <ul>
-   *   <li>FY2024-2025 : 01/10/2024 → 30/09/2025 (12 mois, exercice N-1)
-   *   <li>FY2025-2026 : 01/10/2025 → 30/09/2026 (12 mois, exercice N courant)
+   * <li>FY2024-2025 : 01/10/2024 → 30/09/2025 (12 mois, exercice N-1)
+   * <li>FY2025-2026 : 01/10/2025 → 30/09/2026 (12 mois, exercice N courant)
    * </ul>
    *
    * <p>Les seeders d'écritures génèrent des opérations réparties sur ces 24 mois pour permettre la

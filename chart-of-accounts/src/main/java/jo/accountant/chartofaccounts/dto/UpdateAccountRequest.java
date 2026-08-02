@@ -17,11 +17,11 @@ import jo.accountant.core.framework.ReportingClass;
  *
  * <p>Règles appliquées :
  * <ul>
- *   <li>Compte {@code locked = true} → 409 sur toute modification.</li>
- *   <li>Activation ({@code active = true}) → toujours permise.</li>
- *   <li>Désactivation ({@code active = false}) → refusée si le compte a un solde non nul
- *       (vérifié via {@link jo.accountant.chartofaccounts.guard.AccountBalanceGuard},
- *       implémenté en Phase 5).</li>
+ * <li>Compte {@code locked = true} → 409 sur toute modification.</li>
+ * <li>Activation ({@code active = true}) → toujours permise.</li>
+ * <li>Désactivation ({@code active = false}) → refusée si le compte a un solde non nul
+ * (vérifié via {@link jo.accountant.chartofaccounts.guard.AccountBalanceGuard},
+ * implémenté en.</li>
  * </ul>
  *
  * @param label nouveau libellé (optionnel)
@@ -29,7 +29,12 @@ import jo.accountant.core.framework.ReportingClass;
  * @param taxMappingCode nouveau code fiscal (optionnel, nullable)
  * @param active nouveau statut actif (optionnel)
  * @param requiresAnalyticalTagPlanIds nouvelle liste de plans analytiques obligatoires (optionnel)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record UpdateAccountRequest(
     @Size(max = 200) String label,
     ReportingSubcategory reportingSubcategory,

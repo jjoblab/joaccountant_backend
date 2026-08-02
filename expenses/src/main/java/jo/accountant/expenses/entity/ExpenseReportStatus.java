@@ -7,9 +7,14 @@ package jo.accountant.expenses.entity;
  *
  * <p>L'approbation délègue à `JOURNAL_ENTRY_POST` (§2.2 du prompt — choix de cohérence
  * avec `:invoicing`/`:fixed-assets`/`:inventory`). Pas de `ApprovalActionType` dédié —
- * la transition APPROVED → génération d'écriture se fait en une seule étape au niveau du
+ * la transition APPROVED → génération d'écriture se fait en une seuleniveau du
  * service (la validation par seuil est gérée par `:accounting-engine` au postage).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum ExpenseReportStatus {
  DRAFT,
  SUBMITTED,

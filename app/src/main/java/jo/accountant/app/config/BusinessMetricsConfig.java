@@ -8,7 +8,7 @@ import java.time.Duration;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Métriques business pour le monitoring opérationnel (audit v4.7 §9.3 ).
+ * Métriques business pour le monitoring opérationnel.
  *
  * <p>Expose des compteurs et timers sur les opérations métier critiques — au-delà des métriques
  * techniques automatiques (JVM, HikariCP, HTTP server) fournies par Micrometer.
@@ -56,7 +56,12 @@ import org.springframework.context.annotation.Configuration;
  * compteurs sont créés à la demande (lazy) par les services via {@code meterRegistry.counter(...)}.
  * C'est le pattern recommandé pour les compteurs événementiels — un {@code MeterBinder} est utile
  * seulement pour les gauges synchronisées sur l'état interne.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 public class BusinessMetricsConfig {
 

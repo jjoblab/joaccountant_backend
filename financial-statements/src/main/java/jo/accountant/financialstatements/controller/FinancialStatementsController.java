@@ -43,14 +43,39 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints des états financiers (§13 Phase 6).
+ * Endpoints des états financiers (§13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/financial-statements/...}.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/financial-statements")
-@Tag(name = "FinancialStatements", description = "Bilan, compte de résultat, snapshots figés (§13 Phase 6)")
+@Tag(name = "FinancialStatements", description = "Bilan, compte de résultat, snapshots figés (§13")
 public class FinancialStatementsController {
 
  private static final Logger LOG = LoggerFactory.getLogger(FinancialStatementsController.class);
@@ -122,8 +147,8 @@ public class FinancialStatementsController {
  }
 
  @Operation(summary = "Générer le tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE)",
- description = "Audit v4.7 §3.1 Méthode indirecte : résultat net ± amortissements ± variations BFR ± cessions + investissements + financements. " +
- "Limitation v4.7.1 : distinction investissement/financement basée sur codes de compte (à affiner en v4.8).")
+ description = "Méthode indirecte : résultat net ± amortissements ± variations BFR ± cessions + investissements + financements. " +
+ "Limitation : distinction investissement/financement basée sur codes de compte (à affiner).")
  @io.swagger.v3.oas.annotations.responses.ApiResponses({
  @ApiResponse(responseCode = "200",
  description = "Tableau de flux de trésorerie (méthode indirecte IAS 7 / SYSCOHADA TAFIRE)",
@@ -229,7 +254,7 @@ public class FinancialStatementsController {
  }
 
  @Operation(summary = "Créer automatiquement les snapshots de clôture (bilan + CR) pour une période",
- description = "Audit v4.7 §3.1 À appeler après POST /fiscal-years/{id}/close. " +
+ description = "À appeler après POST /fiscal-years/{id}/close. " +
  "Crée (idempotent) les snapshots figés BALANCE_SHEET + INCOME_STATEMENT " +
  "pour la période de clôture. Sans ces snapshots, le plan comptable peut " +
  "être modifié après clôture et les états financiers générés ultérieurement " +
@@ -390,7 +415,7 @@ public class FinancialStatementsController {
  }
 
  // ======================================================================
- // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés
+ // Reports Hub : endpoints PDF dédiés
  // (4 endpoints — bilan, compte de résultat, flux de trésorerie, variation
  // des capitaux propres). Chaque endpoint :
  // 1. appelle le service métier existant pour obtenir le DTO,
@@ -405,7 +430,7 @@ public class FinancialStatementsController {
  // exportBalanceSheetPdf dans ReportingService).
  // ======================================================================
 
- @Operation(summary = "Générer le bilan en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer le bilan en PDF (Reports Hub)",
  description = "Rendu PDF du bilan via :document-generation (template BALANCE_SHEET_REPORT). " +
  "Sert un PDF binaire en attachment. Délègue au même service métier que GET /balance-sheet.")
  @ApiResponses({
@@ -442,7 +467,7 @@ public class FinancialStatementsController {
  return response;
  }
 
- @Operation(summary = "Générer le compte de résultat en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer le compte de résultat en PDF (Reports Hub)",
  description = "Rendu PDF du compte de résultat via :document-generation (template INCOME_STATEMENT_REPORT). " +
  "Délègue au même service métier que GET /income-statement.")
  @ApiResponses({
@@ -482,7 +507,7 @@ public class FinancialStatementsController {
  return response;
  }
 
- @Operation(summary = "Générer le tableau de flux de trésorerie en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer le tableau de flux de trésorerie en PDF (Reports Hub)",
  description = "Rendu PDF du tableau de flux (IAS 7 / SYSCOHADA TAFIRE) via :document-generation " +
  "(template CASH_FLOW_STATEMENT_REPORT). Délègue au même service que GET /cash-flow-statement.")
  @ApiResponses({
@@ -524,7 +549,7 @@ public class FinancialStatementsController {
  return response;
  }
 
- @Operation(summary = "Générer le tableau de variation des capitaux propres en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer le tableau de variation des capitaux propres en PDF (Reports Hub)",
  description = "Rendu PDF du tableau IAS 1.106 via :document-generation " +
  "(template STATEMENT_OF_CHANGES_IN_EQUITY_REPORT). Délègue au même service que GET /statement-of-changes-in-equity.")
  @ApiResponses({

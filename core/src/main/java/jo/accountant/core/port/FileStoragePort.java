@@ -8,7 +8,12 @@ package jo.accountant.core.port;
  * <p>§3.11 : tout fichier stocké est référencé par une clé opaque {@code storageKey} — JAMAIS par
  * une URL publique. L'accès est toujours médié par un endpoint applicatif qui vérifie
  * l'appartenance tenant avant de streamer les octets.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface FileStoragePort {
 
     /**

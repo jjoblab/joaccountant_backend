@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Adaptateur du port {@link WithholdingRulePort} — implémentation concrète côté {@code :tax}
- * (audit v4.7 §4.1 suite).
+ *suite).
  *
  * <p>Lit les {@link WithholdingRule} depuis la DB via {@link WithholdingRuleRepository} et
  * les mappe en {@link WithholdingRuleSnapshot} (DTO immuable du port). Permet à
@@ -29,7 +29,12 @@ import org.springframework.stereotype.Component;
  * {@link #findActiveRuleByCode(UUID, String)} pour lookup par code (utilisé par
  * {@code :invoicing} sur les factures de ventes). Le snapshot inclut désormais {@code id}
  * (UUID) pour stocker la FK sur {@code SalesInvoice.withholdingRuleId}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class WithholdingRulePortAdapter implements WithholdingRulePort {
 

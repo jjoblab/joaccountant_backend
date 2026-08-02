@@ -11,12 +11,17 @@ import java.util.UUID;
  * Corps de requête pour {@code POST .../expense-reports}.
  *
  * @param thirdPartyId ID du tiers employé (nullable — dépense d'exploitation générale)
- * @param expenseDate  date de la dépense
- * @param currency     code ISO 4217 (défaut : HTG)
- * @param description  description libre
+ * @param expenseDate date de la dépense
+ * @param currency code ISO 4217 (défaut : HTG)
+ * @param description description libre
  * @param paidDirectly false (défaut) = à rembourser à l'employé ; true = payé par trésorerie
- * @param lines        lignes de la note de frais
- */
+ * @param lines lignes de la note de frais
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateExpenseReportRequest(
     UUID thirdPartyId,
     @NotNull LocalDate expenseDate,

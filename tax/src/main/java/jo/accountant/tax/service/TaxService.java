@@ -48,7 +48,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Gestion des règles de TVA et des retenues à la source. Export déclaratif simple
  * par période (agrégation par taux).
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Service
 public class TaxService {
 

@@ -17,7 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-// v2.5.2 — BearerTokenAuthenticationFilter déprécié en Spring Security 6.x.
+// BearerTokenAuthenticationFilter déprécié en Spring Security 6.x.
 // On utilise l'interface de base (qui reste stable) pour le positioning des filtres.
 // import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
@@ -35,10 +35,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * chaîne de filtres d'auth alimentent {@link TenantContext} avec userId + companyId depuis les
  * claims du JWT.
  *
- * <p><b>Audit v4.7 §6.3</b> : CORS restrictif configurable via {@code app.cors.allowed-origins}
+ * <p><b></b> : CORS restrictif configurable via {@code app.cors.allowed-origins}
  * (défaut {@code *} pour dev seulement). Headers de sécurité ajoutés (HSTS, X-Frame-Options,
  * X-Content-Type-Options, Referrer-Policy, CSP).
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -61,33 +64,33 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Audit v4.7 §6.3 — Headers de sécurité (HSTS, X-Frame-Options, CSP, Referrer-Policy)
+            //— Headers de sécurité (HSTS, X-Frame-Options, CSP, Referrer-Policy)
             //
-            // ⚠️ FIX Phase 1 (audit Z.ai 2026-07-31) — CSP default-src 'none' bloquait Swagger UI.
+            // ⚠️ FIXCSP default-src 'none' bloquait Swagger UI.
             // La directive `default-src 'none'` est la CSP la plus restrictive possible : elle
             // impose que TOUTES les directives fallback (script-src, style-src, img-src, font-src,
             // connect-src, frame-src, etc.) soient à 'none' sauf si redéfinies explicitement.
             // Or Swagger UI charge dynamiquement :
-            //   - /webjars/swagger-ui/swagger-ui-bundle.js  → bloqué par script-src 'none'
-            //   - /webjars/swagger-ui/swagger-ui.css        → bloqué par style-src 'none'
-            //   - fetch('/v3/api-docs/swagger-config')      → bloqué par connect-src 'none'
-            //   - inline scripts injectés par springdoc     → bloqués (pas de 'unsafe-inline')
+            // - /webjars/swagger-ui/swagger-ui-bundle.js → bloqué par script-src 'none'
+            // - /webjars/swagger-ui/swagger-ui.css → bloqué par style-src 'none'
+            // - fetch('/v3/api-docs/swagger-config') → bloqué par connect-src 'none'
+            // - inline scripts injectés par springdoc → bloqués (pas de 'unsafe-inline')
             // Résultat : HTML 200 OK mais page blanche.
             //
             // Solution : CSP permissive pour Swagger UI tout en préservant les autres restrictions.
-            //   - 'self' autorise les webjars servis depuis la même origine
-            //   - 'unsafe-inline' est nécessaire pour script-src et style-src car springdoc
-            //     injecte du JS inline dans /swagger-ui/index.html (configuration dynamique)
-            //   - img-src 'self' data: permet les favicons et schémas inline des exemples
-            //   - connect-src 'self' autorise les fetch XHR vers /v3/api-docs et /swagger-config
-            //   - default-src 'none' reste comme safety net pour les autres directives (frame, object, etc.)
-            //   - frame-ancestors 'none' remplace X-Frame-Options pour la protection clickjacking
+            // - 'self' autorise les webjars servis depuis la même origine
+            // - 'unsafe-inline' est nécessaire pour script-src et style-src car springdoc
+            // injecte du JS inline dans /swagger-ui/index.html (configuration dynamique)
+            // - img-src 'self' data: permet les favicons et schémas inline des exemples
+            // - connect-src 'self' autorise les fetch XHR vers /v3/api-docs et /swagger-config
+            // - default-src 'none' reste comme safety net pour les autres directives (frame, object, etc.)
+            // - frame-ancestors 'none' remplace X-Frame-Options pour la protection clickjacking
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
-                .contentTypeOptions(ct -> {})  // X-Content-Type-Options: nosniff (activé par défaut, explicite)
+                .contentTypeOptions(ct -> {}) // X-Content-Type-Options: nosniff (activé par défaut, explicite)
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
-                    .maxAgeInSeconds(31536000))  // 1 an
+                    .maxAgeInSeconds(31536000)) // 1 an
                 .referrerPolicy(rp -> rp.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                     "default-src 'none'; " +
@@ -123,7 +126,7 @@ public class SecurityConfig {
                     "/webjars/**",
                     "/actuator/health",
                     "/actuator/info").permitAll()
-                // V8.1 — Module Démos : endpoints publics GET /api/v1/demos/** (lecture seule,
+                // Module Démos : endpoints publics GET /api/v1/demos/** (lecture seule,
                 // entreprises fictives is_demo=true). Pas d'auth pour prospection commerciale.
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/demos",
@@ -134,7 +137,7 @@ public class SecurityConfig {
                 // ⚠️ À DÉSACTIVER en production réelle (supprimer ce bloc + DemoLoginController).
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/demos/login/**").permitAll()
-                // v2.5.2 — Re-seed manuel démo (POST /api/v1/demos/seed). Public pour
+                // Re-seed manuel démo (POST /api/v1/demos/seed). Public pour
                 // permettre de déclencher le seed sans JWT (utile si le seed auto a échoué
                 // et qu'aucun user démo n'existe encore en DB).
                 // ⚠️ À DÉSACTIVER en production réelle.
@@ -154,7 +157,7 @@ public class SecurityConfig {
                                    @Value("${app.jwt.rsa.public-key-path:}") String rsaPublicKeyPath,
                                    @Value("${app.jwt.issuer:joaccountant}") String issuer,
                                    @Value("${app.jwt.audience:joaccountant-api}") String audience) {
-        // Audit v4.7 §6.3 — JwtDecoder adapté à l'algorithme configuré (HS256 ou RS256).
+        //— JwtDecoder adapté à l'algorithme configuré (HS256 ou RS256).
         // Pour HS256 : secret partagé symétrique.
         // Pour RS256 : clé publique RSA (la clé privée est utilisée par JwtService pour signer).
         String algoUpper = algorithm.trim().toUpperCase();
@@ -198,7 +201,7 @@ public class SecurityConfig {
     /**
      * Configuration CORS restrictive.
      *
-     * <p><b>Audit v4.7 §6.3 Finding</b> : la config originale autorisait {@code *} avec
+     * <p><b>Finding</b> : la config originale autorisait {@code *} avec
      * {@code allowCredentials=true}, ce qui permettait à n'importe quel site web de faire des
      * requêtes authentifiées vers l'API. Désormais, les origines autorisées sont configurables via
      * {@code app.cors.allowed-origins} (séparées par virgule). Défaut {@code *} uniquement pour
@@ -216,7 +219,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L);  // Preflight cache 1h
+        config.setMaxAge(3600L); // Preflight cache 1h
         LOG.info("CORS configuré avec allowedOriginPatterns={} (allowCredentials=true)", origins);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

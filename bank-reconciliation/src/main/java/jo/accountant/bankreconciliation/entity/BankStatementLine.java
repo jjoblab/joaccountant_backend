@@ -9,19 +9,24 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Ligne de relevé bancaire (§13 Phase 13).
+ * Ligne de relevé bancaire (§13.
  *
  * <p>Chaque ligne est issue du parsing d'un fichier de relevé (CSV ou OFX). Elle peut être
  * dans 2 états :
  * <ul>
- *   <li>Non rapprochée : {@code matched = false}, {@code matchedJournalLineId = null}</li>
- *   <li>Rapprochée : {@code matched = true}, {@code matchedJournalLineId} référence la
- *       {@link jo.accountant.accountingengine.entity.JournalLine} correspondante</li>
+ * <li>Non rapprochée : {@code matched = false}, {@code matchedJournalLineId = null}</li>
+ * <li>Rapprochée : {@code matched = true}, {@code matchedJournalLineId} référence la
+ * {@link jo.accountant.accountingengine.entity.JournalLine} correspondante</li>
  * </ul>
  *
  * <p>Le rapprochement peut être automatique (montant + date exacte, puis correspondance floue
  * sur libellé) ou manuel (l'utilisateur valide la correspondance).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "bank_statement_line")
 public class BankStatementLine extends TenantAwareEntity {

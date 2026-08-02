@@ -7,9 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Configuration ShedLock — verrou distribué pour les tâches planifiées (audit v4.7 §9.2 #5).
+ * Configuration ShedLock — verrou distribué pour les tâches planifiées#5).
  *
- * <p><b>Problème</b> : la v4.7 utilise {@link org.springframework.scheduling.annotation.Scheduled @Scheduled}
+ * <p><b>Problème</b> : la version précédente utilise {@link org.springframework.scheduling.annotation.Scheduled @Scheduled}
  * pour {@code ScheduledAlertsConfig.checkOverdueInvoices}. En déploiement multi-instances
  * (K8s replicas, ECS tasks), chaque instance exécute le cron → 3 replicas = 3 exécutions de
  * la même tâche = 3× les alertes envoyées aux clients, 3× les écritures d'audit, etc.
@@ -26,12 +26,12 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Usage</b> : annoter chaque méthode {@code @Scheduled} avec
  * {@code @SchedulerLock(name = "...", lockAtMostFor = "...", lockAtLeastFor = "...")}.
  * <ul>
- *   <li>{@code lockAtMostFor} : durée max du lock — au-delà, une autre instance peut prendre
- *       le relais (au cas où l'instance leader crash). Doit être supérieure à la durée
- *       d'exécution normale.</li>
- *   <li>{@code lockAtLeastFor} : durée min du lock — empêche une autre instance de prendre
- *       le relais trop tôt si la tâche se termine très vite (évite les exécutions en rafale
- *       si le cron tourne toutes les minutes).</li>
+ * <li>{@code lockAtMostFor} : durée max du lock — au-delà, une autre instance peut prendre
+ * le relais (au cas où l'instance leader crash). Doit être supérieure à la durée
+ * d'exécution normale.</li>
+ * <li>{@code lockAtLeastFor} : durée min du lock — empêche une autre instance de prendre
+ * le relais trop tôt si la tâche se termine très vite (évite les exécutions en rafale
+ * si le cron tourne toutes les minutes).</li>
  * </ul>
  *
  * <p><b>Limitation</b> : ShedLock ne garantit pas l'unicité absolue — il y a une fenêtre
@@ -40,7 +40,15 @@ import org.springframework.context.annotation.Configuration;
  * comptables), utiliser une transaction DB avec SELECT FOR UPDATE en complément.
  */
 @Configuration
-@EnableSchedulerLock(defaultLockAtMostFor = "PT5M")  // défaut 5 min — override par @SchedulerLock
+@EnableSchedulerLock(defaultLockAtMostFor = "PT5M") // défaut 5 min — override par @SchedulerLock
+/**
+ * Configuration Spring ShedLock.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class ShedLockConfig {
 
     /**
@@ -49,10 +57,10 @@ public class ShedLockConfig {
      * <p>Utilise la table {@code shedlock} (créée par migration V48). Le schéma est :
      * <pre>
      * CREATE TABLE shedlock (
-     *     name VARCHAR(64) NOT NULL PRIMARY KEY,
-     *     lock_until TIMESTAMP NOT NULL,
-     *     locked_at TIMESTAMP NOT NULL,
-     *     locked_by VARCHAR(255) NOT NULL
+     * name VARCHAR(64) NOT NULL PRIMARY KEY,
+     * lock_until TIMESTAMP NOT NULL,
+     * locked_at TIMESTAMP NOT NULL,
+     * locked_by VARCHAR(255) NOT NULL
      * );
      * </pre>
      *

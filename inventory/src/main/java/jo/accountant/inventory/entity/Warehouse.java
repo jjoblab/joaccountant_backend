@@ -7,7 +7,7 @@ import jakarta.persistence.UniqueConstraint;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Entrepôt de stockage (§13 Phase 9).
+ * Entrepôt de stockage (§13.
  *
  * <p>Un entrepôt est un lieu physique où est stocké un article. Une entreprise peut avoir
  * plusieurs entrepôts (ex. boutique principale, dépôt secondaire). Les transferts entre
@@ -17,6 +17,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "warehouse",
     uniqueConstraints = @UniqueConstraint(name = "uc_wh_company_label",
         columnNames = {"company_id", "label"}))
+/**
+ * Warehouse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Warehouse extends TenantAwareEntity {
 
     @Column(name = "label", nullable = false, length = 100)

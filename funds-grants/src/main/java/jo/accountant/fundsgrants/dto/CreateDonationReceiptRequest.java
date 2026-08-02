@@ -6,6 +6,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * CreateDonationReceiptRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateDonationReceiptRequest(
     UUID grantId,
     @NotNull UUID donorThirdPartyId,

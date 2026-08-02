@@ -7,7 +7,12 @@ import jo.accountant.documentnumbering.entity.ResetPolicy;
 
 /**
  * Réponse pour {@code GET .../sequences} et {@code POST .../sequences}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record SequenceResponse(
     UUID id,
     UUID companyId,

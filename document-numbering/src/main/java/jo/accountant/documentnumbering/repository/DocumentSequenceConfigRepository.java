@@ -12,9 +12,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
  *
  * <p>L'isolation multi-tenant est faite explicitement par le service via {@code companyId} —
  * {@link jo.accountant.core.tenant.TenantAwareEntityListener} injecte déjà le companyId à
- * l'insertion. Hibernate {@code @TenantId} n'est pas activé globalement en Phase 2 (refactor
- * commun à toutes les entités, à faire en Phase 3 ou ultérieurement).
- */
+ * l'insertion. Hibernate {@code @TenantId} n'est pas activé globalement en(refactor
+ * commun à toutes les entités, à faire enou ultérieurement).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface DocumentSequenceConfigRepository extends JpaRepository<DocumentSequenceConfig, UUID> {
 
     /** Recherche la configuration unique par (companyId, documentType, scopeKey). */

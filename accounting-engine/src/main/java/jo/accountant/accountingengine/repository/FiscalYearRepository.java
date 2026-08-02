@@ -10,7 +10,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des exercices fiscaux.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface FiscalYearRepository extends JpaRepository<FiscalYear, UUID> {
 
     /** Tous les exercices de l'entreprise, triés par date de début. */
@@ -21,6 +26,6 @@ public interface FiscalYearRepository extends JpaRepository<FiscalYear, UUID> {
         UUID companyId, LocalDate startDate, LocalDate endDate);
 
     /** Compte les exercices OPEN — utile pour empêcher la création d'un nouvel exercice
-     *  si l'ancien n'est pas clôturé (selon politique, optionnel). */
+     * si l'ancien n'est pas clôturé (selon politique, optionnel). */
     long countByCompanyIdAndStatus(UUID companyId, FiscalYearStatus status);
 }

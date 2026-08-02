@@ -15,7 +15,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p><b>pagination Pageable</b> : variantes paginées ({@code Page<>}) disponibles
  * pour l'endpoint {@code GET /expense-reports}. Les variantes {@code List<>} sont conservées
  * pour rétro-compatibilité (appels internes sans pagination).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface ExpenseReportRepository extends JpaRepository<ExpenseReport, UUID> {
 
  List<ExpenseReport> findByCompanyIdOrderByExpenseDateDesc(UUID companyId);
@@ -26,8 +31,7 @@ public interface ExpenseReportRepository extends JpaRepository<ExpenseReport, UU
  * Notes de frais d'une entreprise dont la {@code expenseDate} est comprise entre
  * {@code start} et {@code end} (inclus), triées par {@code expenseDate} décroissant.
  *
- * <p>Utilisé par {@code GET /expense-reports?fiscalYearId=} (restructuration 2026-07-25
- * suite 4) pour filtrer les notes par exercice fiscal.
+ * <p>Utilisé par {@code GET /expense-reports?fiscalYearId=}* suite 4) pour filtrer les notes par exercice fiscal.
  */
  List<ExpenseReport> findByCompanyIdAndExpenseDateBetweenOrderByExpenseDateDesc(
  UUID companyId, LocalDate start, LocalDate end);

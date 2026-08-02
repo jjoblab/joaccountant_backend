@@ -63,17 +63,17 @@ import org.springframework.transaction.PlatformTransactionManager;
  *
  * <p>Deux Jobs sont enregistrés via {@link EnableBatchProcessing} :
  * <ul>
- *   <li><b>{@code payrollJob}</b> — Step chunk-oriented (taille 50) qui lit tous les employés
- *       {@code ACTIVE} d'une entreprise, calcule le brut→net via {@link PayrollCalculator}
- *       (sur la base des {@link ContributionRule} actives), et génère les {@link Payslip}.
- *       Retry 3× sur {@link IOException} (fault-tolerant step). Met à jour les totaux du
- *       {@link PayrollRun} (totalGross, totalNet, totalEmployerContributions, status=CALCULATED)
- *       à la fin du Step via un {@link StepExecutionListener}.</li>
- *   <li><b>{@code fiscalYearClosingJob}</b> — Step tasklet qui exécute
- *       {@link AccountingEngineService#closeFiscalYear(UUID, UUID)} puis
- *       {@link FinancialStatementsService#createClosingSnapshots(UUID, UUID)} pour figer
- *       le bilan et le compte de résultat de l'exercice clôturé. Retry 1× (la clôture est
- *       idempotente — un second appel ne fait rien si l'exercice est déjà CLOSED).</li>
+ * <li><b>{@code payrollJob}</b> — Step chunk-oriented (taille 50) qui lit tous les employés
+ * {@code ACTIVE} d'une entreprise, calcule le brut→net via {@link PayrollCalculator}
+ * (sur la base des {@link ContributionRule} actives), et génère les {@link Payslip}.
+ * Retry 3× sur {@link IOException} (fault-tolerant step). Met à jour les totaux du
+ * {@link PayrollRun} (totalGross, totalNet, totalEmployerContributions, status=CALCULATED)
+ * à la fin du Step via un {@link StepExecutionListener}.</li>
+ * <li><b>{@code fiscalYearClosingJob}</b> — Step tasklet qui exécute
+ * {@link AccountingEngineService#closeFiscalYear(UUID, UUID)} puis
+ * {@link FinancialStatementsService#createClosingSnapshots(UUID, UUID)} pour figer
+ * le bilan et le compte de résultat de l'exercice clôturé. Retry 1× (la clôture est
+ * idempotente — un second appel ne fait rien si l'exercice est déjà CLOSED).</li>
  * </ul>
  *
  * <p><b>Non auto-démarrés</b> : la propriété {@code spring.batch.job.enabled=false} dans
@@ -85,7 +85,12 @@ import org.springframework.transaction.PlatformTransactionManager;
  * et le nettoie après. Côté contrôleur, le {@link TenantContext} est également positionné
  * avant l'appel {@code jobLauncher.run(...)} pour couvrir le cas synchrone (JobLauncher par
  * défaut).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 @EnableBatchProcessing
 public class BatchConfig {
@@ -127,7 +132,7 @@ public class BatchConfig {
     }
 
     // ===================================================================
-    //  Job 1 — payrollJob : Step chunk-oriented (taille 50) + retry 3×
+    // Job 1 — payrollJob : Step chunk-oriented (taille 50) + retry 3×
     // ===================================================================
 
     /**
@@ -136,8 +141,8 @@ public class BatchConfig {
      *
      * <p>Paramètres attendus :
      * <ul>
-     *   <li>{@code companyId} (UUID) — tenant</li>
-     *   <li>{@code runId} (UUID) — ID de la campagne (PayrollRun) à calculer</li>
+     * <li>{@code companyId} (UUID) — tenant</li>
+     * <li>{@code runId} (UUID) — ID de la campagne (PayrollRun) à calculer</li>
      * </ul>
      */
     @Bean
@@ -232,8 +237,8 @@ public class BatchConfig {
     }
 
     // ===================================================================
-    //  Job 1b — thirteenthMonthJob : Step chunk-oriented (taille 50) + retry 3×
-    //  v8-7 — 13e mois (Code du Travail Haïti art. 153) asynchrone via Spring Batch.
+    // Job 1b — thirteenthMonthJob : Step chunk-oriented (taille 50) + retry 3×
+    // v8-7 — 13e mois (Code du Travail Haïti art. 153) asynchrone via Spring Batch.
     // ===================================================================
 
     /**
@@ -250,9 +255,9 @@ public class BatchConfig {
      *
      * <p>Paramètres attendus :
      * <ul>
-     *   <li>{@code companyId} (UUID) — tenant</li>
-     *   <li>{@code runId} (UUID) — ID de la campagne THIRTEENTH_MONTH à calculer</li>
-     *   <li>{@code year} (Integer) — année fiscale (le 13e mois est versé en décembre)</li>
+     * <li>{@code companyId} (UUID) — tenant</li>
+     * <li>{@code runId} (UUID) — ID de la campagne THIRTEENTH_MONTH à calculer</li>
+     * <li>{@code year} (Integer) — année fiscale (le 13e mois est versé en décembre)</li>
      * </ul>
      *
      * <p><b>Note</b> : ce Job est défini dans {@code :app/batch} (où Spring Batch est
@@ -359,7 +364,7 @@ public class BatchConfig {
     }
 
     // ===================================================================
-    //  Job 2 — fiscalYearClosingJob : Step tasklet + retry 1×
+    // Job 2 — fiscalYearClosingJob : Step tasklet + retry 1×
     // ===================================================================
 
     /**
@@ -369,8 +374,8 @@ public class BatchConfig {
      *
      * <p>Paramètres attendus :
      * <ul>
-     *   <li>{@code companyId} (UUID) — tenant</li>
-     *   <li>{@code fiscalYearId} (UUID) — ID de l'exercice à clôturer</li>
+     * <li>{@code companyId} (UUID) — tenant</li>
+     * <li>{@code fiscalYearId} (UUID) — ID de l'exercice à clôturer</li>
      * </ul>
      */
     @Bean
@@ -414,7 +419,7 @@ public class BatchConfig {
     }
 
     // ===================================================================
-    //  Listener tenant — alimente TenantContext depuis JobParameters
+    // Listener tenant — alimente TenantContext depuis JobParameters
     // ===================================================================
 
     /**
@@ -429,7 +434,7 @@ public class BatchConfig {
     }
 
     // ====================================================================
-    //  Inner classes — processor, writer, listeners, tasklet
+    // Inner classes — processor, writer, listeners, tasklet
     // ====================================================================
 
     /**
@@ -600,12 +605,12 @@ public class BatchConfig {
     /**
      * v8-7 — Processor chunk pour le 13e mois. Pour chaque employé éligible :
      * <ol>
-     *   <li>Calcule le 13e mois brut via {@link PayrollCalculator#calculateThirteenthMonth}
-     *       (prorata temporis si moins de 12 mois d'ancienneté, plafond 1 mois sinon).</li>
-     *   <li>Calcule l'ITS (Impôt sur Traitements et Salaires — Code Fiscal Haïti art. 156)
-     *       via {@link PayrollCalculator#computeIts} sur les règles ITS_HT actives.</li>
-     *   <li>Construit le {@link Payslip} (deductions = ITS uniquement, pas de cotisations
-     *       sociales CNSS/OFATMA/AST sur le 13e mois) et le retourne pour persistance.</li>
+     * <li>Calcule le 13e mois brut via {@link PayrollCalculator#calculateThirteenthMonth}
+     * (prorata temporis si moins de 12 mois d'ancienneté, plafond 1 mois sinon).</li>
+     * <li>Calcule l'ITS (Impôt sur Traitements et Salaires — Code Fiscal Haïti art. 156)
+     * via {@link PayrollCalculator#computeIts} sur les règles ITS_HT actives.</li>
+     * <li>Construit le {@link Payslip} (deductions = ITS uniquement, pas de cotisations
+     * sociales CNSS/OFATMA/AST sur le 13e mois) et le retourne pour persistance.</li>
      * </ol>
      *
      * <p>Les règles ITS sont chargées une fois au premier appel (lazy init thread-safe
@@ -682,7 +687,7 @@ public class BatchConfig {
             payslip.setEmployeeId(emp.getId());
             payslip.setGrossSalary(gross);
             payslip.setDeductions(toJson(deductions));
-            payslip.setEmployerContributions(toJson(List.of()));  // pas de charges patronales
+            payslip.setEmployerContributions(toJson(List.of())); // pas de charges patronales
             payslip.setNetPay(net);
             return payslip;
         }
@@ -736,7 +741,7 @@ public class BatchConfig {
             }
             run.setTotalGross(totalGross);
             run.setTotalNet(totalNet);
-            run.setTotalEmployerContributions(BigDecimal.ZERO);  // pas de charges patronales 13e mois
+            run.setTotalEmployerContributions(BigDecimal.ZERO); // pas de charges patronales 13e mois
             run.setStatus(PayrollRunStatus.CALCULATED);
             payrollRunRepository.save(run);
             LOG.info("v8-7 — PayrollRun THIRTEENTH_MONTH {} (company={}) mis à jour : " +
@@ -749,11 +754,11 @@ public class BatchConfig {
     /**
      * Tasklet de clôture d'exercice — enchaîne :
      * <ol>
-     *   <li>{@link AccountingEngineService#closeFiscalYear} : génère l'écriture de clôture
-     *       (solde des comptes de produits/charges contre le compte de résultat) +
-     *       l'écriture d'ouverture N+1 (report des soldes de bilan).</li>
-     *   <li>{@link FinancialStatementsService#createClosingSnapshots} : fige le bilan et
-     *       le compte de résultat de la dernière période de l'exercice.</li>
+     * <li>{@link AccountingEngineService#closeFiscalYear} : génère l'écriture de clôture
+     * (solde des comptes de produits/charges contre le compte de résultat) +
+     * l'écriture d'ouverture N+1 (report des soldes de bilan).</li>
+     * <li>{@link FinancialStatementsService#createClosingSnapshots} : fige le bilan et
+     * le compte de résultat de la dernière période de l'exercice.</li>
      * </ol>
      *
      * <p><b>Retry 1×</b> : Spring Batch 5 ne supporte {@code .faultTolerant()} que sur les

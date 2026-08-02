@@ -20,7 +20,12 @@ package jo.accountant.core.tax;
  * référencée à la fois par {@code :tax} (sur l'entité {@code TaxRule}) et par
  * {@code :invoicing} (via {@link jo.accountant.core.port.TaxRulePort}) — sans dépendance
  * circulaire Gradle.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum VatMode {
  /** TVA sur débit — exigible à l'émission de la facture (régime par défaut). */
  DEBIT,

@@ -15,7 +15,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * <p><b>pagination Pageable</b> : variantes paginées ({@code Page<>}) disponibles
  * pour les endpoints volumineux. Les variantes {@code List<>} sont conservées pour
  * rétro-compatibilité (appels internes sans pagination).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface PurchaseInvoiceRepository extends JpaRepository<PurchaseInvoice, UUID> {
 
  List<PurchaseInvoice> findByCompanyIdOrderByIssueDateDesc(UUID companyId);
@@ -26,8 +31,7 @@ public interface PurchaseInvoiceRepository extends JpaRepository<PurchaseInvoice
  * Factures d'achat d'une entreprise dont la {@code issueDate} est comprise entre
  * {@code start} et {@code end} (inclus), triées par {@code issueDate} décroissant.
  *
- * <p>Utilisé par {@code GET /purchase-invoices?fiscalYearId=} (restructuration 2026-07-25
- * suite 4) pour filtrer les factures par exercice fiscal.
+ * <p>Utilisé par {@code GET /purchase-invoices?fiscalYearId=}* suite 4) pour filtrer les factures par exercice fiscal.
  */
  List<PurchaseInvoice> findByCompanyIdAndIssueDateBetweenOrderByIssueDateDesc(
  UUID companyId, LocalDate start, LocalDate end);

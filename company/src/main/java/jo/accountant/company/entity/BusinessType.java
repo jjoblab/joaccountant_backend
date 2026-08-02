@@ -24,8 +24,13 @@ import jakarta.persistence.Version;
  *
  * <p>Le code {@code CUSTOM} remplace l'ancien secteur {@code MIXTE} (bug documenté —
  * voir {@code company/README.md}) : un type métier {@code CUSTOM} signifie que l'utilisateur
- * sélectionne manuellement les modules à l'étape 8 du wizard (aucune auto-activation).
- */
+ * sélectionne manuellement les modules à l'du wizard (aucune auto-activation).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "business_type")
 public class BusinessType {

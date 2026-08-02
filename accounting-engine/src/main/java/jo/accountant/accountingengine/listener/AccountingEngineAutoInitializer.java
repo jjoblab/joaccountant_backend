@@ -22,32 +22,37 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * V8.2 Phase 4 (audit Z.ai 2026-07-31) — Listener event-driven pour l'auto-initialisation
+ * V8.2Listener event-driven pour l'auto-initialisation
  * de l'infrastructure comptable (exercice fiscal + journaux + séquences) après finalisation
  * du wizard.
  *
  * <p>Écoute {@link CompanyWizardCompletedEvent} en phase {@link TransactionPhase#AFTER_COMMIT}.
  *
- * <p><b>Idempotence</b> : chaque sous-étape catch {@link ConflictException} silencieusement
+ * <p><b>Idempotence</b> : chaque sous-{@link ConflictException} silencieusement
  * (objet déjà créé par l'activation atomique dans {@code AccountingProvisioningPortImpl.provision}).
  * Ce listener est donc un <b>filet de sécurité</b> + un point d'extension.
  *
- * <p><b>Architecture hybride</b> : en V8.2 Phase 2, l'activation atomique est faite
- * <em>directement</em> dans {@code completeWizard}. Ce listener (Phase 4) est une alternative
+ * <p><b>Architecture hybride</b> : l'activation atomique est faite
+ * <em>directement</em> dans {@code completeWizard}. Ce listenerest une alternative
  * event-driven qui permettrait, à terme, de supprimer l'appel direct et de découpler
  * complètement {@code :company} des modules comptables.
  *
  * <p><b>Sous-étapes exécutées</b> :
  * <ol>
- *   <li>Création de l'exercice fiscal de l'année en cours (12 périodes mensuelles auto)</li>
- *   <li>Création des 8 journaux standards via {@link AccountingEngineService#getOrCreateJournal}</li>
- *   <li>Création des 6 séquences de numérotation par défaut</li>
+ * <li>Création de l'exercice fiscal de l'année en cours (12 périodes mensuelles auto)</li>
+ * <li>Création des 8 journaux standards via {@link AccountingEngineService#getOrCreateJournal}</li>
+ * <li>Création des 6 séquences de numérotation par défaut</li>
  * </ol>
  *
  * <p><b>Note sur la TVA</b> : la création des règles TVA par défaut reste dans
  * {@code AccountingProvisioningPortImpl} (elle dépend du pays de la company et nécessite
  * une logique métier spécifique). Ce listener ne gère que l'infrastructure comptable pure.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class AccountingEngineAutoInitializer {
 
@@ -110,7 +115,7 @@ public class AccountingEngineAutoInitializer {
             FiscalYear fy = accountingEngineService.createFiscalYear(company.getId(), req);
             LOG.info("Auto-init exercice fiscal : id={} pour company {}", fy.getId(), company.getId());
         } catch (ConflictException | org.springframework.dao.DataIntegrityViolationException ex) {
-            // V8.3 — l'exercice fiscal a déjà été créé par l'activation atomique dans completeWizard.
+            // l'exercice fiscal a déjà été créé par l'activation atomique dans completeWizard.
             // Le listener @TransactionalEventListener(AFTER_COMMIT) se déclenche APRÈS la transaction
             // qui a déjà tout créé. C'est idempotent — on catch silencieusement.
             LOG.debug("Auto-init exercice fiscal : déjà existant pour company {} (idempotent)",
@@ -138,8 +143,8 @@ public class AccountingEngineAutoInitializer {
         try {
             documentNumberingService.createSequence(
                 companyId, docType, scopeKey, prefix,
-                true,  // includeYear
-                6,     // padding
+                true, // includeYear
+                6, // padding
                 ResetPolicy.YEARLY);
             return 1;
         } catch (ConflictException ex) {

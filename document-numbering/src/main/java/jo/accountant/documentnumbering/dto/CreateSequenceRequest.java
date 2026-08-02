@@ -15,7 +15,12 @@ import jo.accountant.documentnumbering.entity.ResetPolicy;
  * préexistant pour le même couple (documentType, scopeKey) déclenche un 409 — il n'y a pas
  * d'édition soft des paramètres (prefix, padding, etc.) pour éviter une incohérence de format
  * avec les numéros déjà émis. Pour modifier, supprimer et recréer (avec audit).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateSequenceRequest(
     @NotNull DocumentType documentType,
 

@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des valeurs analytiques.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface AnalyticalDimensionValueRepository
     extends JpaRepository<AnalyticalDimensionValue, UUID> {
 

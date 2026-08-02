@@ -1,6 +1,11 @@
 package jo.accountant.demo.fixtures;
 
-/** V8.1 — Adresses haïtiennes réalistes pour les données démo. */
+/** — Adresses haïtiennes réalistes pour les données démo. 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class HaitianAddresses {
 
   public static final String[] PORT_AU_PRINCE = {

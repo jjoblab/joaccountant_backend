@@ -8,7 +8,12 @@ import jo.accountant.approvalworkflow.entity.ApprovalActionType;
 
 /**
  * Réponse pour {@code GET .../rules} et {@code POST .../rules}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record RuleResponse(
     UUID id,
     UUID companyId,

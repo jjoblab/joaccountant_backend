@@ -36,7 +36,12 @@ import java.time.Instant;
  * @param signedAt instant de signature (UTC)
  * @param tsaTimestamp timestamp RFC 3161 qualifié (peut être null en XAdES-BES)
  * @param signatureAlgorithm algorithme de signature (ex: "RSA-SHA256")
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record SignatureResult(
  byte[] signedBytes,
  String certificateSerialNumber,

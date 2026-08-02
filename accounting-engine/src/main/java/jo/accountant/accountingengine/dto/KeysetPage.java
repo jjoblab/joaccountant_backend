@@ -29,7 +29,12 @@ import java.util.UUID;
  * </ul>
  *
  * @param <T> type d'élément (typiquement {@link JournalEntryResponse})
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record KeysetPage<T>(
  List<T> content,
  LocalDate nextAfterEntryDate,

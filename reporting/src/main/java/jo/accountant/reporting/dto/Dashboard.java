@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Tableau de bord de synthèse (§13 Phase 17).
+ * Tableau de bord de synthèse (§13.
  *
  * <p>Position de trésorerie, balance âgée clients/fournisseurs, principales charges.
  *
@@ -21,7 +21,10 @@ import java.util.UUID;
  * désormais le DTO complet avec analytics peuplés. Les tests existants qui
  * construisent un {@code Dashboard} via le constructeur 8-args sont
  * rétro-compatibles : les nouveaux champs seront simplement à null.
- */
+ 
+ *
+ * @author jo@Dev
+*/
 public record Dashboard(
  UUID companyId,
  BigDecimal cashPosition,
@@ -40,7 +43,7 @@ public record Dashboard(
  public record CategoryAmount(String category, BigDecimal amount) {}
 
  /**
- * Constructeur backward-compat (v5.5) — 8 champs, sans analytics.
+ * Constructeur backward-compat — 8 champs, sans analytics.
  *
  * <p>Les 5 champs analytiques sont positionnés à {@code null}. Le mobile
  * gère ce cas en affichant "Données indisponibles" dans les sections

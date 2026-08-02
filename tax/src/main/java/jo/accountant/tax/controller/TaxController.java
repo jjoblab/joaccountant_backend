@@ -44,11 +44,44 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints fiscaux (§13 Phase 16).
- */
+ * Endpoints fiscaux (§13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/tax")
-@Tag(name = "Tax", description = "Règles fiscales locales, TVA, retenues à la source (§13 Phase 16)")
+@Tag(name = "Tax", description = "Règles fiscales locales, TVA, retenues à la source (§13")
 public class TaxController {
 
  private static final Logger LOG = LoggerFactory.getLogger(TaxController.class);
@@ -257,7 +290,7 @@ public class TaxController {
  @RequestParam(required = false) String taxType) {
  roleChecker.ensureRole(companyId, "VIEWER");
  moduleAccessGuard.ensureEnabled(companyId, ModuleCode.TAX);
- // step2-backend — Reports Hub v2.4.0 : exposer le paramètre taxType optionnel.
+ // Reports Hub : exposer le paramètre taxType optionnel.
  // Comportement backward-compatible : si taxType est null/blank, on délègue à
  // getDeclaration(cid, from, to) qui agrège toutes les taxes comme avant.
  if (taxType == null || taxType.isBlank()) {
@@ -311,7 +344,7 @@ public class TaxController {
  }
 
  @Operation(summary = "Projeter l'Impôt sur les Sociétés (IS) pour un exercice",
- description = "Audit v4.7 §4.1 Calcule : résultat comptable → résultat fiscal " +
+ description = "Calcule : résultat comptable → résultat fiscal " +
  "(+ réintégrations Charasse, − déductions LTPE) → IS brut (15% PME ou 25%) → " +
  "IS net (− crédits d'impôt) → 4 acomptes + solde au 15 mai N+1. " +
  "Si aucune règle d'IS configurée, utilise les valeurs par défaut France 2026.")
@@ -377,7 +410,7 @@ public class TaxController {
  description = "Calcule l'acompte IS mensuel de 1% sur les encaissements bruts du mois " +
  "(SUM des factures émises/partiellement payées/payées). " +
  "Conforme au Code Fiscal Haïtien art. 5 — échéance le 15 du mois M+1. " +
- "V6-5 (lot-G validation PME/expert) : non applicable pour les entreprises non-HT " +
+ "V6-5validation PME/expert) : non applicable pour les entreprises non-HT " +
  "(retourne montant=0, type=NOT_APPLICABLE).")
  @io.swagger.v3.oas.annotations.responses.ApiResponses({
  @ApiResponse(responseCode = "200", description = "Acompte calculé",
@@ -605,11 +638,11 @@ public class TaxController {
  }
 
  // ======================================================================
- // step2-backend — Reports Hub v2.4.0 : endpoints PDF dédiés
+ // Reports Hub : endpoints PDF dédiés
  // (déclaration TVA, déclaration TCA, projection d'IS).
  // ======================================================================
 
- @Operation(summary = "Générer une déclaration fiscale en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer une déclaration fiscale en PDF (Reports Hub)",
  description = "Rendu PDF d'une déclaration TVA ou TCA via :document-generation. " +
  "<code>?taxType=VAT</code> (template VAT_DECLARATION_REPORT) ou " +
  "<code>?taxType=TCA</code> (template TCA_DECLARATION_REPORT). " +
@@ -672,7 +705,7 @@ public class TaxController {
  return response;
  }
 
- @Operation(summary = "Générer la projection d'IS en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer la projection d'IS en PDF (Reports Hub)",
  description = "Rendu PDF de la projection d'Impôt sur les Sociétés via :document-generation " +
  "(template CORPORATE_TAX_PROJECTION_REPORT). " +
  "Délègue au même service métier que GET /tax/corporate-tax/projection.")

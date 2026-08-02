@@ -5,6 +5,14 @@ import java.util.UUID;
 import jo.accountant.bankreconciliation.entity.BankStatementLine;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA BankStatementLine.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface BankStatementLineRepository extends JpaRepository<BankStatementLine, UUID> {
 
     /** Lignes non rapprochées d'un compte bancaire. */

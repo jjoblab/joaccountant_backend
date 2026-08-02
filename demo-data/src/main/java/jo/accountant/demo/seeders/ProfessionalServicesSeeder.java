@@ -83,14 +83,14 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Spécificité time-billing</b> — ce cabinet facture au temps passé (TIME_AND_MATERIALS) :
  *
  * <ul>
- *   <li>6 projets de conseil rattachés à des clients pro (banques, opérateurs télécom, etc.)
- *   <li>8 BillableRates (6 par projet + 1 par ressource + 1 défaut entreprise) — taux 3500-8000
- *       HTG/h selon séniorité du consultant et complexité du projet
- *   <li>Timesheets : 8-15 entrées/mois/consultant (heures 4-8h), approuvées par un manager distinct
- *       (v7-9 — règle anti-auto-approbation, vérification des quatre yeux)
- *   <li>Facturation au temps passé : récupération du WIP non facturé via {@code
- *       TimeBillingService.getUnbilled(projectId)} → lignes de facture référençant les {@code
- *       timesheetEntryId} → {@code issueInvoice} marque les entrées comme {@code invoiced}
+ * <li>6 projets de conseil rattachés à des clients pro (banques, opérateurs télécom, etc.)
+ * <li>8 BillableRates (6 par projet + 1 par ressource + 1 défaut entreprise) — taux 3500-8000
+ * HTG/h selon séniorité du consultant et complexité du projet
+ * <li>Timesheets : 8-15 entrées/mois/consultant (heures 4-8h), approuvées par un manager distinct
+ * (v7-9 — règle anti-auto-approbation, vérification des quatre yeux)
+ * <li>Facturation au temps passé : récupération du WIP non facturé via {@code
+ * TimeBillingService.getUnbilled(projectId)} → lignes de facture référençant les {@code
+ * timesheetEntryId} → {@code issueInvoice} marque les entrées comme {@code invoiced}
  * </ul>
  *
  * <p>Données générées (idempotent) : company + 2 users (owner consultant + manager approbateur) +
@@ -102,16 +102,21 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
  * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
  *
- * <p><b>Bug historique corrigé</b> — la V8.1 pointait par erreur sur le framework {@code ...004}
+ * <p><b>Bug historique corrigé</b> — la version précédente pointait par erreur sur le framework {@code ...004}
  * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V3__core_seeds.sql ligne 26).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ProfessionalServicesSeeder implements CompanySeeder {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProfessionalServicesSeeder.class);
 
   /**
-   * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la V8.1
+   * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la version précédente
    * pointait par erreur sur ...004 = PCG_FRANCE).
    */
   private static final UUID PCN_HAITI_FRAMEWORK_ID =
@@ -172,7 +177,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
   private final TimeBillingService timeBillingService;
 
   /**
-   * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+   * rls-proper-fix — Self-injection via le proxy Spring.
    *
    * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID, UUID)} depuis {@link #seed()} en
    * traversant le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData}
@@ -245,7 +250,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
    *
    * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
    *
-   * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+   * <p>La méthode n'est PLUS {@code @Transactional}. La Company +
    * les users (owner + manager) sont créés via les méthodes {@code @Transactional} par défaut des
    * repositories Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables
    * non RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
@@ -318,7 +323,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
   }
 
   /**
-   * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+   * rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
    * (COA, journaux, exercices, séquences, clients pro, fournisseurs, employés, banque, projets,
    * billable rates, 12 mois d'opérations time-billing).
    *
@@ -333,9 +338,9 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
    *
    * @param companyId identifiant de la company démo (tenant)
    * @param ownerId identifiant de l'user owner (consultant — utilisé pour createDemoBillableRates
-   *     et generateMonthlyOperations)
+   * et generateMonthlyOperations)
    * @param managerId identifiant du manager approbateur (utilisé pour approveEntry dans les
-   *     timesheets — règle anti-auto-approbation)
+   * timesheets — règle anti-auto-approbation)
    * @return nombre d'enregistrements créés
    */
   @Transactional
@@ -396,7 +401,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     return totalCreated;
   }
 
-  // ══ Étape 2 — Création Company ══
+  // ══Création Company ══
 
   private Company createCompany() {
     Company company = new Company();
@@ -525,7 +530,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     }
   }
 
-  // ══ Étape f — 12 Clients pro (banques, télécom, institutions, grandes entreprises) ══
+  // ══12 Clients pro (banques, télécom, institutions, grandes entreprises) ══
 
   private List<ThirdPartyResponse> createDemoClients(UUID companyId, UUID clientsAccountId) {
     String[][] defs = {
@@ -573,7 +578,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape g — 4 Fournisseurs (abonnements logiciels, fournitures bureau, etc.) ══
+  // ══4 Fournisseurs (abonnements logiciels, fournitures bureau, etc.) ══
 
   private List<ThirdPartyResponse> createDemoSuppliers(UUID companyId, UUID suppliersAccountId) {
     String[][] defs = {
@@ -605,7 +610,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape h — 8 Employés (4 consultants + 1 manager + 1 admin + 2 partners) ══
+  // ══8 Employés (4 consultants + 1 manager + 1 admin + 2 partners) ══
 
   private List<EmployeeResponse> createDemoEmployees(UUID companyId, UUID personnelAccountId) {
     Object[][] defs = {
@@ -703,7 +708,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape i — Compte bancaire (Unibank HTG) ══
+  // ══Compte bancaire (Unibank HTG) ══
 
   private void createDemoBankAccount(UUID companyId, UUID banqueAccountId) {
     try {
@@ -718,7 +723,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     }
   }
 
-  // ══ Étape j — 6 Projets TIME_AND_MATERIALS ══
+  // ══6 Projets TIME_AND_MATERIALS ══
 
   private List<ProjectResponse> createDemoProjects(
       UUID companyId, List<ThirdPartyResponse> clients) {
@@ -753,7 +758,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     return created;
   }
 
-  // ══ Étape k — 8 BillableRates (6 par projet + 1 ressource + 1 défaut) ══
+  // ══8 BillableRates (6 par projet + 1 ressource + 1 défaut) ══
 
   private void createDemoBillableRates(
       UUID companyId, List<ProjectResponse> projects, UUID ownerId) {
@@ -803,7 +808,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     LOG.info("V9 — {} BillableRates créés pour companyId={}", created, companyId);
   }
 
-  // ══ Étape l — 12 mois d'opérations sur FY2025-2026 ══
+  // ══12 mois d'opérations sur FY2025-2026 ══
 
   /**
    * Génère 12 mois d'opérations (Oct 2025 → Sep 2026). Chaque mois est isolé dans un try/catch : un
@@ -812,13 +817,13 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
    * <p>Opérations mensuelles :
    *
    * <ul>
-   *   <li>8-15 TimesheetEntry par consultant actif (entryDate aléatoire dans le mois, hours 4-8,
-   *       billable=true) → createTimesheetEntry + approveEntry (par le manager — règle v7-9)
-   *   <li>3-5 SalesInvoice par mois (facturation au temps passé — getUnbilled → lignes avec
-   *       timesheetEntryId → issueInvoice génère écriture VT avec RS 2%)
-   *   <li>1-2 PurchaseInvoice (abonnements logiciels, fournitures)
-   *   <li>2-3 ExpenseReport (transport, repas clients)
-   *   <li>1 PayrollRun (calculate + approve → écriture PA, 12% OFATMA)
+   * <li>8-15 TimesheetEntry par consultant actif (entryDate aléatoire dans le mois, hours 4-8,
+   * billable=true) → createTimesheetEntry + approveEntry (par le manager — règle v7-9)
+   * <li>3-5 SalesInvoice par mois (facturation au temps passé — getUnbilled → lignes avec
+   * timesheetEntryId → issueInvoice génère écriture VT avec RS 2%)
+   * <li>1-2 PurchaseInvoice (abonnements logiciels, fournitures)
+   * <li>2-3 ExpenseReport (transport, repas clients)
+   * <li>1 PayrollRun (calculate + approve → écriture PA, 12% OFATMA)
    * </ul>
    */
   private int generateMonthlyOperations(

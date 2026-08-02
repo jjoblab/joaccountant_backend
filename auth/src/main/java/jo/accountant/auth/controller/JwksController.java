@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Endpoint JWKS ({@code /.well-known/jwks.json}) pour exposer la clé publique RSA utilisée
- * pour vérifier les JWT signés en RS256 (audit v4.7 §6.3 Finding MOYENNE — suite).
+ * pour vérifier les JWT signés en RS256Finding MOYENNE — suite).
  *
  * <p><b>Problème</b> : en RS256, les services qui vérifient les JWT (API gateway, microservices,
  * clients tiers) ont besoin de la clé publique pour valider la signature. Sans endpoint JWKS
@@ -48,8 +48,34 @@ import org.springframework.web.bind.annotation.RestController;
  * publique HS256 est symétrique — elle ne doit pas être exposée).
  */
 @RestController
-@Profile("!dev & !test")  // JWKS endpoint seulement en prod/staging — pas en dev (HS256)
+@Profile("!dev & !test") // JWKS endpoint seulement en prod/staging — pas en dev (HS256)
 @Tag(name = "JWKS", description = "JSON Web Key Set pour validation JWT RS256")
+/**
+ * Contrôleur REST Jwks.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class JwksController {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwksController.class);
@@ -108,16 +134,16 @@ public class JwksController {
      * <p>Format de réponse (RFC 7517) :
      * <pre>
      * {
-     *   "keys": [
-     *     {
-     *       "kty": "RSA",
-     *       "use": "sig",
-     *       "alg": "RS256",
-     *       "kid": "joaccountant-prod-2026",
-     *       "n": "...",
-     *       "e": "AQAB"
-     *     }
-     *   ]
+     * "keys": [
+     * {
+     * "kty": "RSA",
+     * "use": "sig",
+     * "alg": "RS256",
+     * "kid": "joaccountant-prod-2026",
+     * "n": "...",
+     * "e": "AQAB"
+     * }
+     * ]
      * }
      * </pre>
      *

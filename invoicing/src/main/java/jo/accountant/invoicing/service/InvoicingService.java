@@ -33,7 +33,7 @@ import jo.accountant.invoicing.dto.CreateInvoiceRequest;
 import jo.accountant.invoicing.dto.InvoiceResponse;
 import jo.accountant.invoicing.dto.RecordPaymentRequest;
 import jo.accountant.invoicing.dto.TaxApplication;
-import jo.accountant.invoicing.einvoice.FacturXExporter; // Audit v4.7 §4.1 #5 — Factur-X
+import jo.accountant.invoicing.einvoice.FacturXExporter; //#5 — Factur-X
 import jo.accountant.invoicing.entity.InvoiceLine;
 import jo.accountant.invoicing.entity.InvoiceLineTax;
 import jo.accountant.invoicing.entity.InvoiceLineTaxType;
@@ -53,7 +53,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de facturation (§13 Phase 12).
+ * Service de facturation (§13.
  *
  * <p>Règles métier :
  * <ol>
@@ -61,18 +61,23 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Passage DRAFT → ISSUED : attribue invoiceNumber via document-numbering, génère l'écriture
  * comptable (Débit Client / Crédit Ventes + TVA, plus COGS si itemId renseigné).</li>
  * <li>Une facture ISSUED n'est jamais éditée — correction par avoir (CREDIT_NOTE).</li>
- * <li>Règlement partiel/total connecté au lettrage (Phase 7) — en Phase 12, on met juste à jour
+ * <li>Règlement partiel/total connecté au lettrageen, on met juste à jour
  * paidAmount et le statut (PARTIALLY_PAID / PAID).</li>
- * <li>GET .../invoices/{id}/pdf généré via document-generation (Phase 11).</li>
+ * <li>GET .../invoices/{id}/pdf généré via document-generation.</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class InvoicingService {
 
  private static final Logger LOG = LoggerFactory.getLogger(InvoicingService.class);
  private static final BigDecimal HUNDRED = new BigDecimal("100");
  /**
- * Hard cap pour listInvoices — empêche l'OOM sur entreprises matures (audit v4.7 §7.2 #5).
+ * Hard cap pour listInvoices — empêche l'OOM sur entreprises matures#5).
  * Les clients qui ont besoin de plus de 200 factures doivent utiliser la pagination Pageable
  * ou filtrer par exercice fiscal via listInvoices(companyId, fiscalYearId).
  */
@@ -91,9 +96,9 @@ public class InvoicingService {
  private final ApplicationEventPublisher events;
  // Correction 2026-07-26 : injecté pour listInvoices(companyId, fiscalYearId)
  private final jo.accountant.accountingengine.repository.FiscalYearRepository fiscalYearRepository;
- // Audit v4.7 §4.1 Factur-X pour facturation électronique 2026
+ //Factur-X pour facturation électronique 2026
  private final jo.accountant.invoicing.einvoice.FacturXExporter facturXExporter;
- // Audit v4.7 §4.2 — CompanyRepository pour SIRET/VAT/TVA intracomm. (Factur-X + mentions légales)
+ //— CompanyRepository pour SIRET/VAT/TVA intracomm. (Factur-X + mentions légales)
  private final jo.accountant.company.repository.CompanyRepository companyRepository;
  // Audit #3 — AccountResolver centralisé (remplace la cascade de fallbacks)
  private final jo.accountant.chartofaccounts.service.AccountResolver accountResolver;
@@ -381,7 +386,7 @@ public class InvoicingService {
  "Seules les factures DRAFT peuvent être émises. Statut : " + invoice.getStatus());
  }
 
- // ── Audit v4.7 §4.2 Finding MOYENNE — FIX anti-fraude avoirs (étape 2/2) ──
+ // ──Finding MOYENNE — FIX anti-fraude avoirs/2) ──
  // La vérification à la création de l'avoir (createCreditNote) contrôle seulement le
  // plafond disponible, PAS le montant effectif de l'avoir (qui est 0 en DRAFT).
  // Ici à l'émission, on vérifie que le total de l'avoir ne dépasse pas la part restante
@@ -526,7 +531,7 @@ public class InvoicingService {
  ThirdParty tp = thirdPartyRepository.findById(invoice.getThirdPartyId())
  .orElseThrow(() -> new ValidationException("THIRD_PARTY_NOT_FOUND",
  "Tiers introuvable : " + invoice.getThirdPartyId()));
- // Audit v4.7 §6.2 — defense-in-depth : le ThirdParty devrait appartenir au companyId
+ //— defense-in-depth : le ThirdParty devrait appartenir au companyId
  // (l'invoice a été tenant-validée en amont, mais on re-vérifie la FK).
  if (!tp.getCompanyId().equals(companyId)) {
  throw new NotFoundException("ThirdParty", invoice.getThirdPartyId().toString());
@@ -538,7 +543,7 @@ public class InvoicingService {
  Account clientAccount = accountRepository.findById(clientAccountId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte client introuvable"));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!clientAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", clientAccountId.toString());
  }
@@ -693,7 +698,7 @@ public class InvoicingService {
  "443800", "4438", "4438");
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.VENTES).getCode();
@@ -945,7 +950,7 @@ public class InvoicingService {
  }
  }
 
- // Note : le lettrage (Phase 7) n'est pas automatisé ici — l'utilisateur lettre
+ // Note : le lettragen'est pas automatisé ici — l'utilisateur lettre
  // manuellement la facture et le règlement via third-parties/lettrage.
 
  invoiceRepository.save(invoice);
@@ -1011,7 +1016,7 @@ public class InvoicingService {
  "Aucun compte de TVA différée trouvé pour la bascule 4438 → 443.",
  "443800", "4438", "4438");
 
- // V8.2 Phase 3 — getOrCreateJournal ne lève jamais pour les types standards.
+ // V8.2getOrCreateJournal ne lève jamais pour les types standards.
  // Le fallback OD→VT n'est plus nécessaire.
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -1068,7 +1073,7 @@ public class InvoicingService {
  "L'original doit être ISSUED, PARTIALLY_PAID ou PAID pour créer un avoir");
  }
 
- // ── Audit v4.7 §4.2 Finding MOYENNE — FIX anti-fraude avoirs ──
+ // ──Finding MOYENNE — FIX anti-fraude avoirs ──
  // Sans cette vérification, un BOOKKEEPER pouvait créer N avoirs pour la même facture —
  // chacun à 100% du montant — et rembourser le client N× le montant de la facture.
  // Désormais, on calcule le total des avoirs déjà émis et on refuse si le nouveau
@@ -1094,7 +1099,7 @@ public class InvoicingService {
  original.getTotalAmount(), alreadyCredited, maxCreditNoteAmount);
 
  // Créer l'avoir avec type=CREDIT_NOTE et creditNoteForInvoiceId
- // En Phase 12 simplifié : on crée directement en DRAFT puis on issue
+ // Ensimplifié : on crée directement en DRAFT puis on issue
  // L'utilisateur doit appeler issueInvoice séparément
  // Pour simplifier le test, on force le type et le creditNoteForInvoiceId
  SalesInvoice creditNote = new SalesInvoice();
@@ -1204,7 +1209,7 @@ public class InvoicingService {
  }
 
  // Préparer les variables pour le template Thymeleaf
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  ThirdParty tp = thirdPartyRepository.findById(invoice.getThirdPartyId())
  .filter(t -> t.getCompanyId().equals(companyId))
  .orElse(null);
@@ -1253,15 +1258,15 @@ public class InvoicingService {
  }
 
  /**
- * Génère le XML Factur-X BASICWL pour une facture — audit v4.7 §4.1 .
+ * Génère le XML Factur-X BASICWL pour une facture —.
  *
  * <p>Conformité Loi 2023-314 (facturation électronique obligatoire B2B France depuis le
  * 1er septembre 2026). Le XML est conforme EN 16931 (Cross Industry Invoice D16B, profil
  * BASICWL). Contient SellerTradeParty + BuyerTradeParty (SIRET, TVA intracommunautaire),
  * ApplicableTradeTax par taux de TVA, SpecifiedTradeSettlementHeaderMonetarySummation.
  *
- * <p>Limitation v4.7.2 : le XML est servi séparément du PDF. L'embarquement PDF/A-3
- * (attachment dans le PDF) sera finalisé en v4.8 avec openpdf + PDF/A-3 attachment API.
+ * <p>Limitation : le XML est servi séparément du PDF. L'embarquement PDF/A-3
+ * (attachment dans le PDF) sera finalisé avec openpdf + PDF/A-3 attachment API.
  *
  * @return bytes du XML UTF-8
  * @throws ConflictException si la facture est DRAFT
@@ -1300,7 +1305,7 @@ public class InvoicingService {
 
  // Construire les DTO pour FacturXExporter — utiliser les champs légaux réels
  // (SIRET, TVA intracommunautaire, NIF, adresse) depuis Company et ThirdParty
- // (audit v4.7 §4.2 + Lot B NIF Haïti sérialisé comme SpecifiedTaxRegistration).
+ //+ Lot B NIF Haïti sérialisé comme SpecifiedTaxRegistration).
  jo.accountant.company.entity.Company company = companyRepository.findById(companyId)
  .orElseThrow(() -> new NotFoundException("Company", companyId));
  FacturXExporter.TradeParty seller = new FacturXExporter.TradeParty(
@@ -1318,7 +1323,7 @@ public class InvoicingService {
  tp.getVatNumber(),
  tp.getSiret(),
  tp.getAddress(),
- null  // country du tiers non persisté — Non implémenté : tp.getNif() (Lot B NIF séparé pour conformité DGI Haïti)
+ null // country du tiers non persisté — Non implémenté : tp.getNif() (Lot B NIF séparé pour conformité DGI Haïti)
  );
 
  FacturXExporter.FacturXInvoice facturX = new FacturXExporter.FacturXInvoice(
@@ -1340,7 +1345,7 @@ public class InvoicingService {
  }
 
  /**
- * Génère un PDF/A-3 avec le XML Factur-X embarqué (audit v4.7 §4.1 ).
+ * Génère un PDF/A-3 avec le XML Factur-X embarqué.
  *
  * <p>Combinaison des deux endpoints existants :
  * <ol>
@@ -1411,7 +1416,7 @@ public class InvoicingService {
  })
  .toList();
  // E-9 M7 : enrichir la réponse avec le nom du tiers (résolu depuis ThirdPartyRepository)
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId pour ne pas fuiter le nom
+ //— defense-in-depth : filtrer par companyId pour ne pas fuiter le nom
  // d'un tiers d'une autre company en cas de corruption de FK.
  String tpName = "";
  try {
@@ -1457,7 +1462,7 @@ public class InvoicingService {
 
  @Transactional(readOnly = true)
  public List<InvoiceResponse> listInvoices(UUID companyId) {
- // Audit v4.7 §7.2 hard cap 200 pour empêcher l'OOM sur entreprises matures.
+ //hard cap 200 pour empêcher l'OOM sur entreprises matures.
  // Sans ce cap, une entreprise avec 5 ans d'historique (potentiellement des milliers de
  // factures) pouvait saturer la heap côté backend ET mobile. Les clients qui ont besoin
  // de plus de 200 factures doivent utiliser la variante paginée (Pageable) ou filtrer par
@@ -1491,7 +1496,7 @@ public class InvoicingService {
  fiscalYearRepository.findById(fiscalYearId)
  .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException(
  "FiscalYear", fiscalYearId));
- // Audit v4.7 §6.2 IDOR CRITICAL : sans ce guard, un attaquant pouvait énumérer
+ //IDOR CRITICAL : sans ce guard, un attaquant pouvait énumérer
  // les UUID de FiscalYear d'autres entreprises (404 vs 200 + fuite des dates startDate/endDate).
  // Le pattern est reproductible : expenses et purchasing utilisent déjà
  // accountingEngineService.resolveFiscalYear(companyId, fiscalYearId) qui fait le check.

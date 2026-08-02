@@ -37,7 +37,35 @@ import org.springframework.web.bind.annotation.RestController;
  * Endpoints d'auth — HORS de l'espace d'URL company-scoped (§3.8).
  *
  * <p>Path : {@code /api/v1/auth/*}
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ * <li>{@code POST /api/v1/auth/forgot-password}</li>
+ * <li>{@code POST /api/v1/auth/login}</li>
+ * <li>{@code POST /api/v1/auth/login/mfa}</li>
+ * <li>{@code POST /api/v1/auth/logout}</li>
+ * <li>{@code PATCH /api/v1/auth/me}</li>
+ * <li>{@code POST /api/v1/auth/refresh}</li>
+ * <li>{@code POST /api/v1/auth/register}</li>
+ * <li>{@code POST /api/v1/auth/reset-password}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Auth", description = "Authentication, registration, refresh, password reset")
@@ -88,7 +116,7 @@ public class AuthController {
  "est retourné à la place. Le client doit alors appeler " +
  "`POST /auth/login/mfa` avec un body JSON `{\"mfaChallengeToken\":\"…\",\"code\":123456}` " +
  "contenant le code TOTP saisi par l'utilisateur pour obtenir les vrais tokens d'accès.\n\n" +
- "**(lot-A-securite)** : le `mfaChallengeToken` doit être transmis dans le body " +
+ "**** : le `mfaChallengeToken` doit être transmis dans le body " +
  "(plus en query param) pour éviter sa fuite dans les logs nginx/Tomcat.")
  @ApiResponses({
  @ApiResponse(responseCode = "200", description = "Authenticated (MFA disabled)",
@@ -142,7 +170,7 @@ public class AuthController {
  public LoginResponse login(@Valid @RequestBody LoginRequest req) {
  var result = authService.login(req.email(), req.password());
 
- // Audit v4.7 §6.3 (session 14) — MFA login 2-step : si l'utilisateur a activé la MFA,
+ //(session 14) — MFA login 2-step : si l'utilisateur a activé la MFA,
  // on ne retourne PAS les tokens normaux. À la place, on retourne mfaRequired=true +
  // un mfaChallengeToken (JWT court 5min). Le client doit envoyer POST /auth/login/mfa
  // avec le code TOTP pour obtenir les tokens normaux.
@@ -159,10 +187,10 @@ public class AuthController {
  }
 
  /**
- * Étape 2 du login MFA — valide le code TOTP et retourne les tokens normaux.
- * Audit v4.7 §6.3 (session 14).
+ *du login MFA — valide le code TOTP et retourne les tokens normaux.
+ *(session 14).
  *
- * <p>(lot-A-securite) — corrections appliquées :
+ * <p>corrections appliquées :
  * <ul>
  * <li><b>Vérification de signature JWT</b> : le {@code mfaChallengeToken} est maintenant
  * validé via {@link JwtService#parseAndVerifyClaims(String)} (signature + expiration
@@ -178,7 +206,7 @@ public class AuthController {
  "with the `mfaChallengeToken` to obtain the real access + refresh tokens.\n\n" +
  "Le `mfaChallengeToken` expire après 5 minutes — au-delà, le client doit " +
  "redemander un login (step 1) pour obtenir un nouveau challenge.\n\n" +
- "**(lot-A-securite)** : le `mfaChallengeToken` doit être envoyé dans le " +
+ "**** : le `mfaChallengeToken` doit être envoyé dans le " +
  "body JSON (plus en query param). La signature JWT est désormais vérifiée " +
  "serveur-side — un token non signé (alg: none) ou avec une signature invalide " +
  "est rejeté avec 403 `MFA_CHALLENGE_TOKEN_INVALID`.")
@@ -226,7 +254,7 @@ public class AuthController {
  })
  @PostMapping("/login/mfa")
  public LoginResponse loginMfa(@Valid @RequestBody MfaLoginRequest req) {
- // (lot-A-securite) — Vérification EXPLICITE de la signature + expiration du
+ //Vérification EXPLICITE de la signature + expiration du
  // challenge token. L'ancien code appelait parseClaims() qui ne vérifiait rien —
  // un attaquant pouvait forger un JWT non signé pour bypasser la MFA.
  // Lever InvalidJwtException (→ HTTP 403 MFA_CHALLENGE_TOKEN_INVALID) si :

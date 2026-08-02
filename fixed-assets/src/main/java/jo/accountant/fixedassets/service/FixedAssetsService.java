@@ -53,7 +53,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service des immobilisations (§13 Phase 8).
+ * Service des immobilisations (§13.
  *
  * <p>Responsabilités :
  * <ul>
@@ -63,14 +63,18 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Cession avec calcul de plus/moins-value</li>
  * </ul>
  *
- * <p>Règles métier §13 Phase 8 :
- * <ol>
+ * <p>Règles métier §13* <ol>
  * <li>Génération automatique de l'échéancier à la création — une ligne par mois.</li>
  * <li>Comptabilisation période par période — une écriture par ligne postée.</li>
  * <li>Cession → calcul plus/moins-value, asset → DISPOSED (immuable).</li>
  * <li>Asset DISPOSED ne peut plus être amorti ni cédé à nouveau (409).</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class FixedAssetsService {
 
@@ -222,7 +226,7 @@ public class FixedAssetsService {
  Account assetAccount = accountRepository.findById(asset.getAssetAccountId())
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte d'actif introuvable : " + asset.getAssetAccountId()));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!assetAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", asset.getAssetAccountId().toString());
  }
@@ -233,12 +237,12 @@ public class FixedAssetsService {
  Account counterpartyAccount = accountRepository.findById(counterpartyId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte de contrepartie introuvable : " + counterpartyId));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!counterpartyAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", counterpartyId.toString());
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -395,7 +399,7 @@ public class FixedAssetsService {
  * Pour DECLINING_BALANCE : montant = solde net × taux dégressif. Le taux dégressif =
  * taux linéaire × coefficient (1.25 si 3-4 ans, 1.75 si 5-6 ans, 2.25 si > 6 ans).
  *
- * <p>Pour simplifier en Phase 8, DECLINING_BALANCE utilise un coefficient fixe de 1.75
+ * <p>Pour simplifier en, DECLINING_BALANCE utilise un coefficient fixe de 1.75
  * (cas 5-6 ans le plus courant). À affiner si besoin.
  *
  * <p><b>Amortissement par composant IAS 16</b> : si l'asset a des composants
@@ -685,7 +689,7 @@ public class FixedAssetsService {
  throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -754,7 +758,7 @@ public class FixedAssetsService {
  * <li>Crédit compte d'actif (sortie de l'actif) pour le coût d'acquisition</li>
  * <li>Débit compte d'amortissement cumulé (reprise) pour le cumul</li>
  * <li>Débit compte de trésorerie (prix de cession) — utilise le compte d'actif comme
- * substitut faute de compte de trésorerie dédié en Phase 8</li>
+ * substitut faute de compte de trésorerie dédié en</li>
  * <li>Débit/Credit compte de plus/moins-value pour la différence</li>
  * </ul>
  *
@@ -806,19 +810,19 @@ public class FixedAssetsService {
  // Générer l'écriture de cession
  Account assetAccount = accountRepository.findById(asset.getAssetAccountId())
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND", "Compte d'actif introuvable"));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!assetAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", asset.getAssetAccountId().toString());
  }
  Account accumulatedAccount = accountRepository.findById(asset.getAccumulatedDepreciationAccountId())
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte d'amortissement cumulé introuvable"));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!accumulatedAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -828,7 +832,7 @@ public class FixedAssetsService {
  // D/C Plus/moins-value (gainOrLoss : D si perte, C si plus-value)
  // C Actif (acquisitionCost)
  // C/D Trésorerie (disposalAmount) — ici on utilise le compte d'actif pour le débit
- // de trésorerie faute de compte dédié. À affiner en Phase 13 (bank-reconciliation).
+ // de trésorerie faute de compte dédié. À affiner en(bank-reconciliation).
  //
  // Pour simplifier : on fait une écriture à 4 lignes équilibrée.
  // D Amortissement cumulé = cumulativeDepreciation
@@ -1030,7 +1034,7 @@ public class FixedAssetsService {
  throw new NotFoundException("Account", asset.getAccumulatedDepreciationAccountId().toString());
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();
@@ -1319,7 +1323,7 @@ public class FixedAssetsService {
  throw new NotFoundException("Account", accumAcctId.toString());
  }
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.OD).getCode();

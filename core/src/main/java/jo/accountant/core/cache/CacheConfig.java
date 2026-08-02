@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Configuration du cache applicatif — Caffeine (audit v4.7 §7.2 ).
+ * Configuration du cache applicatif — Caffeine.
  *
- * <p><b>Problème</b> : la v4.7 ne comportait AUCUN cache applicatif (0 @Cacheable). Chaque
+ * <p><b>Problème</b> : la version précédente ne comportait AUCUN cache applicatif (0 @Cacheable). Chaque
  * {@code issueInvoice} exécutait 7-10 SELECT sur des données référentielles qui ne changent
  * jamais (Account par taxMappingCode, Journal par code, etc.). Sur 1000 factures/jour =
  * 7000-10000 SELECT inutiles. Le plan comptable (200-500 comptes) était rechargé à chaque
@@ -58,7 +58,12 @@ import org.springframework.context.annotation.Configuration;
  * ({@code cache.gets}, {@code cache.puts}, {@code cache.evictions}, {@code cache.size}) sur
  * /actuator/prometheus. Pour activer les stats avancées (hit rate, load duration), appeler
  * {@code CaffeineBuilder.recordStats()} — déjà fait ci-dessous.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 @EnableCaching
 public class CacheConfig {
@@ -75,12 +80,12 @@ public class CacheConfig {
  CaffeineCacheManager manager = new CaffeineCacheManager();
  // Ne pas créer de cache à la volée pour des noms inconnus — safety net contre les typos.
  //
- // V8.2 (audit Z.ai 2026-07-31) — setAllowNullValues(true) pour supporter Optional.empty()
+ // setAllowNullValues(true) pour supporter Optional.empty()
  // retourné par @Cacheable (ex: AccountRepository.findByCompanyIdAndCode quand le compte
  // n'existe pas encore). Avant le fix, setAllowNullValues(false) levait
  // IllegalArgumentException "Cache 'accounts' is configured to not allow null values but
  // null was provided" dès que ChartOfAccountsService.initialize était appelé (cas du wizard
- // V8.2 qui appelle initialize atomiquement). Le caching de valeurs null est acceptable
+ // qui appelle initialize atomiquement). Le caching de valeurs null est acceptable
  // ici car les TTL courts (10-30 min) évitent de servir stale trop longtemps.
  manager.setAllowNullValues(true);
  // Spécifications par nom de cache — voir javadoc de classe pour les TTL.

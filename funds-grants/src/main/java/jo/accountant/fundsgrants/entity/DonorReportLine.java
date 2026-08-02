@@ -16,12 +16,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Une {@code DonorReportLine} matérialise, pour un (grant, année, trimestre,
  * cost_category) donné, les montants :
  * <ul>
- *   <li>{@link #budgetAmount} — budget alloué à cette catégorie pour la période.</li>
- *   <li>{@link #actualAmount} — montant réel dépensé (issu des écritures comptables
- *       taguées par grant + cost_category — alimentation à implémenter en v7).</li>
- *   <li>{@link #varianceAmount} — colonne GENERATED ALWAYS AS STORED au niveau DB
- *       (= budget − actual). Marquée {@code insertable = false, updatable = false} côté JPA.</li>
- *   <li>{@link #costShareAmount} — participation de l'ONG (cost share / match funding).</li>
+ * <li>{@link #budgetAmount} — budget alloué à cette catégorie pour la période.</li>
+ * <li>{@link #actualAmount} — montant réel dépensé (issu des écritures comptables
+ * taguées par grant + cost_category — alimentation à implémenter en v7).</li>
+ * <li>{@link #varianceAmount} — colonne GENERATED ALWAYS AS STORED au niveau DB
+ * (= budget − actual). Marquée {@code insertable = false, updatable = false} côté JPA.</li>
+ * <li>{@link #costShareAmount} — participation de l'ONG (cost share / match funding).</li>
  * </ul>
  *
  * <p>Le service {@link jo.accountant.fundsgrants.service.DonorReportExporter} agrège
@@ -36,6 +36,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "donor_report_line",
     uniqueConstraints = @UniqueConstraint(name = "uc_donor_report_line_uniq",
         columnNames = {"company_id", "grant_id", "period_year", "period_quarter", "cost_category"}))
+/**
+ * DonorReportLine.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class DonorReportLine extends TenantAwareEntity {
 
     @Column(name = "grant_id", nullable = false)

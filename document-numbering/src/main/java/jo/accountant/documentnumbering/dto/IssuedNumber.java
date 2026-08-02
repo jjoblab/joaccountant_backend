@@ -11,7 +11,12 @@ import jo.accountant.documentnumbering.entity.DocumentType;
  * <p>Contrairement à {@link NextNumberPreview}, cet objet n'est renvoyé que lorsque le compteur
  * a réellement été incrémenté. Le {@link #issuedAt} est l'horodatage exact de l'incrémentation
  * (utile pour l'audit trail).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record IssuedNumber(
     UUID companyId,
     DocumentType documentType,

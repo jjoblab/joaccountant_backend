@@ -5,16 +5,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
 /**
- * Helper utilitaire pour les endpoints CSV des controllers Reports Hub (v2.5.0-task8).
+ * Helper utilitaire pour les endpoints CSV des controllers Reports Hub (0-task8).
  *
- * <p>Extrait le boilerplate commun aux 3 endpoints CSV (v2.4.1/v2.4.2) :
+ * <p>Extrait le boilerplate commun aux 3 endpoints CSV (1) :
  * <ol>
- *   <li>préfixe le contenu CSV avec le <strong>BOM UTF-8</strong> ({@code EF BB BF})
- *       pour compatibilité Excel français (sinon Excel ouvre le CSV en ANSI et les
- *       accents sont mojibakisés) ;</li>
- *   <li>construit un {@link ResponseEntity} avec les headers
- *       {@code Content-Type: text/csv; charset=UTF-8} et
- *       {@code Content-Disposition: attachment; filename="<filename>"}.</li>
+ * <li>préfixe le contenu CSV avec le <strong>BOM UTF-8</strong> ({@code EF BB BF})
+ * pour compatibilité Excel français (sinon Excel ouvre le CSV en ANSI et les
+ * accents sont mojibakisés) ;</li>
+ * <li>construit un {@link ResponseEntity} avec les headers
+ * {@code Content-Type: text/csv; charset=UTF-8} et
+ * {@code Content-Disposition: attachment; filename="<filename>"}.</li>
  * </ol>
  *
  * <p>Le contrôleur reste responsable de la génération du contenu CSV (séparateur
@@ -32,10 +32,15 @@ import org.springframework.http.ResponseEntity;
  *
  * <p><strong>Note arch</strong> — ce helper vit dans {@code :document-generation} bien
  * qu'il ne dépende que de Spring Web. C'est pour co-localiser les deux helpers
- * PDF/CSV des endpoints Reports Hub (v2.5.0-task8) et parce qu'aucune règle ArchUnit
+ * PDF/CSV des endpoints Reports Hub (0-task8) et parce qu'aucune règle ArchUnit
  * n'interdit à un module en aval (ex. :chart-of-accounts) de dépendre de
  * {@code :document-generation} (Rule 24 n'interdit que la direction inverse).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class CsvEndpointHelper {
 
     /** BOM UTF-8 ({@code U+FEFF}) — 3 bytes {@code EF BB BF} pour compatibilité Excel FR. */
@@ -52,13 +57,13 @@ public final class CsvEndpointHelper {
      * {@code EF BB BF}) pour qu'Excel France ouvre le fichier avec le bon charset.
      *
      * @param csvContent contenu CSV textuel (le contrôleur doit déjà utiliser
-     *                    {@code \r\n} comme séparateur de lignes et {@code ;} comme
-     *                    séparateur de colonnes — le helper ne modifie pas le contenu)
-     * @param filename    nom de fichier pour l'en-tête {@code Content-Disposition}
-     *                    (ex. {@code "ecritures-<companyId>-<period>.csv"})
+     * {@code \r\n} comme séparateur de lignes et {@code ;} comme
+     * séparateur de colonnes — le helper ne modifie pas le contenu)
+     * @param filename nom de fichier pour l'en-tête {@code Content-Disposition}
+     * (ex. {@code "ecritures-<companyId>-<period>.csv"})
      * @return {@code 200 OK} avec body CSV binaire (BOM + contenu UTF-8) et en-têtes
-     *         {@code Content-Type: text/csv; charset=UTF-8} +
-     *         {@code Content-Disposition: attachment; filename="<filename>"}
+     * {@code Content-Type: text/csv; charset=UTF-8} +
+     * {@code Content-Disposition: attachment; filename="<filename>"}
      */
     public static ResponseEntity<byte[]> buildCsvResponse(String csvContent, String filename) {
         byte[] bytes = csvContent.getBytes(StandardCharsets.UTF_8);

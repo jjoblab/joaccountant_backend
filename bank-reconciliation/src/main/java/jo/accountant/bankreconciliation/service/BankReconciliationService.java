@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de rapprochement bancaire (§13 Phase 13).
+ * Service de rapprochement bancaire (§13.
  *
  * <p>Responsabilités :
  * <ul>
@@ -52,14 +52,18 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Statut de rapprochement par compte bancaire</li>
  * </ul>
  *
- * <p>Règles §13 Phase 13 :
- * <ul>
+ * <p>Règles §13* <ul>
  * <li>Parseurs COMPLETS pour CSV et OFX dès cette phase — pas de "on ajoutera plus tard"</li>
  * <li>Fichier d'import brut conservé via FileStoragePort pour audit</li>
  * <li>Correspondance floue sur libellé après tentative exacte</li>
  * <li>Validation manuelle obligatoire avant clôture</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class BankReconciliationService {
 
@@ -372,7 +376,7 @@ public class BankReconciliationService {
  List<BankStatementLine> unmatched = lineRepository
  .findByBankAccountIdAndMatchedFalse(ba.getId());
 
- // Audit v4.7 §3.1 FIX CRITIQUE :
+ //FIX CRITIQUE :
  // (a) Ajout d'un filtre date (±3 jours) pour éviter les faux positifs sur montants ronds
  // (la javadoc originale prétendait ±3 jours mais le code ne contenait AUCUN check de date)
  // (b) Tracking des JournalLine déjà matchées via un Set<UUID> pour éviter le double-match
@@ -448,7 +452,7 @@ public class BankReconciliationService {
  }
 
  /**
- * Annule un rapprochement (unmatch) — audit v4.7 §3.1 .6.
+ * Annule un rapprochement (unmatch) —.6.
  *
  * <p>Passe {@code matched=false}, {@code matchedJournalLineId=null}, {@code matchedAt=null}.
  * Si un rapprochement (manuel ou auto) est erroné, l'utilisateur peut l'annuler sans

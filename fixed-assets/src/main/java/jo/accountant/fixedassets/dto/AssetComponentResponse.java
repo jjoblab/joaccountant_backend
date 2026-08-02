@@ -7,7 +7,12 @@ import jo.accountant.fixedassets.entity.DepreciationMethod;
 
 /**
  * Réponse d'un composant d'immobilisation (IAS 16).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AssetComponentResponse(
  UUID id,
  UUID assetId,

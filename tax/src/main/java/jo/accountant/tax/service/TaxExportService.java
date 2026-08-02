@@ -52,9 +52,14 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Limitation v1</b> : export CSV brut, sans génération du XML EDI ni télédéclaration
  * directe. Le client (mobile/web) télécharge le CSV et le saisit manuellement dans le formulaire
- * CA3 sur impots.gouv.fr. L'automatisation EFI/EDI est planifiée en v4.9 (Troubleshooting #8 —
+ * CA3 sur impots.gouv.fr. L'automatisation EFI/EDI est planifiée (Troubleshooting #8 —
  * 8 jh).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class TaxExportService {
 
@@ -187,7 +192,7 @@ public class TaxExportService {
  }
 
  // ════════════════════════════════════════════════════════════════════════
- // R-F-validation (lot-G) — Exports DGI Haïti (TVA / TCA / RS / DCR / DCLS)
+ // R-F-validationExports DGI Haïti (TVA / TCA / RS / DCR / DCLS)
  // Conforme aux exigences formulées par :
  // - Maître Jean-Robert Pierre-Louis (expert-comptable DGI Haïti) — P0
  // - Mme Marie-Carmel Joseph (PME1 Boutik Lakay) — fastidieux sans export DGI
@@ -276,7 +281,7 @@ public class TaxExportService {
  * <p><b>v6-1-multi-tax-invoice-line</b> : la TCA est désormais calculée à partir des
  * {@code InvoiceLineTax} (type=TCA) — la multi-taxe par ligne est supportée depuis V78.
  * La fusion avec la TVA dans la même déclaration (gap P0 signalé par les validateurs
- * lot-G) est corrigée : {@code getDeclaration(companyId, from, to, "TCA")} filtre strictement
+ *est corrigée : {@code getDeclaration(companyId, from, to, "TCA")} filtre strictement
  * par {@code tax_type='TCA'}.
  *
  * @param companyId ID de l'entreprise
@@ -405,7 +410,7 @@ public class TaxExportService {
  *
  * <p>Échéance : 31 mars N+1. Récapitulatif annuel des opérations comptables de l'exercice.
  *
- * <p><b>v8-9 — Alimentation avec soldes réels</b> : la v7.0 retournait un squelette CSV
+ * <p><b>v8-9 — Alimentation avec soldes réels</b> : la version précédente retournait un squelette CSV
  * avec tous les montants à 0 (gap P0 signalé par les validateurs PME3 + PME4). La DCR est
  * désormais alimentée par :
  * <ul>

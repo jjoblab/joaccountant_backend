@@ -10,7 +10,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Tiers — client, fournisseur, donateur, salarié ou autre (§13 Phase 7).
+ * Tiers — client, fournisseur, donateur, salarié ou autre (§13.
  *
  * <p>Chaque tiers est rattaché à un {@code compte collectif} (ex. 411000 "Clients" pour un
  * tiers de type CLIENT). Si le compte collectif a {@code isCollective = true}, un
@@ -31,6 +31,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "third_party",
     uniqueConstraints = @UniqueConstraint(name = "uc_tp_company_dedicated_account",
         columnNames = {"company_id", "dedicated_account_id"}))
+/**
+ * ThirdParty.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class ThirdParty extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +66,7 @@ public class ThirdParty extends TenantAwareEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    /** Email optionnel — utile pour notifications de relance (Phase 15). */
+    /** Email optionnel — utile pour notifications de relance. */
     @Column(name = "email", length = 255)
     private String email;
 
@@ -67,14 +75,14 @@ public class ThirdParty extends TenantAwareEntity {
     private String address;
 
     /**
-     * SIRET du tiers (14 chiffres en France). Audit v4.7 §4.2 Finding HAUT — requis pour les
+     * SIRET du tiers (14 chiffres en France).Finding HAUT — requis pour les
      * mentions légales des factures clients/fournisseurs (CGI art. 289) et le Factur-X.
      */
     @Column(name = "siret", length = 20)
     private String siret;
 
     /**
-     * Numéro de TVA intracommunautaire du tiers (ex: FR12345678901). Audit v4.7 §4.2 — requis
+     * Numéro de TVA intracommunautaire du tiers (ex: FR12345678901).— requis
      * pour les factures B2B intra-UE (reverse-charge) et le Factur-X. Null si non assujetti.
      */
     @Column(name = "vat_number", length = 20)
@@ -82,7 +90,7 @@ public class ThirdParty extends TenantAwareEntity {
 
     /**
      * NIF (Numéro d'Identification Fiscale) — équivalent SIRET pour les tiers hors France
-     * (Haïti, OHADA). Audit v4.7 §4.2 — fallback SIRET dans les mentions légales.
+     * (Haïti, OHADA).— fallback SIRET dans les mentions légales.
      */
     @Column(name = "nif", length = 30)
     private String nif;

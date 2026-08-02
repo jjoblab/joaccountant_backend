@@ -19,7 +19,12 @@ import jo.accountant.accountingengine.entity.JournalEntrySourceModule;
  * @param description description libre
  * @param lines lignes de l'écriture — somme des débits doit égaler somme des crédits
  * @param sourceModule module d'origine (MANUAL par défaut)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateJournalEntryRequest(
     @NotBlank String journalCode,
     @NotNull LocalDate entryDate,
@@ -38,7 +43,7 @@ public record CreateJournalEntryRequest(
         /** Tags analytiques optionnels — obligatoires si le compte porte
          * {@code requiresAnalyticalTagPlanIds} non vide. */
         List<AnalyticalTagDto> analyticalTags,
-        /** Audit v4.7 §3.2 Finding HAUT — multi-devises effective.
+        /**Finding HAUT — multi-devises effective.
          * Montant dans la devise de transaction (ex: 100 USD). Si null, la devise fonctionnelle
          * de l'entreprise est utilisée (mono-devise, comportement historique). */
         java.math.BigDecimal amountTransactionCurrency,
@@ -53,7 +58,7 @@ public record CreateJournalEntryRequest(
             if (debit == null) debit = java.math.BigDecimal.ZERO;
             if (credit == null) credit = java.math.BigDecimal.ZERO;
             if (analyticalTags == null) analyticalTags = List.of();
-            // Audit v4.7 §3.2 — si transactionCurrency est fournie mais exchangeRateUsed est null,
+            //— si transactionCurrency est fournie mais exchangeRateUsed est null,
             // on suppose un taux de 1 (mono-devise, rétro-compatibilité). Si seul le montant est
             // fourni sans devise, on ignore (mono-devise).
             if (exchangeRateUsed == null) exchangeRateUsed = java.math.BigDecimal.ONE;

@@ -29,6 +29,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "expense_category",
  uniqueConstraints = @UniqueConstraint(name = "uc_expense_category_company_code",
  columnNames = {"company_id", "code"}))
+/**
+ * ExpenseCategory.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class ExpenseCategory extends TenantAwareEntity {
 
  // --- Codes standards (compatibilité avec l'ancien enum) ---

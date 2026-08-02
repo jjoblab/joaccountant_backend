@@ -1,22 +1,25 @@
 package jo.accountant.accountingengine.entity;
 
 /**
- * Type de journal comptable (V8.2 — audit Z.ai 2026-07-31, Phase 3).
+ * Type de journal comptable.
  *
  * <p>Remplace la convention implicite sur le code journal (VT=Ventes, AC=Achats, etc.) par
- * un enum explicite. Avant V8.2, le type était purement conventionnel — chaque module
+ * un enum explicite. Antérieurement, le type était purement conventionnel — chaque module
  * métier (invoicing, purchasing, payroll, etc.) hardcodait son code ("VT", "AC", "PA", etc.)
  * et faisait {@code journalRepository.findByCompanyIdAndCode(companyId, "VT").orElseThrow()}.
  *
- * <p>Avec V8.2, le type est explicite sur l'entité {@link Journal} (colonne {@code type}).
+ * <p>Actuellement, le type est explicite sur l'entité {@link Journal} (colonne {@code type}).
  * Le service {@code AccountingEngineService.getOrCreateJournal(companyId, JournalType)} crée
  * automatiquement le journal standard s'il n'existe pas encore — fini les
  * {@code JOURNAL_*_NOT_FOUND} qui bloquaient toute opération métier si l'admin n'avait pas
  * pré-créé les journaux manuellement.
  *
  * <p>Les 8 types correspondent aux journaux standards créés par l'activation atomique du
- * wizard V8.2 (cf. {@code AccountingProvisioningPortImpl.DEFAULT_JOURNALS}).
- */
+ * wizard d'onboarding (cf. {@code AccountingProvisioningPortImpl.DEFAULT_JOURNALS}).
+ 
+ *
+ * @author jo@Dev
+*/
 public enum JournalType {
 
     /** Journal des ventes — code "VT". Factures clients, avoirs clients. */
@@ -66,7 +69,7 @@ public enum JournalType {
      *
      * @param code le code journal (ex: "VT", "AC", "BQ", etc.) — insensible à la casse
      * @return le {@link JournalType} correspondant, ou {@code null} si le code ne correspond
-     *         à aucun type standard (journal personnalisé)
+     * à aucun type standard (journal personnalisé)
      */
     public static JournalType fromCode(String code) {
         if (code == null) return null;

@@ -35,7 +35,7 @@ import org.springframework.stereotype.Service;
 /**
  * Émetteur de JWT access-token (§3.4 : access token 15 min).
  *
- * <p>Algorithmes supportés (audit v4.7 §6.3 Finding MOYENNE) :
+ * <p>Algorithmes supportésFinding MOYENNE) :
  * <ul>
  * <li><b>HS256</b> (défaut, rétro-compat) — secret partagé. Utilisé pour mono-instance / dev.</li>
  * <li><b>RS256</b> — clé privée RSA pour signer, clé publique pour vérifier. Utilisé pour
@@ -63,14 +63,19 @@ import org.springframework.stereotype.Service;
  * <p>Claims : {@code sub} (userId), {@code email}, {@code companies} (liste de {companyId, role}
  * acceptés par l'utilisateur), {@code iat}, {@code exp}, {@code iss}, {@code aud}.
  *
- * <p><b>Sécurité (audit v4.7 §6.1)</b> : au démarrage, fail-fast si le secret JWT correspond à un
+ * <p><b>Sécurité</b> : au démarrage, fail-fast si le secret JWT correspond à un
  * pattern dev/test alors que l'environnement n'est ni dev ni test. Empêche un déploiement prod
  * accidentel avec un secret public commité dans Git.
  *
- * <p><b>(lot-A-securite)</b> : ajout de {@link #parseAndVerifyClaims(String)} qui vérifie
+ * <p><b></b> : ajout de {@link #parseAndVerifyClaims(String)} qui vérifie
  * explicitement la signature JWT. L'ancienne méthode {@link #parseClaims(String)} est conservée
  * (dépréciée) pour compat, mais ne doit plus être utilisée pour toute décision de sécurité.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class JwtService {
 
@@ -82,10 +87,10 @@ public class JwtService {
  "test-secret-please-do-not-use-in-production"
  );
 
- /** Issuer par défaut — audit v4.7 §6.3 : claim iss obligatoire pour anti-rejeu cross-env. */
+ /** Issuer par défaut —: claim iss obligatoire pour anti-rejeu cross-env. */
  private static final String DEFAULT_ISSUER = "joaccountant";
 
- /** Audience par défaut — audit v4.7 §6.3 : claim aud obligatoire pour anti-rejeu cross-env. */
+ /** Audience par défaut —: claim aud obligatoire pour anti-rejeu cross-env. */
  private static final String DEFAULT_AUDIENCE = "joaccountant-api";
 
  private final JWSSigner signer;
@@ -111,7 +116,7 @@ public class JwtService {
  this.issuer = issuer;
  this.audience = audience;
 
- // Audit v4.7 §6.3 — sélection de l'algorithme selon la config
+ //— sélection de l'algorithme selon la config
  String algoUpper = algorithmStr.trim().toUpperCase();
  switch (algoUpper) {
  case "HS256":
@@ -136,7 +141,7 @@ public class JwtService {
  /**
  * Validation au démarrage : refuse un secret JWT faible en profil non-dev/test.
  *
- * <p>Audit v4.7 §6.1 sans ce garde-fou, l'application démarre silencieusement
+ * <p>sans ce garde-fou, l'application démarre silencieusement
  * avec un secret public si {@code APP_JWT_SECRET} n'est pas positionné en production. N'importe
  * quel attaquant connaissant le code source peut alors forger des JWT valides.
  */
@@ -177,7 +182,7 @@ public class JwtService {
 
  /**
  * Crée le verifier HS256 (HMAC-SHA256) avec le même secret partagé que le signer.
- * (lot-A-securite) — la vérification de signature est OBLIGATOIRE pour le
+ *la vérification de signature est OBLIGATOIRE pour le
  * {@code mfaChallengeToken} présenté à {@code /api/v1/auth/login/mfa}.
  */
  private static JWSVerifier createHs256Verifier(String secret) {
@@ -271,7 +276,7 @@ public class JwtService {
 
  public String issueAccessToken(UUID userId, String email, List<Map<String, Object>> companies) {
  Instant now = Instant.now();
- // Audit v4.7 §6.3 — ajout des claims iss + aud pour anti-rejeu cross-environnement
+ //— ajout des claims iss + aud pour anti-rejeu cross-environnement
  JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
  .subject(userId.toString())
  .issuer(issuer)
@@ -304,13 +309,13 @@ public class JwtService {
  * non signé (alg: none) ou avec une signature invalide qui passera cette méthode. Pour toute
  * décision de sécurité, utiliser {@link #parseAndVerifyClaims(String)}.
  *
- * <p>Historiquement utilisée pour le {@code mfaChallengeToken} (audit v4.7 §6.3) — * (lot-A-securite) corrige ce bypass en remplaçant l'appel par {@link #parseAndVerifyClaims(String)}.
+ * <p>Historiquement utilisée pour le {@code mfaChallengeToken}— *corrige ce bypass en remplaçant l'appel par {@link #parseAndVerifyClaims(String)}.
  * La méthode est conservée pour compat (pas d'autre appelant actuellement), mais marquée
  * déconseillée pour tout usage de sécurité.
  *
  * @deprecated utiliser {@link #parseAndVerifyClaims(String)} qui valide la signature.
  */
- @Deprecated(since = "lot-A-securite", forRemoval = false)
+ @Deprecated(since = "", forRemoval = false)
  public java.util.Map<String, Object> parseClaims(String jwt) {
  try {
  com.nimbusds.jwt.SignedJWT signedJWT = com.nimbusds.jwt.SignedJWT.parse(jwt);
@@ -326,7 +331,7 @@ public class JwtService {
  }
 
  /**
- * (lot-A-securite) — Parse ET vérifie la signature d'un JWT.
+ *Parse ET vérifie la signature d'un JWT.
  *
  * <p>Utilisé par {@code AuthController.loginMfa()} pour valider le {@code mfaChallengeToken}
  * avant de délivrer les tokens d'accès. Sans cette vérification, un attaquant pouvait forger

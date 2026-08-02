@@ -80,7 +80,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Bean Spring {@code @Component} — injectable dans {@code BankReconciliationService}. Le
  * parseur est stateless et thread-safe.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class Ofx2Parser {
 

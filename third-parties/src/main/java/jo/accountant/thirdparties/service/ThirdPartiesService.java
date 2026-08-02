@@ -52,7 +52,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service des tiers et du lettrage (§13 Phase 7).
+ * Service des tiers et du lettrage (§13.
  *
  * <p>Responsabilités :
  * <ul>
@@ -63,7 +63,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Lettrage manuel (FULL si sommes s'équilibrent, PARTIAL sinon)</li>
  * <li>Balance âgée (0-30/31-60/61-90/90+ jours) sur le solde non lettré</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Service
 public class ThirdPartiesService {
 
@@ -102,7 +105,7 @@ public class ThirdPartiesService {
  * Crée un tiers. Si le compte collectif a {@code isCollective = true}, un compte dédié
  * de niveau 4 est automatiquement généré sous le compte collectif.
  *
- * <p><b>V8.3</b> : si {@code req.collectiveAccountId()} est {@code null}, le service
+ * <p>si {@code req.collectiveAccountId()} est {@code null}, le service
  * résout automatiquement un compte collectif par défaut selon le {@code type} du tiers,
  * en cherchant le premier compte collectif dont le code commence par le préfixe
  * SYSCOHADA conventionnel :
@@ -140,7 +143,7 @@ public class ThirdPartiesService {
  + "Utiliser un compte collectif pour rattacher un tiers.");
  }
  } else {
- // V8.3 — auto-résolution d'un compte collectif par défaut selon le type.
+ // auto-résolution d'un compte collectif par défaut selon le type.
  collectiveAccount = findDefaultCollectiveAccount(companyId, req.type());
  }
 
@@ -152,7 +155,7 @@ public class ThirdPartiesService {
  tp.setActive(true);
  tp.setEmail(req.email());
  tp.setAddress(req.address());
- // R-F-validation (lot-G) : NIF tiers (Code Fiscal art. 196 — mentions factures)
+ // R-F-validation: NIF tiers (Code Fiscal art. 196 — mentions factures)
  tp.setNif(req.nif());
 
  // Auto-génération du compte dédié sous le compte collectif
@@ -174,7 +177,7 @@ public class ThirdPartiesService {
  }
 
  /**
- * V8.3 — Résout un compte collectif par défaut pour un type de tiers donné.
+ * Résout un compte collectif par défaut pour un type de tiers donné.
  *
  * <p>Stratégie :
  * <ol>
@@ -302,7 +305,7 @@ public class ThirdPartiesService {
  LocalDate from, LocalDate to) {
  ThirdParty tp = loadThirdParty(companyId, thirdPartyId);
 
- // ── Audit v4.7 §7.2 FIX N+1 CRITIQUE ──
+ // ──FIX N+1 CRITIQUE ──
  // Avant : on chargeait TOUTES les lignes POSTED de l'entreprise (findAllPosted) puis on
  // filtrait côté Java par thirdPartyId. Sur une entreprise mature (50K écritures), cela
  // représentait ~50 MB heap + 5-15s de latence P99.
@@ -312,7 +315,7 @@ public class ThirdPartiesService {
  companyId, thirdPartyId, from, to);
 
  // Charger les écritures pour date + reference
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  Map<UUID, JournalEntry> entryById = new HashMap<>();
  for (JournalLine line : tpLines) {
  if (!entryById.containsKey(line.getJournalEntryId())) {
@@ -385,7 +388,7 @@ public class ThirdPartiesService {
  // --- Lettrage ---
 
  /**
- * step7-backend — Reports Hub v2.5.0 : Liste paginée des lettrages d'une entreprise.
+ * Reports Hub : Liste paginée des lettrages d'une entreprise.
  *
  * <p>Filtre par :
  * <ul>
@@ -453,7 +456,7 @@ public class ThirdPartiesService {
  if (tp != null && tp.getDedicatedAccountId() != null) {
  Account dedicated = accountById.get(tp.getDedicatedAccountId());
  if (dedicated != null) accountCode = dedicated.getCode();
- // Defense-in-depth : filtrer par companyId (audit v4.7 §6.2)
+ // Defense-in-depth : filtrer par companyId
  if (dedicated != null && !dedicated.getCompanyId().equals(companyId)) {
  accountCode = null;
  }
@@ -574,7 +577,7 @@ public class ThirdPartiesService {
  /**
  * Supprime un lettrage (dé-lettrage). Les lignes redeviennent non lettrées.
  *
- * <p><b>Audit v4.7 §3.2 Finding MOYENNE — FIX audit trail</b> : la v4.7 faisait une
+ * <p><b>Finding MOYENNE — FIX audit trail</b> : la version précédente faisait une
  * suppression physique ({@code lettrageRepository.delete(lm)}). Désormais, soft delete :
  * le statut passe à {@link LettrageStatus#DELETED} + persistance du {@code deletedBy} +
  * {@code deletedAt}. Le lettrage reste consultable pour forensique mais est exclu des
@@ -608,7 +611,7 @@ public class ThirdPartiesService {
  public List<SuggestedMatch> suggestMatches(UUID companyId, UUID thirdPartyId) {
  ThirdParty tp = loadThirdParty(companyId, thirdPartyId);
 
- // Audit v4.7 §7.2 FIX N+1 : utiliser findPostedByThirdParty plutôt que
+ //FIX N+1 : utiliser findPostedByThirdParty plutôt que
  // findAllPosted + filtre Java (chargeait toutes les écritures POSTED en mémoire).
  List<JournalLine> tpLines = journalLineRepository.findPostedByThirdParty(
  companyId, thirdPartyId, null, null);
@@ -627,7 +630,7 @@ public class ThirdPartiesService {
  .toList();
 
  // Charger les entrées pour les dates
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  Map<UUID, JournalEntry> entryById = new HashMap<>();
  for (JournalLine line : unlettered) {
  if (!entryById.containsKey(line.getJournalEntryId())) {
@@ -710,7 +713,7 @@ public class ThirdPartiesService {
  // Pour la balance âgée, on a besoin des lignes non lettrées avec leur date.
  // Le statement contient déjà cette info, mais sans distinguer lettré/non lettré
  // par ligne. Recalculons :
- // Audit v4.7 §7.2 FIX N+1 : utiliser findPostedByThirdParty plutôt que
+ //FIX N+1 : utiliser findPostedByThirdParty plutôt que
  // findAllPosted + filtre Java (chargeait toutes les écritures POSTED en mémoire).
  List<JournalLine> tpLines = journalLineRepository.findPostedByThirdParty(
  companyId, thirdPartyId, null, asOf);
@@ -726,13 +729,13 @@ public class ThirdPartiesService {
  for (JournalLine line : tpLines) {
  if (letteredLineIds.contains(line.getId())) continue;
 
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  JournalEntry entry = journalEntryRepository.findById(line.getJournalEntryId())
  .filter(e -> e.getCompanyId().equals(companyId))
  .orElse(null);
  if (entry == null) continue;
 
- // Audit v4.7 §3.2 Finding MOYENNE — FIX : âge par dueDate au lieu de entryDate.
+ //Finding MOYENNE — FIX : âge par dueDate au lieu de entryDate.
  // La balance âgée mesure le retard de paiement, pas l'ancienneté comptable.
  // Pour les écritures liées à une facture (sourceModule INVOICING/PURCHASING),
  // on récupère le dueDate de la facture. Pour les écritures OD/paie sans facture,
@@ -765,7 +768,7 @@ public class ThirdPartiesService {
 
  /**
  * Résout la date d'échéance (dueDate) d'une écriture pour le calcul de la balance âgée
- * (audit v4.7 §3.2 Finding MOYENNE).
+ *Finding MOYENNE).
  *
  * <p>Pour les écritures liées à une facture (sourceModule INVOICING/PURCHASING), on récupère
  * le dueDate de la facture via le journalEntryId. Pour les écritures OD/paie sans facture,
@@ -813,7 +816,7 @@ public class ThirdPartiesService {
  /**
  * Charge un Account par ID avec filtrage tenant optionnel.
  *
- * <p><b>Audit v4.7 §6.2 — defense-in-depth</b> : si {@code companyId} est fourni, ne retourne
+ * <p><b>— defense-in-depth</b> : si {@code companyId} est fourni, ne retourne
  * l'Account que s'il appartient à ce tenant. Si {@code companyId} est null, comportement legacy
  * (pas de check — conservé pour les callers non encore migrés).
  */
@@ -841,7 +844,7 @@ public class ThirdPartiesService {
  tp.getDedicatedAccountId(),
  dedicatedAccount != null ? dedicatedAccount.getCode() : null,
  tp.isActive(), tp.getEmail(), tp.getAddress(),
- // Audit v4.7 §4.2 — champs légaux pour Factur-X + mentions légales
+ //— champs légaux pour Factur-X + mentions légales
  tp.getSiret(), tp.getVatNumber(), tp.getNif(),
  tp.getCreatedAt(), tp.getUpdatedAt());
  }

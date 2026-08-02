@@ -13,9 +13,14 @@ import jo.accountant.purchasing.entity.PurchaseInvoiceType;
 /**
  * Corps de requête pour {@code POST .../purchase-invoices}.
  *
- * <p><b>Audit v4.7 §6.3 (session 8) — Validation DTOs</b> : ajout des annotations
+ * <p><b>(session 8) — Validation DTOs</b> : ajout des annotations
  * {@code @DecimalMin} sur les montants pour rejeter les valeurs négatives.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreatePurchaseInvoiceRequest(
     @NotNull UUID thirdPartyId,
     PurchaseInvoiceType type,

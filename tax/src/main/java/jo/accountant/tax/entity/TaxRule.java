@@ -13,7 +13,7 @@ import java.util.UUID;
 import jo.accountant.core.tax.VatMode;
 
 /**
- * Règle fiscale — TVA ou autre taxe (§13 Phase 16).
+ * Règle fiscale — TVA ou autre taxe (§13.
  *
  * <p>Peut être globale par pays/référentiel (companyId null) ou spécifique à une entreprise.
  *
@@ -24,7 +24,12 @@ import jo.accountant.core.tax.VatMode;
  * 4438 « TVA sur factures émises non encaissées » à l'émission, puis basculée vers le 443
  * (TVA collectée) au règlement — voir {@code InvoicingService.generateInvoiceEntry} et
  * {@code InvoicingService.recordPayment}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "tax_rule")
 public class TaxRule {

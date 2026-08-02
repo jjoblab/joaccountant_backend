@@ -25,11 +25,40 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints des dimensions analytiques (§5, §13 Phase 5).
+ * Endpoints des dimensions analytiques (§5, §13.
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/analytics")
 @Tag(name = "Analytics", description = "Dimensions analytiques transverses (mécanisme multi-secteur, §5)")
+/**
+ * Contrôleur REST Analytics.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class AnalyticsController {
 
     private final AnalyticsService service;

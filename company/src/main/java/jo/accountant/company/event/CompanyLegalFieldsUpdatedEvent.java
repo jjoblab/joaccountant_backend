@@ -9,7 +9,7 @@ import jo.accountant.core.audit.AuditableAction;
  * Événement publié à chaque mise à jour des champs légaux d'une Company
  * (siret, vatNumber, nif, address) via {@code PATCH /api/v1/companies/{companyId}/legal}.
  *
- * <p>Phase D — Audit v4.7 §4.2 : ces champs sont requis pour les mentions légales des factures
+ * <p>: ces champs sont requis pour les mentions légales des factures
  * (CGI art. 289) et le Factur-X. Toute modification doit être tracée dans l'audit-trail pour
  * conformité réglementaire.
  *
@@ -22,7 +22,12 @@ import jo.accountant.core.audit.AuditableAction;
  * trace est conservée dans l'audit-trail (via {@code AuditEventListener} qui écoute l'interface
  * {@code AuditableAction}). Les consommateurs métier (notifications, workflows, exports
  * réglementaires, KPI temps-réel) seront câblés quand le besoin se matérialisera.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CompanyLegalFieldsUpdatedEvent(
  UUID companyId,
  UUID actorUserId,

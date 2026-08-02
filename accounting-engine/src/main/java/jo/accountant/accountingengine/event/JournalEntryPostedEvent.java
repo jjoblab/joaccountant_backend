@@ -15,7 +15,12 @@ import jo.accountant.core.audit.AuditableAction;
  * forensique à des fins d'investigation post-incident. Il reste <b>prêt pour consommation
  * future</b> par d'autres abonnés (clôture automatique, rapprochements, alertes anomalie)
  * — ces consommateurs seront ajoutés quand le besoin métier se matérialisera.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record JournalEntryPostedEvent(
  UUID companyId,
  UUID actorUserId,

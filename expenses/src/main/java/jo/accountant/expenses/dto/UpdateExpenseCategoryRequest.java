@@ -26,7 +26,12 @@ import java.math.BigDecimal;
  * @param dailyLimit nouveau plafond journalier (null = désactivé / inchangé selon
  * la stratégie ci-dessus). Doit être ≥ 0 si fourni.
  * @param monthlyLimit nouveau plafond mensuel (null = désactivé / inchangé). ≥ 0 si fourni.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record UpdateExpenseCategoryRequest(
  String label,
  @PositiveOrZero BigDecimal dailyLimit,

@@ -12,7 +12,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 /**
  * Listener dédié aux événements de {@link SecurityAuditEvent}.
  *
- * <p><b>Audit v4.7 §6.2 FIX CRITIQUE</b> : la v4.7 n'auditait QUE les mutations
+ * <p><b>la version précédente n'auditait QUE les mutations
  * métier via {@link AuditEventListener} (qui écoute {@link jo.accountant.core.audit.AuditableAction}
  * → {@code @TransactionalEventListener(AFTER_COMMIT)}). Or les événements de sécurité comme
  * LOGIN_FAILED, REFRESH_TOKEN_REUSED, ACCESS_DENIED surviennent dans des transactions qui
@@ -40,7 +40,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * pour les mutations (sinon on tracerait des créations d'entités qui n'existent plus après
  * rollback). {@code SecurityAuditEventListener} écoute {@link SecurityAuditEvent} directement
  * (pas via AuditableAction) en AFTER_COMPLETION — pour tracer les tentatives.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class SecurityAuditEventListener {
 
@@ -81,7 +86,7 @@ public class SecurityAuditEventListener {
  row.setAction(event.eventType());
  // Pas d'oldValue pour les événements de sécurité
  row.setOldValueJson(null);
- // Audit v4.7 §6.3 — masquer les PII (email, fullName) avant persistance
+ //— masquer les PII (email, fullName) avant persistance
  row.setNewValueJson(
  event.metadata() != null && !event.metadata().isEmpty()
  ? jo.accountant.core.audit.PiiMasker.maskPiiInJson(

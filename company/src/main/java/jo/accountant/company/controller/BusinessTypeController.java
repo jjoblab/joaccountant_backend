@@ -23,14 +23,40 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Endpoints <strong>non scopés par companyId</strong> car il s'agit d'un catalogue de
  * référence global (toutes les sociétés voient la même liste de types métier actifs).
  *
- * <p>Restructuration 2026-07-24 (Partie A §1.1) : le endpoint {@code GET /api/v1/business-types}
+ * <p>(Partie A §1.1) : le endpoint {@code GET /api/v1/business-types}
  * accepte désormais un paramètre optionnel {@code sector}. Si présent, seuls les types métier
  * dont {@code defaultSector == sector} sont renvoyés. Le mobile appelle ce endpoint avec le
- * {@code sector} choisi à l'étape 3 du wizard pour peupler l'étape 4.
- */
+ * {@code sector} choisi à l'du wizard pour peupler l'*/
 @RestController
 @RequestMapping("/api/v1/business-types")
 @Tag(name = "BusinessType", description = "Catalogue des types métier (wizard étapes 4 et 7)")
+/**
+ * Contrôleur REST BusinessType.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class BusinessTypeController {
 
     private final BusinessTypeModuleService businessTypeModuleService;
@@ -43,11 +69,11 @@ public class BusinessTypeController {
     }
 
     @Operation(summary = "List all active business types",
-        description = "Catalogue complet des types métier actifs — utilisé par l'étape 4 du wizard. " +
+        description = "Catalogue complet des types métier actifs — utilisé par l'du wizard. " +
                       "Chaque entrée inclut la liste des modules suggérés. " +
                       "Filtre optionnel `sector` (Partie A §1.1) : si présent, ne renvoie que les " +
                       "types métier dont `defaultSector == sector`. Le mobile appelle ce endpoint " +
-                      "avec le `sector` choisi à l'étape 3 pour peupler l'étape 4.")
+                      "avec le `sector` choisi à l'pour peupler l'")
     @GetMapping
     public List<BusinessTypeResponse> list(@CurrentUser java.util.UUID userId,
                                             @RequestParam(value = "sector", required = false) String sector) {
@@ -59,7 +85,7 @@ public class BusinessTypeController {
 
     @Operation(summary = "Get a single business type by code",
         description = "Retourne un type métier + la liste de ses modules suggérés + la liste " +
-                      "de ses champs additionnels obligatoires (formulaire dynamique étape 7).")
+                      "de ses champs additionnels obligatoires (formulaire dynamique.")
     @GetMapping("/{code}")
     public BusinessTypeResponse get(@CurrentUser java.util.UUID userId, @PathVariable String code) {
         BusinessType bt = businessTypeModuleService.getActiveByCode(code);

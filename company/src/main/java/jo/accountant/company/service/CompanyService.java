@@ -53,22 +53,22 @@ import jakarta.persistence.PersistenceContext;
  * complétion atomique du wizard (étape 4 = activation modules + plan comptable + exercice +
  * journaux + séquences + TVA en une seule transaction), listing.
  *
- * <p><b>V8.2 (audit Z.ai 2026-07-31) — Refonte wizard 4 étapes avec activation atomique.</b>
+ * <p><b>V8.2 — Refonte wizard 4 étapes avec activation atomique.</b>
  * Le wizard 9 étapes historique a été supprimé. Les 4 DTO V8.2 ({@link WizardStep2Request},
  * {@link WizardStep3Request}, {@link CompleteWizardRequest}, {@link CompanyWizardResult}) sont
  * désormais câblés. La constante {@link Company#TOTAL_WIZARD_STEPS} vaut 4, enfin alignée sur
  * la migration V95 qui avait déjà clampé wizard_step à 4 en base.
  *
- * <p>Les 4 étapes du wizard V8.2 :
+ * <p>Les 4 étapes du wizard d'onboarding :
  * <ol>
- *   <li><b>Identité</b> — name + country + functionalCurrency (création via POST /companies,
- *       méthode {@link #createCompany})</li>
- *   <li><b>Activité</b> — businessTypeCode + primaryActivityLabel + sector + extraAttributes
- *       + customModules (PATCH /wizard/2, méthode {@link #applyWizardStep2})</li>
- *   <li><b>Comptabilité</b> — accountingFrameworkId + fiscalYearStart + vatMode + numberingPrefixes
- *       (PATCH /wizard/3, méthode {@link #applyWizardStep3})</li>
- *   <li><b>Activation atomique</b> — modules + plan comptable + exercice + journaux + séquences + TVA
- *       (POST /wizard/complete, méthode {@link #completeWizard})</li>
+ * <li><b>Identité</b> — name + country + functionalCurrency (création via POST /companies,
+ * méthode {@link #createCompany})</li>
+ * <li><b>Activité</b> — businessTypeCode + primaryActivityLabel + sector + extraAttributes
+ * + customModules (PATCH /wizard/2, méthode {@link #applyWizardStep2})</li>
+ * <li><b>Comptabilité</b> — accountingFrameworkId + fiscalYearStart + vatMode + numberingPrefixes
+ * (PATCH /wizard/3, méthode {@link #applyWizardStep3})</li>
+ * <li><b>Activation atomique</b> — modules + plan comptable + exercice + journaux + séquences + TVA
+ * (POST /wizard/complete, méthode {@link #completeWizard})</li>
  * </ol>
  *
  * <p><b>Idempotence</b> : {@link #completeWizard} est ré-entrante. Si l'activation est rappelée
@@ -79,7 +79,10 @@ import jakarta.persistence.PersistenceContext;
  * échoue avec une exception non-récupérable, toute la transaction est rollbackée — aucun objet
  * partiel ne persiste. Corrige le bug documenté « completeWizard ne fait pas de rollback
  * transactionnel » (cf. ancien README ligne 318-321).
- */
+ 
+ *
+ * @author jo@Dev
+*/
 @Service
 public class CompanyService {
 
@@ -133,13 +136,13 @@ public class CompanyService {
     /**
      * Crée une Company à l'étape 1 du wizard — champs d'identité uniquement.
      *
-     * <p>V8.3 — Retourne un nouveau JWT fraîchement émis avec le claim {@code companies} mis à jour
+     * <p>Retourne un nouveau JWT fraîchement émis avec le claim {@code companies} mis à jour
      * (incluant la nouvelle company avec le rôle OWNER). Le client mobile stocke ce nouveau JWT
      * et l'utilise pour les requêtes wizard suivantes — pas besoin de re-login ni de fall-back DB.
      *
      * <p>Assigne le rôle OWNER au créateur et le stamp comme createdBy.
      *
-     * <p><b>V2.6.0 (wizard refonte)</b> — {@code organizationNature} et {@code legalForm}
+     * <p><b>À venir</b> : {@code organizationNature} et {@code legalForm}
      * (nullables) sont désormais passés par le wizard step 1. Si non-null, ils écrasent
      * les defaults provisoires ({@code FOR_PROFIT} / {@code OTHER}). Si null ou invalide,
      * on retombe sur les defaults (backward-compatible). Les valeurs invalides lèvent
@@ -159,7 +162,7 @@ public class CompanyService {
         company.setName(name.trim());
         company.setCountry(country.toUpperCase());
         company.setFunctionalCurrency(functionalCurrency.toUpperCase());
-        // V2.6.0 — organisationNature + legalForm depuis le wizard step 1 (defaults provisoires
+        // organisationNature + legalForm depuis le wizard step 1 (defaults provisoires
         // conservés si null). Les étapes 2 et 3 du wizard peuvent encore les écraser.
         company.setOrganizationNature(parseOrganizationNature(organizationNature));
         company.setLegalForm(parseLegalForm(legalForm));
@@ -168,8 +171,8 @@ public class CompanyService {
         company.setSector(Sector.AUTRE);
         company.setBusinessTypeCode("CUSTOM");
         company.setPrimaryActivityLabel("");
-        company.setAccountingFrameworkId(null);  // positionné à l'étape 3
-        company.setFiscalYearStartMonth(1);       // positionné à l'étape 3
+        company.setAccountingFrameworkId(null); // positionné à l'étape 3
+        company.setFiscalYearStartMonth(1); // positionné à l'étape 3
         company.setWizardStep(1);
         company.setWizardCompleted(false);
         company.setCreatedAt(Instant.now());
@@ -192,7 +195,7 @@ public class CompanyService {
         owner.setUpdatedBy(creatorUserId);
         userCompanyRoleRepository.save(owner);
 
-        // V8.3 — Émettre un nouveau JWT avec le claim companies à jour.
+        // Émettre un nouveau JWT avec le claim companies à jour.
         // Le UserCompanyRole vient d'être créé, le flush garantit qu'il est visible
         // pour buildCompaniesClaim.
         userCompanyRoleRepository.flush();
@@ -205,7 +208,7 @@ public class CompanyService {
         return new CreateCompanyResponse(
             toResponse(saved),
             newAccessToken,
-            null,  // refreshToken — pas de rotation ici (le refresh token existant reste valide)
+            null, // refreshToken — pas de rotation ici (le refresh token existant reste valide)
             jwtService.getAccessTokenTtlSeconds()
         );
     }
@@ -236,7 +239,7 @@ public class CompanyService {
         // L'email n'est pas stocké dans :company, mais le JwtService a juste besoin d'une string.
         // On utilise le TenantContext si disponible, sinon une string vide (le claim email sera
         // mis à jour au prochain login).
-        return "";  // Le claim email est cosmétique dans le JWT — l'auth se fait via sub (userId)
+        return ""; // Le claim email est cosmétique dans le JWT — l'auth se fait via sub (userId)
     }
 
     @Transactional(readOnly = true)
@@ -261,7 +264,7 @@ public class CompanyService {
     // ── PATCH /legal — champs légaux éditables post-wizard ─────────────────────
 
     /**
-     * Met à jour les champs légaux d'une Company (Phase D — Audit v4.7 §4.2).
+     * Met à jour les champs légaux d'une Company (Phase D — audit applicatif).
      *
      * <p>Endpoint : {@code PATCH /api/v1/companies/{companyId}/legal}. Sémantique de mise à jour
      * partielle : seuls les champs non-nuls du payload sont écrasés. Une chaîne blank est
@@ -366,7 +369,7 @@ public class CompanyService {
     // ── Étape 2 — Activité — PATCH /wizard/2 ───────────────────────────────────
 
     /**
-     * Applique l'étape 2 du wizard V8.2 : activité + type métier.
+     * Applique l'étape 2 du wizard d'onboarding : activité + type métier.
      *
      * <p>Fusionne les anciennes étapes 3 (sector), 4 (business type), 5 (activity),
      * 7 (required fields) et 8 (module selection pour CUSTOM).
@@ -375,9 +378,9 @@ public class CompanyService {
      * BusinessType si l'utilisateur ne les a pas fournis (ou s'ils sont aux defaults provisoires).
      *
      * @throws ValidationException si {@code businessTypeCode} n'existe pas ou n'est pas actif,
-     *         ou si un champ requis (BusinessTypeRequiredField) est manquant dans extraAttributes
+     * ou si un champ requis (BusinessTypeRequiredField) est manquant dans extraAttributes
      * @throws ConflictException si le wizard est déjà complété ou si l'étape 2 est appelée
-     *         alors que wizardStep < 1
+     * alors que wizardStep < 1
      */
     @Transactional
     public Company applyWizardStep2(UUID companyId, UUID userId, WizardStep2Request req) {
@@ -452,7 +455,7 @@ public class CompanyService {
     // ── Étape 3 — Comptabilité — PATCH /wizard/3 ───────────────────────────────
 
     /**
-     * Applique l'étape 3 du wizard V8.2 : comptabilité & fiscalité.
+     * Applique l'étape 3 du wizard d'onboarding : comptabilité & fiscalité.
      *
      * <p>Fusionne les anciennes étapes 6 (framework+fiscal), 9 (VAT mode), 10 (numbering).
      *
@@ -513,40 +516,40 @@ public class CompanyService {
     // ── Étape 4 — Activation atomique — POST /wizard/complete ─────────────────
 
     /**
-     * Finalise le wizard V8.2 par activation atomique.
+     * Finalise le wizard d'onboarding par activation atomique.
      *
      * <p>Exécute en UNE SEULE transaction (rollback si échec) :
      * <ol>
-     *   <li>Activation des modules (always-on + sectoriels BusinessType + customModules si CUSTOM)</li>
-     *   <li>Initialisation du plan comptable (ChartOfAccountsService.initialize)</li>
-     *   <li>Création de l'exercice fiscal + 12 périodes mensuelles (AccountingEngineService.createFiscalYear)</li>
-     *   <li>Création des 8 journaux standards VT/AC/BQ/CA/OD/PA/DP/FX (AccountingEngineService.createJournal)</li>
-     *   <li>Création des 6 séquences de numérotation par défaut (DocumentNumberingService.createSequence)</li>
-     *   <li>Création des règles TVA par défaut si pays non couvert par seeds globaux (TaxService.createTaxRule)</li>
+     * <li>Activation des modules (always-on + sectoriels BusinessType + customModules si CUSTOM)</li>
+     * <li>Initialisation du plan comptable (ChartOfAccountsService.initialize)</li>
+     * <li>Création de l'exercice fiscal + 12 périodes mensuelles (AccountingEngineService.createFiscalYear)</li>
+     * <li>Création des 8 journaux standards VT/AC/BQ/CA/OD/PA/DP/FX (AccountingEngineService.createJournal)</li>
+     * <li>Création des 6 séquences de numérotation par défaut (DocumentNumberingService.createSequence)</li>
+     * <li>Création des règles TVA par défaut si pays non couvert par seeds globaux (TaxService.createTaxRule)</li>
      * </ol>
      *
      * <p>Publie {@link CompanyWizardCompletedEvent} après commit. Cet événement est écouté
      * par deux listeners {@code @TransactionalEventListener(AFTER_COMMIT)} (V8.2 Phase 4) :
      * <ul>
-     *   <li>{@code ChartOfAccountsAutoInitializer} (chart-of-accounts) — filet de sécurité idempotent</li>
-     *   <li>{@code AccountingEngineAutoInitializer} (accounting-engine) — filet de sécurité idempotent</li>
+     * <li>{@code ChartOfAccountsAutoInitializer} (chart-of-accounts) — filet de sécurité idempotent</li>
+     * <li>{@code AccountingEngineAutoInitializer} (accounting-engine) — filet de sécurité idempotent</li>
      * </ul>
      *
-     * <p><b>Architecture hybride V8.2</b> : l'activation atomique est faite directement dans
+     * <p><b>Architecture hybride</b> : l'activation atomique est faite directement dans
      * cette méthode via {@link AccountingProvisioningPort} (synchrone, même transaction).
-     * Les listeners event-driven (Phase 4) sont des <b>filets de sécurité idempotents</b> qui
+     * Les listeners event-driven sont des <b>filets de sécurité idempotents</b> qui
      * permettent également à de futurs modules de réagir à {@code CompanyWizardCompletedEvent}
      * sans modifier {@code CompanyService}. À terme, l'appel direct pourrait être supprimé
      * au profit exclusif des listeners — mais la coexistence actuelle garantit la robustesse.
      *
      * @param companyId id de la Company à finaliser
-     * @param userId    id de l'utilisateur authentifié
-     * @param req       payload optionnel (mfaCode, expenseCategories, contributionRules — pré-seed)
+     * @param userId id de l'utilisateur authentifié
+     * @param req payload optionnel (mfaCode, expenseCategories, contributionRules — pré-seed)
      * @return {@link CompanyWizardResult} récapitulant tout ce qui a été créé
      *
-     * @throws ConflictException      si wizard déjà complété ou wizardStep < 3
-     * @throws ValidationException    si businessTypeCode incohérent
-     * @throws NotFoundException      si accountingFrameworkId n'existe plus
+     * @throws ConflictException si wizard déjà complété ou wizardStep < 3
+     * @throws ValidationException si businessTypeCode incohérent
+     * @throws NotFoundException si accountingFrameworkId n'existe plus
      */
     @Transactional
     public CompanyWizardResult completeWizard(UUID companyId, UUID userId, CompleteWizardRequest req) {
@@ -728,7 +731,7 @@ public class CompanyService {
     }
 
     /**
-     * Parse le champ {@code organizationNature} du payload de création (V2.6.0).
+     * Parse le champ {@code organizationNature} du payload de création.
      *
      * <p>Accepte les valeurs {@code "FOR_PROFIT"} et {@code "NON_PROFIT"} (case-insensitive,
      * whitespace-tolerant). {@code null}/blank → {@link OrganizationNature#FOR_PROFIT}
@@ -737,7 +740,7 @@ public class CompanyService {
      */
     private OrganizationNature parseOrganizationNature(String raw) {
         if (raw == null || raw.isBlank()) {
-            return OrganizationNature.FOR_PROFIT;  // default provisoire
+            return OrganizationNature.FOR_PROFIT; // default provisoire
         }
         try {
             return OrganizationNature.valueOf(raw.trim().toUpperCase());
@@ -749,7 +752,7 @@ public class CompanyService {
     }
 
     /**
-     * Parse le champ {@code legalForm} du payload de création (V2.6.0).
+     * Parse le champ {@code legalForm} du payload de création.
      *
      * <p>Accepte les valeurs de l'enum {@link LegalForm} (case-insensitive, whitespace-tolerant).
      * {@code null}/blank → {@link LegalForm#OTHER} (default provisoire, écrasable par step 2).
@@ -757,7 +760,7 @@ public class CompanyService {
      */
     private LegalForm parseLegalForm(String raw) {
         if (raw == null || raw.isBlank()) {
-            return LegalForm.OTHER;  // default provisoire
+            return LegalForm.OTHER; // default provisoire
         }
         try {
             return LegalForm.valueOf(raw.trim().toUpperCase());

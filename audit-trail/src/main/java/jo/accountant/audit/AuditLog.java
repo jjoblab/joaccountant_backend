@@ -20,7 +20,12 @@ import org.hibernate.type.SqlTypes;
  * d'audit DOIVENT survivre même si le tenant qui les a produites est supprimé plus tard —
  * {@code company_id} est ici une colonne simple, pas un discriminateur. C'est la seule exception
  * sanctionnée dans le projet.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "audit_log")
 public class AuditLog {

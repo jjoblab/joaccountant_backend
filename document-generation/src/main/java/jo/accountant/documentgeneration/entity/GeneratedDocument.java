@@ -12,11 +12,11 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Document PDF généré et stocké (§8, §13 Phase 11).
+ * Document PDF généré et stocké (§8, §13.
  *
  * <p>Permet de re-servir un PDF déjà émis sans le régénérer — cohérent avec
- * {@code FinancialStatementSnapshot.frozen} (Phase 6) et la règle "une facture ISSUED
- * n'est jamais éditée" (Phase 12).
+ * {@code FinancialStatementSnapshot.frozen}et la règle "une facture ISSUED
+ * n'est jamais éditée".
  *
  * <p>Un PDF lié à un document déjà définitif (ISSUED, POSTED) est <strong>immuable</strong> :
  * si un {@link GeneratedDocument} existe déjà pour ce {@code resourceId}, on le sert tel
@@ -25,7 +25,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Le {@code storageKey} est opaque — référencé via {@link jo.accountant.core.port.FileStoragePort}.
  * L'accès au contenu est toujours médié par un endpoint applicatif qui vérifie
  * l'appartenance tenant.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "generated_document")
 public class GeneratedDocument extends TenantAwareEntity {

@@ -33,9 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Trois formats couverts par les bailleurs institutionnels les plus exigeants :
  * <ul>
- *   <li><b>USAID SF-425</b> — Federal Financial Report trimestriel.</li>
- *   <li><b>EU PRAG</b> — Annual Financial Report annuel.</li>
- *   <li><b>Banque Mondiale</b> — Quarterly Financial Report.</li>
+ * <li><b>USAID SF-425</b> — Federal Financial Report trimestriel.</li>
+ * <li><b>EU PRAG</b> — Annual Financial Report annuel.</li>
+ * <li><b>Banque Mondiale</b> — Quarterly Financial Report.</li>
  * </ul>
  *
  * <p>Tous les exports retournent un CSV UTF-8 avec BOM (compatibilité Excel français),
@@ -52,6 +52,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/companies/{companyId}/funds-grants")
 @Tag(name = "DonorReportFormats",
      description = "Export des rapports bailleurs aux formats structurés (USAID SF-425, EU PRAG, Banque Mondiale) — v6-3")
+/**
+ * Contrôleur REST DonorReport.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code PUT  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class DonorReportController {
 
     private final DonorReportExporter exporter;

@@ -44,7 +44,41 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Le module est <strong>toujours-actif</strong> (always-on — voir
  * `BusinessTypeModuleService.alwaysOnModules`). Pas de `ModuleAccessGuard` requise.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping({
  "/api/v1/companies/{companyId}/payroll-runs",
@@ -440,14 +474,14 @@ public class PayrollController {
  }
 
  // ======================================================================
- // step2-backend — Reports Hub v2.4.0 : endpoint PDF de synthèse de paie
+ // Reports Hub : endpoint PDF de synthèse de paie
  // agrégée sur une période. L'URL /payroll/summary/pdf est rendue
  // accessible via le second préfixe de classe /api/v1/companies/{cid}/payroll
  // (déclaré ci-dessus). L'endpoint /payroll-runs/summary/pdf reste également
  // accessible pour cohérence avec les autres URLs du controller.
  // ======================================================================
 
- @Operation(summary = "Générer la synthèse de paie en PDF (Reports Hub v2.4.0)",
+ @Operation(summary = "Générer la synthèse de paie en PDF (Reports Hub)",
  description = "Rendu PDF de la synthèse de paie agrégée sur une période via :document-generation " +
  "(template PAYROLL_SUMMARY_REPORT). Agrège toutes les campagnes dont le mois de période " +
  "tombe dans [from, to] : somme des masses brutes/nettes/charges patronales + détail par campagne.")
@@ -514,14 +548,14 @@ public class PayrollController {
  }
 
  // ======================================================================
- // step7-backend — Reports Hub v2.5.0 : endpoint JSON + PDF pour le
+ // Reports Hub : endpoint JSON + PDF pour le
  // rapport CNSS_RETURN (bordereau CNSS/OFATMA/AST agrégé par employé
  // sur une période). L'URL /payroll/cnss-return (GET) retourne le JSON ;
  // /payroll/cnss-return/pdf génère un PDF binaire via DocumentGenerationService
  // (template CNSS_RETURN_REPORT seedé par V100).
  // ======================================================================
 
- @Operation(summary = "Bordereau CNSS/OFATMA/AST agrégé par employé (Reports Hub v2.5.0)",
+ @Operation(summary = "Bordereau CNSS/OFATMA/AST agrégé par employé (Reports Hub)",
  description = "Agrège sur la période [from, to] toutes les cotisations sociales des bulletins " +
  "de paie dont le code commence par CNSS_HT / OFATMA_HT / AST_HT (V68 ContributionRule). " +
  "Retourne une ligne par employé avec totalGross / assiette imposable / cotisations " +
@@ -545,7 +579,7 @@ public class PayrollController {
  return service.getCnssReturn(companyId, from, to);
  }
 
- @Operation(summary = "Générer le bordereau CNSS/OFATMA/AST en PDF (Reports Hub v2.5.0)",
+ @Operation(summary = "Générer le bordereau CNSS/OFATMA/AST en PDF (Reports Hub)",
  description = "Rendu PDF du bordereau CNSS_RETURN via :document-generation (template CNSS_RETURN_REPORT). " +
  "Sert un PDF binaire en attachment. Délègue au même service métier que GET /cnss-return.")
  @ApiResponses({

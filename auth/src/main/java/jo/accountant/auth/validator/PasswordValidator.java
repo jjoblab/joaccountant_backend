@@ -19,12 +19,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Règles de complexité des mots de passe (§13 Phase 1 + audit v4.7 §6.3 + ).
+ * Règles de complexité des mots de passe (§13++ ).
  *
  * <p>Règles :
  * <ul>
  * <li>longueur ≥ 12 (configurable via {@code app.password.min-length})</li>
- * <li>longueur ≤ 128 (audit v4.7 §6.3 — max length anti-DoS Argon2)</li>
+ * <li>longueur ≤ 128— max length anti-DoS Argon2)</li>
  * <li>au moins une lettre majuscule</li>
  * <li>au moins une lettre minuscule</li>
  * <li>au moins un chiffre</li>
@@ -36,7 +36,7 @@ import org.springframework.stereotype.Component;
  * (https://haveibeenpwned.com/API/v3#PwnedPasswords).</li>
  * </ul>
  *
- * <p><b>Audit v4.7 §6.3 Finding MOYENNE — FIX</b> :
+ * <p><b>Finding MOYENNE — FIX</b> :
  * <ul>
  * <li><b>Max length 128</b> : sans max, un attaquant peut soumettre un mot de passe de
  * plusieurs MB → Argon2 consomme 19 MiB de mémoire par hash → DoS (OOM). Désormais,
@@ -66,7 +66,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Échec → 422 avec un code stable par règle échue, pour que le frontend puisse afficher une
  * indication précise plutôt qu'un générique « mot de passe trop faible ».
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class PasswordValidator {
 
@@ -146,7 +151,7 @@ public class PasswordValidator {
  throw new ValidationException("PASSWORD_TOO_SHORT",
  "Password must be at least " + minLength + " characters long");
  }
- // Audit v4.7 §6.3 — max length anti-DoS Argon2
+ //— max length anti-DoS Argon2
  if (password.length() > MAX_LENGTH) {
  throw new ValidationException("PASSWORD_TOO_LONG",
  "Password must be at most " + MAX_LENGTH + " characters long (anti-DoS Argon2)");
@@ -167,7 +172,7 @@ public class PasswordValidator {
  throw new ValidationException("PASSWORD_NO_SPECIAL",
  "Password must contain at least one special character");
  }
- // Audit v4.7 §6.3 — blacklist locale (50 mots de passe courants)
+ //— blacklist locale (50 mots de passe courants)
  if (BLACKLIST.contains(password.toLowerCase())) {
  throw new ValidationException("PASSWORD_BLACKLISTED",
  "Password is in the blacklist of commonly used passwords. Choose a more unique password.");

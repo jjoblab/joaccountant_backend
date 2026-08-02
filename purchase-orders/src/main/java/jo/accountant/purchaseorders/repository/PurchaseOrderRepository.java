@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des commandes fournisseurs.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UUID> {
 
  /** Toutes les commandes d'une entreprise, triées par date décroissante. */

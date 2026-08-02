@@ -54,7 +54,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service du moteur comptable (§13 Phase 5) — le cœur non négociable du projet.
+ * Service du moteur comptable (§13le cœur non négociable du projet.
  *
  * <p>Responsabilités :
  * <ul>
@@ -77,7 +77,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Grand livre et balance générale (toujours reconciliables à zéro)</li>
  * </ul>
  *
- * <p>Règles métier §13 Phase 5 (chacune testée par un test qui échouerait si la règle
+ * <p>Règles métier §13(chacune testée par un test qui échouerait si la règle
  * était retirée) :
  * <ol>
  * <li>Somme(débit) = somme(crédit) sur chaque écriture, vérifiée en application ET par trigger DB.</li>
@@ -88,11 +88,16 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>Ligne sur compte {@code requiresAnalyticalTagPlanIds} non vide → tag obligatoire.</li>
  * <li>Balance générale et grand livre toujours reconciliables à zéro.</li>
  * <li>{@code POST .../journal-entries} exige {@code Idempotency-Key} ; rejeu = même résultat.</li>
- * <li>{@code AccountBalanceGuard} implémenté (Phase 5 = vraie impl basée sur JournalLine).</li>
+ * <li>{@code AccountBalanceGuard} implémenté= vraie impl basée sur JournalLine).</li>
  * <li>{@code reference} générée via {@code document-numbering} au moment du post, jamais avant.</li>
  * <li>Contre-passation : {@code reversalOfEntryId} pointe vers l'originale.</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class AccountingEngineService {
 
@@ -371,7 +376,7 @@ public class AccountingEngineService {
 
  /**
  * Liste tous les exercices fiscaux d'une entreprise (triés par date de début croissante).
- * Restructuration 2026-07-24 (suite 3) — endpoint manquant jusqu'ici. Utilisé par le
+ *(suite 3) — endpoint manquant jusqu'ici. Utilisé par le
  * script seed et par l'application mobile pour lister les exercices.
  */
  @Transactional(readOnly = true)
@@ -439,7 +444,7 @@ public class AccountingEngineService {
  journal.setCompanyId(companyId);
  journal.setCode(code.trim().toUpperCase());
  journal.setLabel(label.trim());
- // V8.2 Phase 3 — déduire le type depuis le code si standard, sinon null (journal perso)
+ // V8.2déduire le type depuis le code si standard, sinon null (journal perso)
  jo.accountant.accountingengine.entity.JournalType inferredType =
  jo.accountant.accountingengine.entity.JournalType.fromCode(code);
  journal.setType(inferredType);
@@ -448,7 +453,7 @@ public class AccountingEngineService {
  }
 
  /**
- * V8.2 Phase 3 — Récupère un journal par type, le crée s'il n'existe pas encore.
+ * V8.2Récupère un journal par type, le crée s'il n'existe pas encore.
  *
  * <p>Remplace le pattern ad-hoc {@code journalRepository.findByCompanyIdAndCode(companyId, "VT")
  * .orElseThrow(JOURNAL_NOT_FOUND)} utilisé dans 8 modules métier. Le journal est créé
@@ -492,10 +497,10 @@ public class AccountingEngineService {
  journal.setLabel(type.getDefaultLabel());
  journal.setType(type);
  journal.setActive(true);
- LOG.info("Auto-création journal {} ({}) pour company {} (lazy creation V8.2)",
+ LOG.info("Auto-création journal {} ({}) pour company {} (lazy creation)",
  code, type.name(), companyId);
  Journal saved = journalRepository.save(journal);
- // V8.2 — forcer le flush pour que le journal soit visible dans la DB avant
+ // forcer le flush pour que le journal soit visible dans la DB avant
  // toute query ultérieure dans la même transaction. Sans ce flush, Hibernate
  // peut retarder l'INSERT jusqu'au prochain query, causant des incohérences
  // avec le cache @Cacheable qui retourne Optional.empty() stale.
@@ -545,7 +550,7 @@ public class AccountingEngineService {
  // On catch DataIntegrityViolationException et on recharge l'entry existante.
 
  // Valider les entrées
- // V8.2 Phase 3 — lazy creation : si le code correspond à un JournalType standard
+ // V8.2lazy creation : si le code correspond à un JournalType standard
  // (VT, AC, BQ, CA, OD, PA, DP, FX), on appelle directement getOrCreateJournal qui fait
  // son propre lookup + création (avec @CacheEvict). Pour les codes non-standards
  // (journaux personnalisés), on garde le comportement historique (404 JOURNAL_NOT_FOUND).
@@ -639,7 +644,7 @@ public class AccountingEngineService {
  jl.setCredit(line.credit() != null ? line.credit() : BigDecimal.ZERO);
  jl.setLineNumber(lineNumber++);
  jl.setDescription(line.description());
- // ── Audit v4.7 §3.2 Finding HAUT — multi-devises effective ──
+ // ──Finding HAUT — multi-devises effective ──
  // Avant : les champs amountTransactionCurrency / transactionCurrency / exchangeRateUsed
  // étaient systématiquement valorisés avec le montant en devise fonctionnelle et un
  // taux de 1 (mono-devise factice). Toute facture en devise étrangère était doublement
@@ -693,7 +698,7 @@ public class AccountingEngineService {
  * {@code @Transactional} sont inchangés.
  *
  * @param approverEmails emails des approbateurs éligibles (résolus par l'appelant —
- * voir décision Phase 4 dans le worklog)
+ * voir décisiondans le worklog)
  * @see JournalEntryLifecycleService#postJournalEntry(UUID, UUID, List)
  */
  @Transactional
@@ -746,7 +751,7 @@ public class AccountingEngineService {
  * Contre-passe une écriture POSTED avec date de contre-passation paramétrable — délègue à
  * {@link JournalEntryLifecycleService#reverseJournalEntry(UUID, UUID, String, LocalDate)}.
  *
- * <p><b>Audit v4.7 §3.1 FIX</b> : la version originale utilisait
+ * <p><b>FIX</b> : la version originale utilisait
  * {@code LocalDate.now()} comme date de contre-passation. Désormais, on accepte une date
  * paramétrable et on vérifie que la période correspondante est OPEN.
  *
@@ -780,7 +785,7 @@ public class AccountingEngineService {
  * <li>Si résultat négatif (perte) : Débit compte "Résultat de l'exercice",
  * Crédit comptes de charges (solde → 0).</li>
  * <li>Poste l'écriture avec sourceModule=MANUAL et description "Clôture exercice {year}".</li>
- * <li>Génère l'écriture d'ouverture N+1 (à-nouveau — audit v4.7 §3.1 ).</li>
+ * <li>Génère l'écriture d'ouverture N+1 (à-nouveau —.</li>
  * <li>Verrouille l'exercice (CLOSED) + toutes ses périodes (LOCKED).</li>
  * <li>Auto-switch l'exercice actif sur le prochain OPEN (ou vide le pointeur).</li>
  * </ol>
@@ -957,7 +962,7 @@ public class AccountingEngineService {
  for (JournalLine line : lines) {
  runningBalance = runningBalance.add(line.getDebit()).subtract(line.getCredit());
  // Charger la date et le reference de l'écriture
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  JournalEntry entry = journalEntryRepository.findById(line.getJournalEntryId())
  .filter(e -> e.getCompanyId().equals(companyId))
  .orElse(null);
@@ -999,7 +1004,7 @@ public class AccountingEngineService {
 
  @Transactional(readOnly = true)
  public List<TrialBalanceLine> getTrialBalance(UUID companyId, LocalDate from, LocalDate to) {
- // (lot-C-perf-devops) — agrégation SQL au lieu de charger toutes les lignes en Java.
+ //agrégation SQL au lieu de charger toutes les lignes en Java.
  // Avant : findAllPostedBetweenDates ou findAllPosted chargeaient toutes les lignes POSTED
  // en mémoire puis agrégeaient en Java via TrialBalanceAccumulator. Sur 100K+ lignes :
  // heap > 50 MB, latence > 3s. Maintenant : 1 requête SQL GROUP BY account_id, ~100 lignes.
@@ -1013,7 +1018,7 @@ public class AccountingEngineService {
 
  List<TrialBalanceLine> result = new ArrayList<>();
  for (jo.accountant.accountingengine.repository.JournalLineRepository.AccountAggregate acc : aggregates) {
- // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+ //— defense-in-depth : filtrer par companyId
  String label = accountRepository.findById(acc.getAccountId())
  .filter(a -> a.getCompanyId().equals(companyId))
  .map(Account::getLabel).orElse("(compte supprimé)");

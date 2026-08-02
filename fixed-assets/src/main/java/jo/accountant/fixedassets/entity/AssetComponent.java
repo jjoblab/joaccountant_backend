@@ -42,6 +42,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "asset_component",
  uniqueConstraints = @UniqueConstraint(name = "uc_asset_component_asset_code",
  columnNames = {"asset_id", "code"}))
+/**
+ * AssetComponent.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class AssetComponent extends TenantAwareEntity {
 
  /** Immobilisation parente (FK logique vers asset.id). */

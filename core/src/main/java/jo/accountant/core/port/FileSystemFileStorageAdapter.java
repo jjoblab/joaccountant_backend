@@ -23,10 +23,15 @@ import org.springframework.stereotype.Component;
  * <p>Marqué {@link ConditionalOnMissingBean} pour qu'une implémentation prod-grade S3/MinIO
  * puisse l'overrider en enregistrant simplement son propre bean.
  *
- * <p><b>Audit v4.7 §9 </b> : activé uniquement quand {@code app.storage.backend=fs}
+ * <p><b>§9 </b> : activé uniquement quand {@code app.storage.backend=fs}
  * (défaut) ou non défini. Désactivé quand {@code app.storage.backend=s3} pour laisser la place
  * à {@link S3FileStorageAdapter}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 @ConditionalOnProperty(name = "app.storage.backend", havingValue = "fs", matchIfMissing = true)
 public class FileSystemFileStorageAdapter implements FileStoragePort {
@@ -36,7 +41,7 @@ public class FileSystemFileStorageAdapter implements FileStoragePort {
  private final Path root;
 
  public FileSystemFileStorageAdapter(@Value("${app.storage.fs.root:./storage}") String root) {
- // Audit v4.7 §9 défaut changé de ./build/storage (wipe on gradlew clean)
+ //§9 défaut changé de ./build/storage (wipe on gradlew clean)
  // vers ./storage. Cohérent avec application.yml (qui a aussi ./storage comme défaut).
  // Sans cette cohérence, si l'env var APP_STORAGE_ROOT n'était pas positionnée,
  // l'application utilisait ./build/storage — perte garantie des PDF à chaque clean.

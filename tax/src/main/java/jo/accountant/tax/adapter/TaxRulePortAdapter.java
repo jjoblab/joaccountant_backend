@@ -23,8 +23,13 @@ import org.springframework.stereotype.Component;
  * <p>Bean Spring détecté automatiquement via {@code @Component}. {@code :invoicing} injecte le
  * port via constructeur — Spring résout l'implémentation au runtime.
  *
- * <p>Même pattern que {@link WithholdingRulePortAdapter} (audit v4.7 §4.1 ).
- */
+ * <p>Même pattern que {@link WithholdingRulePortAdapter}.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class TaxRulePortAdapter implements TaxRulePort {
 

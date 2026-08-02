@@ -41,7 +41,12 @@ import jo.accountant.fixedassets.entity.DepreciationMethod;
  * @param components liste optionnelle de composants IAS 16. Si non vide,
  * l'amortissement est calculé par composant (chaque composant a sa propre durée de
  * vie). Si vide/null, l'amortissement est calculé globalement sur l'asset.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateAssetRequest(
  @NotBlank String label,
  @NotNull LocalDate acquisitionDate,

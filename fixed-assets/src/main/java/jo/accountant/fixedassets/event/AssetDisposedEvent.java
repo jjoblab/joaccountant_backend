@@ -16,7 +16,12 @@ import jo.accountant.fixedassets.entity.Asset;
  * future</b> par d'autres abonnés (mise à jour du registre des immobilisations, calcul IS,
  * alertes plus-value anormale) — ces consommateurs seront ajoutés quand le besoin métier se
  * matérialisera.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AssetDisposedEvent(
  UUID companyId,
  UUID actorUserId,

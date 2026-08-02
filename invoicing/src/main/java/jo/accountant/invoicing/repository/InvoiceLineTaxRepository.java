@@ -19,11 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Permet de charger les taxes d'une ligne (ou d'un batch de lignes) pour :
  * <ul>
- *   <li>la génération de l'écriture comptable multi-taxes ({@code InvoicingService.generateInvoiceEntry})</li>
- *   <li>la lecture de la réponse API ({@code InvoiceResponse.LineResponse.taxes})</li>
- *   <li>l'agrégation déclarative par {@code taxType} ({@code TaxService.getDeclaration(taxType)})</li>
+ * <li>la génération de l'écriture comptable multi-taxes ({@code InvoicingService.generateInvoiceEntry})</li>
+ * <li>la lecture de la réponse API ({@code InvoiceResponse.LineResponse.taxes})</li>
+ * <li>l'agrégation déclarative par {@code taxType} ({@code TaxService.getDeclaration(taxType)})</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface InvoiceLineTaxRepository extends JpaRepository<InvoiceLineTax, UUID> {
 
     /**
@@ -69,10 +74,10 @@ public interface InvoiceLineTaxRepository extends JpaRepository<InvoiceLineTax, 
      * <p>Les taux à 0% sont inclus (le caller les filtre si besoin).
      *
      * @param companyId identifiant de l'entreprise (sécurité multi-tenant)
-     * @param from      date d'émission minimum (inclusive), null = pas de borne basse
-     * @param to        date d'émission maximum (inclusive), null = pas de borne haute
-     * @param statuses  liste des statuts de facture à inclure (ne doit pas être vide)
-     * @param taxType   type de taxe à filtrer (VAT, TCA, TURNOVER_TAX, EXCISE) — ne doit pas être null
+     * @param from date d'émission minimum (inclusive), null = pas de borne basse
+     * @param to date d'émission maximum (inclusive), null = pas de borne haute
+     * @param statuses liste des statuts de facture à inclure (ne doit pas être vide)
+     * @param taxType type de taxe à filtrer (VAT, TCA, TURNOVER_TAX, EXCISE) — ne doit pas être null
      * @return agrégats par taux de taxe (pour le taxType spécifié)
      */
     @Query("select t.rate AS taxRate, " +
@@ -81,13 +86,13 @@ public interface InvoiceLineTaxRepository extends JpaRepository<InvoiceLineTax, 
            "from InvoiceLineTax t " +
            "where t.taxType = :taxType " +
            "and t.invoiceLineId in (" +
-           "  select l.id from InvoiceLine l " +
-           "  where l.invoiceId in (" +
-           "    select s.id from SalesInvoice s " +
-           "    where s.status in :statuses " +
-           "    and (:from is null or s.issueDate >= :from) " +
-           "    and (:to is null or s.issueDate <= :to)" +
-           "  )" +
+           " select l.id from InvoiceLine l " +
+           " where l.invoiceId in (" +
+           " select s.id from SalesInvoice s " +
+           " where s.status in :statuses " +
+           " and (:from is null or s.issueDate >= :from) " +
+           " and (:to is null or s.issueDate <= :to)" +
+           " )" +
            ") " +
            "group by t.rate " +
            "order by t.rate")

@@ -40,7 +40,32 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Pattern de contrôle d'accès calqué sur {@code TaxController} :
  * {@code roleChecker.ensureRole} puis {@code moduleAccessGuard.ensureEnabled} en tête.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/purchase-invoices")
 @Tag(name = "Purchasing", description = "Factures fournisseur / achats")

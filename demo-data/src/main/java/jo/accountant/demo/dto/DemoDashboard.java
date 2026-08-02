@@ -4,7 +4,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-/** V8.1 — Dashboard d'une entreprise démo pour GET /api/v1/demos/{demoCode}/dashboard. */
+/** — Dashboard d'une entreprise démo pour GET /api/v1/demos/{demoCode}/dashboard. 
+ *
+ * @author jo@Dev
+
+
+*/
 public record DemoDashboard(
     UUID companyId,
     String demoCode,

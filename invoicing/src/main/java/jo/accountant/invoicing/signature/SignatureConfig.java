@@ -39,7 +39,12 @@ import org.springframework.context.annotation.Configuration;
  * @see XAdESSignatureService
  * @see NoOpElectronicSignatureService
  * @see SignatureProperties
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 @EnableConfigurationProperties(SignatureProperties.class)
 public class SignatureConfig {

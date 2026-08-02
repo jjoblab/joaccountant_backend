@@ -5,7 +5,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/** Enregistre {@link CurrentUserArgumentResolver} auprès de Spring MVC. */
+/** Enregistre {@link CurrentUserArgumentResolver} auprès de Spring MVC. 
+ *
+ * @author jo@Dev
+
+
+*/
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 

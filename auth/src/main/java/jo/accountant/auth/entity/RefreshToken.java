@@ -16,7 +16,12 @@ import java.util.UUID;
  *
  * <p>{@code revokedAt} est positionné quand le token est rotaté ou explicitement révoqué. Un
  * token est considéré valide ssi {@code revokedAt IS NULL AND expiresAt > now()}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "refresh_token")
 public class RefreshToken {

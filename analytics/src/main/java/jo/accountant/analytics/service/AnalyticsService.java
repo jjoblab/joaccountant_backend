@@ -22,7 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><strong>Recommandation 2 à 4 plans actifs maximum</strong> — au-delà, un avertissement
  * est renvoyé (pas un blocage dur, conformément au §5).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class AnalyticsService {
 
@@ -156,7 +161,7 @@ public class AnalyticsService {
  * Récupère un plan par ID — utilisé par accounting-engine pour valider
  * les {@code requiresAnalyticalTagPlanIds} d'un compte.
  *
- * <p><b>Audit v4.7 §6.2 IDOR CRITICAL architectural</b> : la signature originale
+ * <p><b>IDOR CRITICAL architectural</b> : la signature originale
  * ne prenait pas {@code companyId} en paramètre, ce qui permettait à l'appelant
  * (AccountingEngineService.validateAnalyticalTags) de récupérer un plan d'une autre company.
  * Désormais, le filtre {@code companyId.equals(...)} est appliqué systématiquement.
@@ -170,7 +175,7 @@ public class AnalyticsService {
 
  /**
  * @deprecated utiliser {@link #findPlanById(UUID, UUID)} avec companyId. Conservé pour
- * backward-compat pendant la migration des callers — sera supprimé en v4.8.
+ * backward-compat pendant la migration des callers — sera supprimé .
  */
  @Deprecated
  @Transactional(readOnly = true)

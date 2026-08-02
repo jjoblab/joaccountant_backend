@@ -18,7 +18,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * <p>Le {@code lineTotal = quantity × unitPrice} est calculé côté service (pas persisté en
  * colonne pour éviter la dénormalisation) — mais le {@code totalAmount} de la commande parente
  * est lui persisté (somme des lineTotal).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "purchase_order_line")
 public class PurchaseOrderLine extends TenantAwareEntity {

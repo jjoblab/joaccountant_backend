@@ -12,9 +12,14 @@ import org.springframework.stereotype.Component;
  * <p>§3.12 : le vrai fournisseur n'est intentionnellement pas choisi à ce stade — décision
  * différée. En dev/test, on logge chaque « email » au niveau INFO pour que les tests puissent
  * assert via capture de logs ou via un spy de ce bean (voir les tests d'auth). Une implémentation
- * réelle (relais SMTP ou SaaS transactionnel) sera branchée en Phase 1 ou plus tard via un
+ * réelle (relais SMTP ou SaaS transactionnel) sera branchée enou plus tard via un
  * override de bean — les appelants ne changent jamais.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 @ConditionalOnMissingBean(NotificationChannelPort.class)
 public class LoggingNotificationChannelAdapter implements NotificationChannelPort {

@@ -7,12 +7,17 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Compte bancaire rattaché à un compte de trésorerie du plan comptable (§13 Phase 13).
+ * Compte bancaire rattaché à un compte de trésorerie du plan comptable (§13.
  *
  * <p>{@link #treasuryAccountId} référence un compte du plan comptable de classe 5
  * (trésorerie). Les lignes de relevé importées sont rapprochées avec les écritures
  * POSTED sur ce compte.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "bank_account")
 public class BankAccount extends TenantAwareEntity {

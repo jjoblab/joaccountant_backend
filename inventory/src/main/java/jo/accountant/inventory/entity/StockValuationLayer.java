@@ -9,7 +9,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Couche de valorisation de stock — utilisée pour le mode FIFO (§13 Phase 9).
+ * Couche de valorisation de stock — utilisée pour le mode FIFO (§13.
  *
  * <p>Chaque entrée de stock ({@link StockMoveDirection#IN}) crée une couche avec la quantité
  * reçue et le coût unitaire. Les sorties ({@link StockMoveDirection#OUT}) consomment les
@@ -20,7 +20,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  *
  * <p>Pour {@link CostingMethod#WEIGHTED_AVERAGE}, cette entité n'est pas utilisée — le coût
  * moyen est recalculé à chaque entrée et stocké directement sur les StockMove.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "stock_valuation_layer")
 public class StockValuationLayer extends TenantAwareEntity {

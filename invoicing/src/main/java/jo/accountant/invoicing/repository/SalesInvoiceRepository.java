@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 /**
  * Repository des factures de ventes.
  *
- * <p><b>Audit v4.7 §7.2 pagination</b> : la v4.7 retournait {@code List<>} complet
+ * <p><b>pagination</b> : la version précédente retournait {@code List<>} complet
  * sur l'endpoint {@code GET /invoices}. Sur une entreprise mature (5 ans d'historique =
  * potentiellement des milliers de factures), cela causait des timeout/OOM côté mobile.
  *
@@ -21,7 +21,12 @@ import org.springframework.data.repository.query.Param;
  * veulent contrôler la pagination. Les variantes {@code List<>} sont conservées pour
  * rétro-compatibilité, mais un hard cap (200 items) est appliqué au niveau service pour
  * empêcher l'OOM — voir {@code InvoicingService.listInvoices}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID> {
  List<SalesInvoice> findByCompanyIdOrderByIssueDateDesc(UUID companyId);
  List<SalesInvoice> findByCompanyIdAndStatus(UUID companyId, jo.accountant.invoicing.entity.InvoiceStatus status);
@@ -41,7 +46,7 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
  /**
  * Liste tous les avoirs (CREDIT_NOTE) rattachés à une facture originale donnée.
  *
- * <p><b>Audit v4.7 §4.2 Finding MOYENNE — anti-fraude avoirs</b> : utilisé par
+ * <p><b>Finding MOYENNE — anti-fraude avoirs</b> : utilisé par
  * {@code InvoicingService.createCreditNote} pour vérifier que le total des avoirs déjà
  * émis ne dépasse pas le total de la facture originale. Sans cette vérification, un
  * utilisateur pouvait créer N avoirs pour la même facture — chacun à 100% du montant —
@@ -150,7 +155,7 @@ public interface SalesInvoiceRepository extends JpaRepository<SalesInvoice, UUID
  );
 
  /**
- * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur le numéro de facture,
+ * Task 16 : recherche full-text (case-insensitive) sur le numéro de facture,
  * pour la recherche globale (Ctrl+K).
  *
  * <p>Le numéro de facture est le seul champ texte court pertinent pour une recherche

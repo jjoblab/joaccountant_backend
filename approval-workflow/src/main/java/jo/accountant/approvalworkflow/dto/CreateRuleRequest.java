@@ -17,15 +17,20 @@ import jo.accountant.approvalworkflow.entity.ApprovalActionType;
  * @param actionType type d'action soumise au seuil
  * @param thresholdAmount montant seuil en devise fonctionnelle (strictement supérieur déclenche)
  * @param requiredApproverRoles liste des rôles éligibles à l'approbation — au moins un
- * @param minApprovals nombre minimum d'approbations (Phase 4 : forcé à 1)
- */
+ * @param minApprovals nombre minimum d'approbationsforcé à 1)
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CreateRuleRequest(
     @NotNull ApprovalActionType actionType,
     @NotNull @PositiveOrZero BigDecimal thresholdAmount,
     @NotEmpty List<String> requiredApproverRoles,
     Integer minApprovals
 ) {
-    /** Constructeur canonique : minApprovals forcé à 1 en Phase 4 si &gt; 1 fourni. */
+    /** Constructeur canonique : minApprovals forcé à 1 ensi &gt; 1 fourni. */
     public CreateRuleRequest {
         if (minApprovals == null || minApprovals < 1) {
             minApprovals = 1;

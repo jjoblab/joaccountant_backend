@@ -1,6 +1,11 @@
 package jo.accountant.core.exception;
 
-/** 422 — Échec de validation Bean / validation sémantique (par ex. mot de passe faible, champ obligatoire manquant). */
+/** 422 — Échec de validation Bean / validation sémantique (par ex. mot de passe faible, champ obligatoire manquant). 
+ *
+ * @author jo@Dev
+
+
+*/
 public class ValidationException extends BusinessException {
 
     private static final long serialVersionUID = 1L;

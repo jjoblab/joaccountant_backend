@@ -7,7 +7,12 @@ import jo.accountant.financialstatements.entity.FinancialStatementType;
 
 /**
  * Réponse d'un snapshot figé.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record SnapshotResponse(
     UUID id,
     UUID companyId,

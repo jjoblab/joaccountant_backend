@@ -6,6 +6,14 @@ import java.util.UUID;
 import jo.accountant.inventory.entity.StockMove;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA StockMove.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface StockMoveRepository extends JpaRepository<StockMove, UUID> {
     List<StockMove> findByItemIdOrderByMoveDate(UUID itemId);
     List<StockMove> findByItemIdAndWarehouseIdOrderByMoveDate(UUID itemId, UUID warehouseId);

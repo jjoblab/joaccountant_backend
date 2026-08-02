@@ -15,9 +15,9 @@ import org.springframework.data.repository.query.Param;
  *
  * <p>L'isolation multi-tenant est faite explicitement par le service via {@code companyId} —
  * Hibernate {@code @TenantId} n'est pas activé globalement (refactor commun prévu, voir
- * décision Phase 2 dans {@code worklog.md}).
+ * décisiondans {@code worklog.md}).
  *
- * <p><b>Audit v4.7 §7.2 Cache applicatif</b> : les méthodes de lookup par
+ * <p><b>Cache applicatif</b> : les méthodes de lookup par
  * {@code (companyId, code)} et par {@code (companyId, reportingClass, taxMappingCode)} sont
  * annotées {@code @Cacheable("accounts")}. Ces lookups sont appelés 32 fois dans 8 services
  * (InvoicingService, PurchasingService, ExpensesService, PayrollService, etc.) sur chaque
@@ -34,7 +34,12 @@ import org.springframework.data.repository.query.Param;
  * {@code Optional.empty()} n'est pas caché (configuré via {@code setAllowNullValues=false} dans
  * {@code CacheConfig}). Évite de cacher un résultat négatif si un compte n'existe pas
  * temporairement (ex: créé 1s plus tard).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
  /** Recherche un compte par son code, dans l'entreprise donnée. */

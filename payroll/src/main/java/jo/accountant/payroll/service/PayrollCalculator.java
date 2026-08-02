@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Calculateur de paie par tranches avec plafond PMSS/PMT + abattement CSG
- * (audit v4.7 §4.1 FIX CRITIQUE).
+ *FIX CRITIQUE).
  *
- * <p><b>Problème</b> : la v4.7 utilisait un calcul simpliste {@code deduction = gross × rate / 100}
+ * <p><b>Problème</b> : la version précédente utilisait un calcul simpliste {@code deduction = gross × rate / 100}
  * pour chaque WithholdingRule. Le calcul était grossièrement faux en France :
  * <ul>
  * <li>Pas de notion de plafond (PMSS France 2024 = 3 864 €/mois, PMT Haïti).</li>
@@ -69,9 +69,14 @@ import org.springframework.stereotype.Component;
  * <li>{@code hourlyRate = baseSalary / 173.33} (durée légale mensuelle France 35h/sem × 52/12 ≈ 173.33h)</li>
  * </ul>
  *
- * <p><b>Limitation v4.7.2</b> : la régularisation annuelle n'est pas gérée. Les indemnités de
- * congés payés séparées (calculées sur 10% du brut ou maintien de salaire) seront ajoutées en v4.8.
- */
+ * <p><b>Limitation connue</b> : la régularisation annuelle n'est pas gérée. Les indemnités de
+ * congés payés séparées (calculées sur 10% du brut ou maintien de salaire) seront ajouté antérieurement.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class PayrollCalculator {
 

@@ -14,22 +14,27 @@ import org.springframework.data.repository.query.Param;
 /**
  * Repository des lettrages.
  *
- * <p><b>Audit v4.7 §3.2 Finding MOYENNE</b> : les méthodes actives filtrent
+ * <p><b>Finding MOYENNE</b> : les méthodes actives filtrent
  * {@code status != DELETED} pour exclure les lettrages soft-deletés des requêtes métier.
  * Les lettrages DELETED restent consultables via {@link JpaRepository#findById} pour forensique.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface LettrageMatchRepository extends JpaRepository<LettrageMatch, UUID> {
 
     /**
      * Tous les lettrages ACTIFS (non DELETED) d'un tiers, triés par date de lettrage décroissante.
-     * Audit v4.7 §3.2 — exclut les lettrages soft-deletés.
+     *— exclut les lettrages soft-deletés.
      */
     List<LettrageMatch> findByCompanyIdAndThirdPartyIdAndStatusNotOrderByMatchedAtDesc(
         UUID companyId, UUID thirdPartyId, LettrageStatus status);
 
     /**
      * Compte les lettrages ACTIFS (non DELETED) d'un tiers — utilisé pour générer le code de
-     * lettrage séquentiel. Audit v4.7 §3.2 — exclut les lettrages soft-deletés.
+     * lettrage séquentiel.— exclut les lettrages soft-deletés.
      */
     long countByCompanyIdAndThirdPartyIdAndStatusNot(UUID companyId, UUID thirdPartyId, LettrageStatus status);
 
@@ -41,7 +46,7 @@ public interface LettrageMatchRepository extends JpaRepository<LettrageMatch, UU
     /** Compte tous les lettrages d'un tiers (inclut DELETED) — pour admin uniquement. */
     long countByCompanyIdAndThirdPartyId(UUID companyId, UUID thirdPartyId);
 
-    // ── step7-backend — Reports Hub v2.5.0 : liste paginée filtrée pour GET /lettrage ──
+    // ── Reports Hub : liste paginée filtrée pour GET /lettrage ──
 
     /**
      * Liste paginée des lettrages d'une entreprise, filtrable par tiers, statut, et plage
@@ -56,13 +61,13 @@ public interface LettrageMatchRepository extends JpaRepository<LettrageMatch, UU
      * <p>Utilise le pattern {@code :param IS NULL OR ...} standard Hibernate 6 — fonctionne
      * correctement avec les types UUID, enum et Instant sous PostgreSQL.
      *
-     * @param companyId       identifiant du tenant (obligatoire)
-     * @param excludedStatus  statut à exclure (typiquement {@link LettrageStatus#DELETED})
-     * @param thirdPartyId    filtre optionnel par tiers (null = tous les tiers)
-     * @param status          filtre optionnel par statut (null = tous les statuts actifs)
-     * @param from            filtre optionnel date de début (inclusive) sur {@code matchedAt}
-     * @param to              filtre optionnel date de fin (inclusive) sur {@code matchedAt}
-     * @param pageable        paramètres de pagination (page, size, sort)
+     * @param companyId identifiant du tenant (obligatoire)
+     * @param excludedStatus statut à exclure (typiquement {@link LettrageStatus#DELETED})
+     * @param thirdPartyId filtre optionnel par tiers (null = tous les tiers)
+     * @param status filtre optionnel par statut (null = tous les statuts actifs)
+     * @param from filtre optionnel date de début (inclusive) sur {@code matchedAt}
+     * @param to filtre optionnel date de fin (inclusive) sur {@code matchedAt}
+     * @param pageable paramètres de pagination (page, size, sort)
      * @return page de {@link LettrageMatch} triée par {@code matchedAt} DESC
      */
     @Query("""

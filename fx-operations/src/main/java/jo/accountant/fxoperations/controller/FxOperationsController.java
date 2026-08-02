@@ -57,6 +57,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/fx-operations")
 @Tag(name = "FxOperations", description = "Opérations en devises étrangères (achat/vente/réévaluation)")
+/**
+ * Contrôleur REST FxOperations.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class FxOperationsController {
 
  private final FxOperationsService service;

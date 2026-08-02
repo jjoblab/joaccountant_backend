@@ -29,6 +29,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "employee",
  uniqueConstraints = @UniqueConstraint(name = "uc_emp_company_number",
  columnNames = {"company_id", "employee_number"}))
+/**
+ * Employee.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Employee extends TenantAwareEntity {
 
  /** Tiers de type EMPLOYEE (FK logique vers third_party.id). */
@@ -52,7 +60,7 @@ public class Employee extends TenantAwareEntity {
  private LocalDate terminationDate;
 
  /**
- * Task 17 (v2.4.0) — Motif de fin de contrat (texte libre, ex. « Démission »,
+ * Task 17 — Motif de fin de contrat (texte libre, ex. « Démission »,
  * « Licenciement économique », « Fin de CDD »). Null tant que l'employé est actif
  * (status != TERMINATED). Renseigné lors de l'appel à {@code changeStatus(TERMINATED)}
  * ou via un endpoint d'édition ultérieur.
@@ -117,13 +125,13 @@ public class Employee extends TenantAwareEntity {
  * agriculture, "2" pour industrie, "3" pour commerce).
  * <p>Utilisé par PayrollCalculator pour résoudre la ContributionRule OFATMA_ACCIDENT
  * correspondant au secteur (au MVP, taux default 2% — la résolution par secteur sera
- * ajoutée en v4.8).
+ * ajouté antérieurement).
  */
  @Column(name = "ofatma_sector_code", length = 10)
  private String ofatmaSectorCode;
 
  /**
- * R-F-validation (lot-G) — Éligibilité au 13ᵉ mois (Code du Travail haïtien art. 153).
+ * R-F-validationÉligibilité au 13ᵉ mois (Code du Travail haïtien art. 153).
  *
  * <p>En Haïti, le 13ᵉ mois (« mois bonus » de fin d'année) est obligatoire pour tout
  * employé ayant au moins 1 an d'ancienneté au 31 décembre. Pour les employés avec moins
@@ -148,7 +156,7 @@ public class Employee extends TenantAwareEntity {
  * Jours de congés payés pris sur la période.
  * <p>Les congés payés sont retenus du temps travaillé mais sont généralement indemnisés
  * séparément (indemnité de congés payés). Au MVP on les déduit du salaire de base comme
- * les absences — l'indemnité de CP séparée sera ajoutée en v4.8.
+ * les absences — l'indemnité de CP séparée sera ajouté antérieurement.
  */
  @Column(name = "paid_leave_days", nullable = false, precision = 19, scale = 4)
  private BigDecimal paidLeaveDays = BigDecimal.ZERO;

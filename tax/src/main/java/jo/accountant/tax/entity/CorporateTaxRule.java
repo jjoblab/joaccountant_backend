@@ -13,7 +13,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Règle d'Impôt sur les Sociétés (IS) — audit v4.7 §4.1 .
+ * Règle d'Impôt sur les Sociétés (IS) —.
  *
  * <p>Permet de calculer la projection d'IS pour un exercice fiscal. France : taux normal 25%,
  * taux réduit PME 15% jusqu'à 42 500 € de profit (CGI art. 219).
@@ -35,6 +35,14 @@ import jo.accountant.core.tenant.TenantAwareEntity;
 @Table(name = "corporate_tax_rule",
  uniqueConstraints = @UniqueConstraint(name = "uc_ctr_company_active",
  columnNames = {"company_id", "active"}))
+/**
+ * CorporateTaxRule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class CorporateTaxRule extends TenantAwareEntity {
 
  @Id

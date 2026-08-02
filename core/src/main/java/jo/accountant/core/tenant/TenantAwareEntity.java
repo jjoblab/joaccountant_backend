@@ -25,12 +25,17 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * <p>Utilise des UUID v7 (ordonnés dans le temps) pour une meilleure localité d'index que les v4.
  * Le générateur délègue à la fonction PL/pgSQL {@code uuidv7()} installée par la migration V1.
  *
- * <p><b>Audit v4.7 §5.1 défense en profondeur multi-tenant</b> :
+ * <p><b>défense en profondeur multi-tenant</b> :
  * {@link TenantDefenseInDepthListener} est ajouté aux listeners pour valider au moment du flush
  * que le {@code companyId} de l'entité correspond au {@link TenantContext#getCompanyId()} courant.
  * Empêche les INSERT/UPDATE cross-tenant même si le service appelant oublie le guard.
  * Combine avec ArchUnit Rule 42 (défense SELECT) et les guards applicatifs {@code companyId.equals()}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @MappedSuperclass
 @EntityListeners({AuditingEntityListener.class, TenantAwareEntityListener.class, TenantDefenseInDepthListener.class})
 public abstract class TenantAwareEntity {

@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des plans analytiques.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface AnalyticalDimensionPlanRepository
     extends JpaRepository<AnalyticalDimensionPlan, UUID> {
 

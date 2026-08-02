@@ -35,23 +35,55 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints du plan comptable (§4, §13 Phase 3).
+ * Endpoints du plan comptable (§4, §13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/chart-of-accounts/...}.
  *
  * <p>Endpoints :
  * <ul>
- *   <li>{@code POST /initialize} — génère les niveaux 1 et 2 verrouillés</li>
- *   <li>{@code GET ?format=tree|flat&search=} — liste (arbre ou à plat, avec filtre)</li>
- *   <li>{@code POST /{parentId}/children} — crée un compte enfant</li>
- *   <li>{@code PATCH /{accountId}} — met à jour un compte (renommage, activation, mapping fiscal)</li>
- *   <li>{@code GET /{accountId}/descendants-count} — nombre de descendants</li>
+ * <li>{@code POST /initialize} — génère les niveaux 1 et 2 verrouillés</li>
+ * <li>{@code GET ?format=tree|flat&search=} — liste (arbre ou à plat, avec filtre)</li>
+ * <li>{@code POST /{parentId}/children} — crée un compte enfant</li>
+ * <li>{@code PATCH /{accountId}} — met à jour un compte (renommage, activation, mapping fiscal)</li>
+ * <li>{@code GET /{accountId}/descendants-count} — nombre de descendants</li>
  * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/chart-of-accounts")
 @Tag(name = "ChartOfAccounts", description = "Plan comptable multi-référentiel (SYSCOHADA, PCG, PCN, PCGR, IFRS)")
+/**
+ * Contrôleur REST ChartOfAccounts.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code PATCH /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class ChartOfAccountsController {
 
     private static final Logger LOG = LoggerFactory.getLogger(ChartOfAccountsController.class);
@@ -201,10 +233,10 @@ public class ChartOfAccountsController {
     }
 
     // ======================================================================
-    // step2-backend — Reports Hub v2.4.0 : export CSV du plan comptable
+    // Reports Hub : export CSV du plan comptable
     // ======================================================================
 
-    @Operation(summary = "Exporter le plan comptable en CSV (Reports Hub v2.4.0)",
+    @Operation(summary = "Exporter le plan comptable en CSV (Reports Hub)",
         description = "Export CSV de tous les comptes du plan comptable (format flat). " +
                       "Format : UTF-8 avec BOM (compatible Excel français), séparateur point-virgule, CRLF. " +
                       "Colonnes : Code;Libelle;Classe;Sous-categorie;Niveau;Sens normal;Verrouille;Actif;Collectif;Chemin;Code fiscal.")
@@ -231,7 +263,7 @@ public class ChartOfAccountsController {
         List<AccountResponse> accounts = service.list(companyId, "flat", null);
 
         // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
-        // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+        //ajoutés par CsvEndpointHelper (0-task8).
         StringBuilder sb = new StringBuilder();
         String LINE_SEP = "\r\n";
         sb.append("Code;Libelle;Classe;Sous-categorie;Niveau;Sens normal;Verrouille;Actif;Collectif;Chemin;Code fiscal").append(LINE_SEP);

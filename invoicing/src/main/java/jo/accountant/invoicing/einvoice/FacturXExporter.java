@@ -28,9 +28,9 @@ import javax.xml.stream.XMLStreamWriter;
 
 /**
  * Générateur de factures électroniques au format Factur-X / UBL 2.1
- * (audit v4.7 §4.1 FIX CRITIQUE pour conformité 2026).
+ *FIX CRITIQUE pour conformité 2026).
  *
- * <p><b>Problème</b> : la v4.7 produisait uniquement des PDF non structurés via openhtmltopdf.
+ * <p><b>Problème</b> : la version précédente produisait uniquement des PDF non structurés via openhtmltopdf.
  * Depuis le 1er septembre 2026, la facturation électronique est obligatoire en B2B France
  * (Loi 2023-314). Sans format structuré, le SaaS est inutilisable pour les clients français B2B.
  *
@@ -44,16 +44,20 @@ import javax.xml.stream.XMLStreamWriter;
  * </ul>
  *
  * <p>Cette implémentation génère le profil <b>BASICWL</b> (suffisant pour la conformité minimale).
- * Passage à BASIC/COMFORT en v4.8 : enrichir le XML avec les lignes de facturation.
+ * Passage à BASIC/COMFORT : enrichir le XML avec les lignes de facturation.
  *
- * <p><b>Limitation v4.7.2</b> : génère le XML uniquement, NE l'embarque PAS encore dans le PDF/A-3
- * (nécessite openpdf + PDF/A-3 attachment — travail à finaliser en v4.8). Pour l'instant, le XML
+ * <p><b>Limitation connue</b> : génère le XML uniquement, NE l'embarque PAS encore dans le PDF/A-3
+ * (nécessite openpdf + PDF/A-3 attachment — travail à finaliser ultérieurement). Pour l'instant, le XML
  * est stocké à côté du PDF et l'API expose un endpoint /api/v1/companies/{id}/invoices/{id}/factur-x
- * pour récupérer le XML séparément. L'embarquement PDF/A-3 est l'étape suivante.
- *
+ * pour récupérer le XML séparément. L'embarquement PDF/A-3 est l'*
  * @see <a href="https://www.impots.gouv.fr/facturation-electronique">Facturation électronique - impots.gouv.fr</a>
  * @see <a href="https://www.fnfe-mpe.org/factur-x/">Factur-X - FNFE-MPE</a>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class FacturXExporter {
 
@@ -104,7 +108,7 @@ public class FacturXExporter {
  /**
  * Embarque le XML Factur-X comme pièce jointe (EmbeddedFile) dans un PDF/A-3.
  *
- * <p><b>Audit v4.7 §4.1 PDF/A-3 Factur-X embarqué.</b>
+ * <p><b>PDF/A-3 Factur-X embarqué.</b>
  *
  * <p>Conformément à la spec Factur-X (FNFE-MPE / GS1), le XML Factur-X DOIT être embarqué
  * comme {@code /EmbeddedFile} dans le PDF, avec les métadonnées PDF/A-3 (AFRelationship = /Data,
@@ -306,7 +310,7 @@ public class FacturXExporter {
  writeElement(w, NS_RAM, "ID", inv.invoiceNumber());
  writeElement(w, NS_RAM, "TypeCode", "380"); // 380 = Commercial Invoice
  w.writeStartElement(NS_RAM, "IssueDateTime");
- // (lot-D-qualite-arch) — fix : writeAttribute doit être appelé AVANT writeCharacters
+ //fix : writeAttribute doit être appelé AVANT writeCharacters
  // (sinon XMLStreamException "Attribute not associated with any element"). Bug révélé par
  // FacturXExporterTest — la génération n'avait jamais été testée unitairement avant ce lot.
  w.writeStartElement(NS_UDT, "DateTimeString");

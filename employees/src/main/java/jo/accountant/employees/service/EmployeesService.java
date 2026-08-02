@@ -39,13 +39,18 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Le statut `ACTIVE` est le statut par défaut. Le filtre `status=ACTIVE` est utilisé
  * par `:payroll` pour lister les salariés à payer sur une période.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class EmployeesService {
 
  private static final Logger LOG = LoggerFactory.getLogger(EmployeesService.class);
  /**
- * Hard cap pour list employees — empêche l'OOM (audit v4.7 §7.2 #5). Plus élevé que pour
+ * Hard cap pour list employees — empêche l'OOM#5). Plus élevé que pour
  * les factures car les employés sont moins nombreux par construction (quelques centaines max).
  */
  private static final int EMPLOYEE_LIST_HARD_CAP = 500;
@@ -121,7 +126,7 @@ public class EmployeesService {
  // HS / absences / congés (défaut 0 si null)
  emp.setOvertimeHours25(req.overtimeHours25());
  emp.setOvertimeHours50(req.overtimeHours50());
- // (lot-B) — HS +100% Haïti (>56h, dimanches, jours fériés) + matricule CNSS/OFATMA
+ //HS +100% Haïti (>56h, dimanches, jours fériés) + matricule CNSS/OFATMA
  emp.setOvertimeHours100(req.overtimeHours100());
  emp.setCnssNumber(req.cnssNumber());
  emp.setOfatmaSectorCode(req.ofatmaSectorCode());
@@ -138,7 +143,7 @@ public class EmployeesService {
 
  @Transactional(readOnly = true)
  public List<EmployeeResponse> list(UUID companyId, EmployeeStatus statusFilter) {
- // Audit v4.7 §7.2 hard cap 500 pour empêcher l'OOM. La liste d'employés est
+ //hard cap 500 pour empêcher l'OOM. La liste d'employés est
  // généralement petite (quelques centaines max), mais une entreprise groupe multi-tenant
  // pourrait avoir un volume plus important. Le cap est plus généreux que pour les factures
  // car les employés sont moins nombreux qu'eux par construction.

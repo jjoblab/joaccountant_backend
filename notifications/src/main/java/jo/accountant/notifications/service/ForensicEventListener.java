@@ -43,7 +43,12 @@ import org.springframework.stereotype.Component;
  * <p><b>Async</b> : l'écoute est asynchrone pour ne pas bloquer la transaction métier. Si le
  * listener échoue (ex: logger indisponible), l'erreur est avalée silencieusement — forensique
  * ne doit JAMAIS casser le flux métier.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ForensicEventListener {
 

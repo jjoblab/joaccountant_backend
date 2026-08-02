@@ -10,7 +10,12 @@ package jo.accountant.core.framework;
  * des engagements hors bilan). {@code FinancialStatementsService} ignore nativement les comptes
  * dont la reportingClass ne matche ni ACTIF/PASSIF/CAPITAUX_PROPRES (bilan) ni PRODUITS/CHARGES
  * (compte de résultat) — ils sont donc exclus automatiquement.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum ReportingClass {
  ACTIF,
  PASSIF,

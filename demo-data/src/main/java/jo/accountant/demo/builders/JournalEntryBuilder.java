@@ -8,12 +8,17 @@ import jo.accountant.accountingengine.entity.JournalEntrySourceModule;
 import jo.accountant.accountingengine.entity.JournalEntryStatus;
 
 /**
- * V8.1 — Builder fluent pour créer des écritures comptables démo (insertion JPA directe).
+ * Builder fluent pour créer des écritures comptables démo (insertion JPA directe).
  *
  * <p>Construit l'entité {@link JournalEntry} sans passer par {@code AccountingEngineService}
  * (qui exige idempotence, fiscal period resolution, etc.). Permet aux seeders démo d'insérer
  * rapidement des écritures POSTED pour alimenter les dashboards.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class JournalEntryBuilder {
 
     private final JournalEntry entry = new JournalEntry();

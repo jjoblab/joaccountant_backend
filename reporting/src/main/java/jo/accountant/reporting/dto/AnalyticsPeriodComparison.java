@@ -24,7 +24,12 @@ import java.math.BigDecimal;
  * @param previousMonth somme TTC des ventes du mois précédent
  * @param currentYear somme TTC des ventes de l'année courante
  * @param previousYear somme TTC des ventes de l'année précédente
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AnalyticsPeriodComparison(
  BigDecimal currentMonth,
  BigDecimal previousMonth,

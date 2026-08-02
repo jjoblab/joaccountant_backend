@@ -8,7 +8,12 @@ import java.math.BigDecimal;
  * Corps de requête pour {@code POST .../purchase-invoices/{id}/payments}.
  *
  * <p>Symétrique de {@code RecordPaymentRequest} du module :invoicing.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record RecordPurchasePaymentRequest(
     @NotNull @Positive BigDecimal amount
 ) {}

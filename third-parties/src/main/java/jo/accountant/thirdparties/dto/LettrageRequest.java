@@ -13,7 +13,12 @@ import java.util.UUID;
  *
  * @param thirdPartyId ID du tiers concerné
  * @param journalLineIds IDs des lignes à lettrer ensemble (au moins 2)
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record LettrageRequest(
     @NotNull UUID thirdPartyId,
     @NotEmpty List<UUID> journalLineIds

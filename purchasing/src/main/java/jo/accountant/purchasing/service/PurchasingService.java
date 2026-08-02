@@ -75,14 +75,19 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Code journal</b> : "AC" (achats). Le journal doit exister — sinon
  * {@code 422 JOURNAL_AC_NOT_FOUND}. Pas de fallback (contrairement à la résolution des
  * comptes, le code journal est porté par l'utilisateur qui doit le créer explicitement).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class PurchasingService {
 
  private static final Logger LOG = LoggerFactory.getLogger(PurchasingService.class);
  private static final BigDecimal HUNDRED = new BigDecimal("100");
  /**
- * Hard cap pour listInvoices — empêche l'OOM sur entreprises matures (audit v4.7 §7.2 #5).
+ * Hard cap pour listInvoices — empêche l'OOM sur entreprises matures#5).
  * Sans ce cap, une entreprise avec 5 ans d'historique d'achats pouvait saturer la heap.
  * Les clients qui ont besoin de plus de 200 factures doivent filtrer par exercice fiscal
  * via listInvoices(companyId, fiscalYearId).
@@ -97,7 +102,7 @@ public class PurchasingService {
  private final DocumentNumberingService documentNumberingService;
  private final AccountingEngineService accountingEngineService;
  private final CurrencyRoundingService roundingService;
- private final WithholdingRulePort withholdingRulePort; // Audit v4.7 §4.1 port pour éviter cycle :purchasing ↔ :tax
+ private final WithholdingRulePort withholdingRulePort; //port pour éviter cycle :purchasing ↔ :tax
  // Audit #3 — AccountResolver centralisé (remplace la cascade de fallbacks)
  private final jo.accountant.chartofaccounts.service.AccountResolver accountResolver;
  // barème progressif : Jackson pour parser bracketsJson.
@@ -218,7 +223,7 @@ public class PurchasingService {
  * Crédit : État — retenue à la source (compte PASSIF marqué taxMappingCode="WITHHOLDING_TAX"
  * ou fallback "442000") si une WithholdingRule applicable au SUPPLIER est configurée.
  *
- * <p><b>Audit v4.7 §4.1 FIX CRITIQUE</b> : la v4.7 n'appliquait JAMAIS les
+ * <p><b>la version précédente n'appliquait JAMAIS les
  * WithholdingRule côté fournisseurs malgré la javadoc de {@link WithholdingRule} qui le
  * promettait explicitement. L'écriture était strictement D Charges / C TVA déductible /
  * C Fournisseur TTC. Sur les honoraires (FR art. 182 B CGI — 10% hors UE), la retenue est
@@ -245,7 +250,7 @@ public class PurchasingService {
  ThirdParty tp = thirdPartyRepository.findById(invoice.getThirdPartyId())
  .orElseThrow(() -> new ValidationException("THIRD_PARTY_NOT_FOUND",
  "Tiers introuvable : " + invoice.getThirdPartyId()));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!tp.getCompanyId().equals(companyId)) {
  throw new NotFoundException("ThirdParty", invoice.getThirdPartyId().toString());
  }
@@ -255,7 +260,7 @@ public class PurchasingService {
  Account supplierAccount = accountRepository.findById(supplierAccountId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte fournisseur introuvable"));
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  if (!supplierAccount.getCompanyId().equals(companyId)) {
  throw new NotFoundException("Account", supplierAccountId.toString());
  }
@@ -281,7 +286,7 @@ public class PurchasingService {
  "445000", "445");
  }
 
- // ── Audit v4.7 §4.1 calcul de la retenue à la source fournisseur ──
+ // ──calcul de la retenue à la source fournisseur ──
  // On charge les WithholdingRule actives pour l'entreprise, on filtre côté Java celles
  // dont applicableThirdPartyTypes contient "SUPPLIER" (le JSONB est stocké en string,
  // on fait un contains() plutôt qu'une requête JSONB pour rester portable).
@@ -303,7 +308,7 @@ public class PurchasingService {
  // Montant net à payer au fournisseur = TTC − retenue à la source
  BigDecimal supplierCredit = invoice.getTotalAmount().subtract(withholdingAmount);
 
- // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+ // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
  // le code/label par défaut du type (jamais d'exception pour les types standards).
  String journalCode = accountingEngineService.getOrCreateJournal(companyId,
  jo.accountant.accountingengine.entity.JournalType.ACHATS).getCode();
@@ -365,7 +370,7 @@ public class PurchasingService {
  /**
  * Calcule le montant total de retenue à la source applicable à une facture fournisseur.
  *
- * <p><b>Audit v4.7 §4.1 </b> : charge les {@link WithholdingRule} actives pour
+ * <p><b></b> : charge les {@link WithholdingRule} actives pour
  * l'entreprise, filtre celles dont {@code applicableThirdPartyTypes} (JSONB stocké en string)
  * contient {@code "SUPPLIER"}, et applique la somme des taux sur la base HT.
  *
@@ -398,7 +403,7 @@ public class PurchasingService {
  if (subtotalHt == null || subtotalHt.compareTo(BigDecimal.ZERO) <= 0) {
  return BigDecimal.ZERO;
  }
- // Audit v4.7 §4.1 utiliser le port WithholdingRulePort (défini dans :core,
+ //utiliser le port WithholdingRulePort (défini dans :core,
  // implémenté par :tax) pour éviter la dépendance circulaire :purchasing ↔ :tax.
  List<WithholdingRuleSnapshot> supplierRules = withholdingRulePort
  .findActiveRulesForThirdPartyType(companyId, "SUPPLIER");
@@ -523,7 +528,7 @@ public class PurchasingService {
  Account acc = accountRepository.findById(expenseAccountId)
  .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
  "Compte de charge introuvable : " + expenseAccountId));
- // Audit v4.7 §6.2 IDOR critique (clone du pattern ExpensesService corrigé) :
+ //IDOR critique (clone du pattern ExpensesService corrigé) :
  // sans ce guard, un BOOKKEEPER de la company A pouvait soumettre une facture d'achat avec
  // expenseAccountId = UUID d'un compte de CHARGES de la company B. L'écriture comptable
  // était créée dans la company A mais référençait le code de compte de la company B →
@@ -608,7 +613,7 @@ public class PurchasingService {
  /**
  * Liste les factures d'achat d'une entreprise, triées par {@code issueDate} décroissant.
  *
- * <p>Si {@code fiscalYearId} est fourni (restructuration 2026-07-25 suite 4), résout l'exercice
+ * <p>Si {@code fiscalYearId} est fournisuite 4), résout l'exercice
  * via {@link AccountingEngineService#resolveFiscalYear(UUID, UUID)} et filtre par
  * {@code issueDate} entre les bornes start/end de l'exercice. Si l'exercice n'est pas trouvé,
  * la liste filtrée est vide (cohérent avec le comportement de {@code resolveFiscalYear} qui
@@ -637,7 +642,7 @@ public class PurchasingService {
  .map(i -> loadResponse(companyId, i.getId()))
  .toList();
  }
- // Audit v4.7 §7.2 hard cap 200 pour empêcher l'OOM sur entreprises matures.
+ //hard cap 200 pour empêcher l'OOM sur entreprises matures.
  if (result.size() > PURCHASE_INVOICE_LIST_HARD_CAP) {
  LOG.warn("Purchase invoices list truncated for company {} : {} invoices found, returning first {} only. "
  + "Use ?fiscalYearId= for full access by fiscal year.",
@@ -697,7 +702,7 @@ public class PurchasingService {
  .toList();
  String tpName = "";
  try {
- // Audit v4.7 §6.2 — defense-in-depth
+ //— defense-in-depth
  ThirdParty tp = thirdPartyRepository.findById(invoice.getThirdPartyId())
  .filter(t -> t.getCompanyId().equals(companyId))
  .orElse(null);

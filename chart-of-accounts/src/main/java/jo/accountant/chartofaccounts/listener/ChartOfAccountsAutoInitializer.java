@@ -14,7 +14,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * V8.2 Phase 4 (audit Z.ai 2026-07-31) — Listener event-driven pour l'auto-initialisation
+ * V8.2Listener event-driven pour l'auto-initialisation
  * du plan comptable après finalisation du wizard.
  *
  * <p>Écoute {@link CompanyWizardCompletedEvent} en phase {@link TransactionPhase#AFTER_COMMIT}
@@ -25,9 +25,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * ({@code CHART_OF_ACCOUNTS_ALREADY_INITIALIZED}) est catchée silencieusement. Ce listener
  * est donc un <b>filet de sécurité</b> + un point d'extension pour de futurs modules.
  *
- * <p><b>Architecture hybride</b> : en V8.2 Phase 2, l'activation atomique est faite
+ * <p><b>Architecture hybride</b> : l'activation atomique est faite
  * <em>directement</em> dans {@code completeWizard} via {@code AccountingProvisioningPort} (synchrone,
- * dans la même transaction). Ce listener (Phase 4) est une <em>alternative</em> event-driven qui
+ * dans la même transaction). Ce listenerest une <em>alternative</em> event-driven qui
  * permettrait, à terme, de supprimer l'appel direct et de découpler complètement
  * {@code :company} des modules comptables. Pour l'instant, les deux approches coexistent —
  * le listener est no-op dans le flux normal (l'activation directe a déjà fait le travail).
@@ -39,7 +39,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <p><b>Async</b> : l'initialisation est exécutée en async (executor {@code audit-async-executor})
  * pour ne pas bloquer la réponse HTTP de {@code POST /wizard/complete}. Le caller reçoit
  * {@code CompanyWizardResult} immédiatement, l'initialisation différée se fait en arrière-plan.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class ChartOfAccountsAutoInitializer {
 
@@ -70,14 +75,14 @@ public class ChartOfAccountsAutoInitializer {
             ChartOfAccountsService.InitializeResult result = chartOfAccountsService.initialize(
                 company.getId(),
                 company.getAccountingFrameworkId(),
-                null,  // template null — requis seulement pour IFRS (FREE numbering)
+                null, // template null — requis seulement pour IFRS (FREE numbering)
                 company.getBusinessTypeCode());
             LOG.info("ChartOfAccountsAutoInitializer : {} comptes créés pour company {}",
                 result.accountsCreated(), company.getId());
 
         } catch (ConflictException ex) {
             // CHART_OF_ACCOUNTS_ALREADY_INITIALIZED — idempotent, expected dans le flux normal
-            // V8.2 (l'activation atomique a déjà fait le travail)
+            // (l'activation atomique a déjà fait le travail)
             LOG.debug("ChartOfAccountsAutoInitializer : plan déjà initialisé pour company {} (idempotent)",
                 event.companyId());
         } catch (Exception ex) {

@@ -8,8 +8,13 @@ import jo.accountant.employees.entity.Employee;
 import jo.accountant.employees.entity.EmployeeStatus;
 
 /**
- * V8.1 — Builder fluent pour créer des employés démo.
- */
+ * Builder fluent pour créer des employés démo.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class EmployeeBuilder {
 
     private final Employee employee = new Employee();

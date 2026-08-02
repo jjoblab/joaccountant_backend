@@ -17,7 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Implémente {@link ApproverEmailResolverPort} (défini dans :core) pour que les modules
  * métier (:accounting-engine, :invoicing, :funds-grants) puissent résoudre les emails
  * approbateurs sans dépendre de :auth.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class UserEmailResolver implements ApproverEmailResolverPort {
 
@@ -45,7 +50,7 @@ public class UserEmailResolver implements ApproverEmailResolverPort {
         List<UserCompanyRole> ucrs = ucrRepository.findByCompanyId(companyId);
         List<String> emails = new ArrayList<>();
         for (UserCompanyRole ucr : ucrs) {
-            if (ucr.getAcceptedAt() == null) continue;  // invitation non acceptée
+            if (ucr.getAcceptedAt() == null) continue; // invitation non acceptée
             if (!roles.contains(ucr.getRole().name())) continue;
             userRepository.findById(ucr.getUserId()).ifPresent(user -> {
                 if (user.isActive()) emails.add(user.getEmail());

@@ -15,7 +15,12 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Repository des écritures comptables.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID> {
 
  /** Recherche par idempotence — si une écriture existe déjà pour cette clé, on retourne
@@ -71,7 +76,7 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID
  /**
  * Compte les écritures par statut dans un ensemble de périodes fiscales.
  *
- * <p><b>Audit v4.7 §3.1 </b> — utilisé par {@code closeFiscalYear} pour vérifier
+ * <p><b></b> — utilisé par {@code closeFiscalYear} pour vérifier
  * qu'il n'y a pas d'écritures DRAFT ou PENDING_APPROVAL avant de clôturer l'exercice.
  * Sans ce check, ces écritures restent bloquées à vie (la période sera LOCKED après clôture).
  */
@@ -128,7 +133,7 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID
  );
 
  /**
- * v2.5.0 — Task 16 : recherche full-text (case-insensitive) sur la référence
+ * Task 16 : recherche full-text (case-insensitive) sur la référence
  * ou la description d'une écriture, pour la recherche globale (Ctrl+K).
  *
  * <p>{@code reference} est le numéro de l'écriture (généré par document-numbering

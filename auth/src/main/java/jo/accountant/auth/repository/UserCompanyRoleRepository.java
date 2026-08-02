@@ -6,6 +6,14 @@ import java.util.UUID;
 import jo.accountant.auth.entity.UserCompanyRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA UserCompanyRole.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface UserCompanyRoleRepository extends JpaRepository<UserCompanyRole, UUID> {
 
     List<UserCompanyRole> findByUserId(UUID userId);

@@ -9,7 +9,12 @@ import java.util.UUID;
  * architectural réutilisé par :notifications (§9).
  *
  * <p>Value object immuable. Utiliser la fabrique statique {@link #of}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AuditEvent(
     UUID companyId,
     UUID actorUserId,

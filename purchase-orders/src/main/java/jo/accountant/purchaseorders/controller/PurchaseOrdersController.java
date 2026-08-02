@@ -71,6 +71,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/purchase-orders")
 @Tag(name = "Purchase Orders", description = "Bons de commande + 3-way match PO/GR/Invoice (/ V59)")
+/**
+ * Contrôleur REST PurchaseOrders.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class PurchaseOrdersController {
 
  private final PurchaseOrdersService poService;

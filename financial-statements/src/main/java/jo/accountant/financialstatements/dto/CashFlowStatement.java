@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE) — audit v4.7 §3.1 .
+ * Tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE) —.
  *
  * <p>Méthode indirecte : on part du résultat net, on ajuste des éléments non monétaires
  * (amortissements, plus/moins-values de cession), on corrige des variations du BFR, puis on
@@ -37,13 +37,18 @@ import java.util.UUID;
  * Trésorerie ouverture + Variation = Trésorerie clôture
  * </pre>
  *
- * <p><b>Limitation v4.7.1</b> : la distinction précise entre flux d'investissement et flux de
+ * <p><b>Limitation connue</b> : la distinction précise entre flux d'investissement et flux de
  * financement dépend de conventions comptables (ex: un emprunt pour acheter un véhicule est
  * classé en investissement pour la partie actif et en financement pour la partie passif).
  * L'implémentation actuelle utilise une heuristique basée sur les ReportingClass et les
  * codes de compte (1xxx = financement, 2xxx = investissement, 4xx/5xx = exploitation).
- * À affiner en v4.8 avec un mapping explicite par compte.
- */
+ * À affiner avec un mapping explicite par compte.
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record CashFlowStatement(
  UUID companyId,
  LocalDate from,
@@ -56,7 +61,7 @@ public record CashFlowStatement(
  BigDecimal openingCash, // trésorerie à la date `from - 1`
  BigDecimal closingCash, // trésorerie à la date `to`
  boolean balanced, // closingCash == openingCash + netCashFlow
- // Task v6-4-presentation-currency — champs de conversion de devise de présentation
+ // — champs de conversion de devise de présentation
  String presentationCurrency,
  String functionalCurrency,
  BigDecimal conversionRate,
@@ -65,7 +70,7 @@ public record CashFlowStatement(
 ) {
 
  /**
- * Constructeur backward-compat (v5.5) — sans conversion de devise.
+ * Constructeur backward-compat — sans conversion de devise.
  */
  public CashFlowStatement(UUID companyId,
  LocalDate from,

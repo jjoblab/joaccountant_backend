@@ -5,11 +5,11 @@ package jo.accountant.company.entity;
  *
  * <p>Détermine le régime d'Impôt sur les Sociétés (IS) applicable à l'entreprise :
  * <ul>
- *   <li>{@link #STANDARD} — entreprise standard, IS au taux normal (30% Haïti / 25% France).</li>
- *   <li>{@link #FREE_ZONE} — entreprise agréée en zone franche (CODEVI/SONAPI),
- *       IS réduit à 15% sur la totalité du résultat fiscal (pas de seuil PME).</li>
- *   <li>{@link #NGO_EXEMPT} — ONG / association exonérée d'IS (IS = 0,
- *       sous conditions d'agrément DGI).</li>
+ * <li>{@link #STANDARD} — entreprise standard, IS au taux normal (30% Haïti / 25% France).</li>
+ * <li>{@link #FREE_ZONE} — entreprise agréée en zone franche (CODEVI/SONAPI),
+ * IS réduit à 15% sur la totalité du résultat fiscal (pas de seuil PME).</li>
+ * <li>{@link #NGO_EXEMPT} — ONG / association exonérée d'IS (IS = 0,
+ * sous conditions d'agrément DGI).</li>
  * </ul>
  *
  * <p>Ce champ est alimenté par le wizard de création d'entreprise (en fonction de la
@@ -19,7 +19,12 @@ package jo.accountant.company.entity;
  * {@code CorporateTaxRule}.
  *
  * <p>Stocké en base dans la colonne {@code companies.tax_exemption_status} (migration V91).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public enum TaxExemptionStatus {
     /** Entreprise standard — IS au taux normal (30% Haïti / 25% France). */
     STANDARD,

@@ -30,11 +30,41 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de notifications (§9, §13 Phase 15).
+ * Endpoints de notifications (§9, §13.
  */
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/notifications")
 @Tag(name = "Notifications", description = "Centre de notifications in-app + e-mail, règles d'alerte (§9)")
+/**
+ * Contrôleur REST Notifications.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ * <li>{@code GET /api/v1/companies/{companyId}/notifications}</li>
+ * <li>{@code GET /api/v1/companies/{companyId}/notifications/alert-rules}</li>
+ * <li>{@code POST /api/v1/companies/{companyId}/notifications/alert-rules}</li>
+ * <li>{@code POST /api/v1/companies/{companyId}/notifications/mark-all-read}</li>
+ * <li>{@code GET /api/v1/companies/{companyId}/notifications/preferences}</li>
+ * <li>{@code PATCH /api/v1/companies/{companyId}/notifications/preferences}</li>
+ * <li>{@code PATCH /api/v1/companies/{companyId}/notifications/{notificationId}/read}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class NotificationsController {
 
  private final NotificationsService service;
@@ -145,7 +175,7 @@ public class NotificationsController {
  @PathVariable UUID notificationId,
  @CurrentUser UUID userId) {
  roleChecker.ensureRole(companyId, "VIEWER");
- // Audit v4.7 §6.2 — propager companyId au service pour filtrage tenant
+ //— propager companyId au service pour filtrage tenant
  return service.markAsRead(companyId, notificationId, userId);
  }
 

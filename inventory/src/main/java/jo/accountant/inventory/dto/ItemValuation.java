@@ -6,7 +6,12 @@ import java.util.UUID;
 
 /**
  * Valorisation de stock d'un article — {@code GET .../items/{id}/valuation}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ItemValuation(
     UUID itemId,
     String sku,

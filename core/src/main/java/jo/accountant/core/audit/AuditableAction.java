@@ -7,7 +7,11 @@ package jo.accountant.core.audit;
  * génériquement.
  *
  * <p>§3.6 : cette interface est consommée par TOUS les modules sans duplication.
- */
+ 
+ *
+ * @author jo@Dev
+
+*/
 public interface AuditableAction {
     AuditEvent toAuditEvent();
 }

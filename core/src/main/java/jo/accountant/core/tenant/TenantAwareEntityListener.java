@@ -13,7 +13,12 @@ import org.springframework.stereotype.Component;
  * <p>Règle impérative (§3.3) : {@code companyId} n'est jamais accepté dans le corps d'une requête
  * entrante. Si {@link TenantContext} est vide lors d'un persist, on échoue bruyamment — mieux vaut
  * casser que d'attacher silencieusement une ligne au mauvais tenant.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class TenantAwareEntityListener {
 

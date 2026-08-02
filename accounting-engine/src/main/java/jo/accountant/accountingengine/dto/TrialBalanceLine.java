@@ -5,7 +5,12 @@ import java.util.UUID;
 
 /**
  * Ligne de la balance générale (renvoyée par {@code GET .../trial-balance}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record TrialBalanceLine(
     UUID accountId,
     String accountCode,

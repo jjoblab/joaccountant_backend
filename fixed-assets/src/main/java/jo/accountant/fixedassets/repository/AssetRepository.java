@@ -7,7 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des immobilisations.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     /** Toutes les immobilisations de l'entreprise, triées par libellé. */

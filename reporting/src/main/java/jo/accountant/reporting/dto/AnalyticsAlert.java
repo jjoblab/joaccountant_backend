@@ -18,7 +18,12 @@ package jo.accountant.reporting.dto;
  * @param severity sévérité : HIGH (rouge) / MEDIUM (orange) / LOW (bleu)
  * @param actionLabel libellé du bouton d'action (ex. "Voir les factures") —
  * peut être null si aucune action n'est disponible
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record AnalyticsAlert(
  String type,
  String message,

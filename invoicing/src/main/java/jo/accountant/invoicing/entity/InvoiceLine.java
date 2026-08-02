@@ -8,12 +8,17 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Ligne de facture (§13 Phase 12).
+ * Ligne de facture (§13.
  *
  * <p>Règle fondamentale : une ligne référence {@code itemId} (Commerce — déclègue le COGS
  * à :inventory) <strong>OU</strong> {@code timesheetEntryId} (Service — consomme le WIP),
  * <strong>jamais les deux</strong>. Vérifié côté service au passage DRAFT → ISSUED.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "invoice_line")
 public class InvoiceLine extends TenantAwareEntity {

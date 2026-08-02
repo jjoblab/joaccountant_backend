@@ -37,14 +37,40 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints de gestion de stock (§13 Phase 9).
+ * Endpoints de gestion de stock (§13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/inventory/...}.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/inventory")
-@Tag(name = "Inventory", description = "Stock, valorisation FIFO/coût moyen pondéré, COGS (§13 Phase 9)")
+@Tag(name = "Inventory", description = "Stock, valorisation FIFO/coût moyen pondéré, COGS (§13")
 public class InventoryController {
 
  private final InventoryService service;
@@ -195,7 +221,7 @@ public class InventoryController {
 
  @Operation(summary = "Créer un mouvement de stock",
  description = "IN : entrée (crée couche FIFO). OUT : sortie (calcule COGS, génère écriture). " +
- "TRANSFER : non supporté en Phase 9. " +
+ "TRANSFER : non supporté en" +
  "Stock négatif rejeté par défaut. LIFO jamais implémenté (IFRS l'interdit).")
  @ApiResponses({
  @ApiResponse(responseCode = "201",

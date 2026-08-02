@@ -19,7 +19,12 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>N'EST PAS une {@link jo.accountant.core.tenant.TenantAwareEntity} — les référentiels sont des
  * données de référence globales partagées par tous les tenants.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "accounting_framework")
 public class AccountingFramework {

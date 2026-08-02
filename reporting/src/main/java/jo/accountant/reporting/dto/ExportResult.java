@@ -6,9 +6,14 @@ import java.util.UUID;
 /**
  * Réponse d'export — {@code GET .../reporting/exports/{statement}?format=pdf|xlsx}.
  *
- * <p>Format PDF : délègue à :document-generation (Phase 11).
+ * <p>Format PDF : délègue à :document-generation.
  * Format Excel/CSV : généré directement par :reporting (grand livre, balance).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ExportResult(
     UUID companyId,
     String statement,

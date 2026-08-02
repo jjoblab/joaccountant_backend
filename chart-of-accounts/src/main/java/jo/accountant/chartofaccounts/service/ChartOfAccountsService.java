@@ -41,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Service du plan comptable (§4, §13 Phase 3).
+ * Service du plan comptable (§4, §13.
  *
  * <p>Responsabilités :
  * <ul>
@@ -52,7 +52,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <li>Recherche (format arbre ou flat, avec filtre full-text)</li>
  * </ul>
  *
- * <p>Règles métier §13 Phase 3 (chacune testée par un test qui échouerait si la règle était
+ * <p>Règles métier §13(chacune testée par un test qui échouerait si la règle était
  * retirée) :
  * <ol>
  * <li>{@code code} unique par {@code companyId} (contrainte DB + validation applicative).</li>
@@ -64,7 +64,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <li>Isolation multi-tenant testée explicitement.</li>
  * <li>Toute création/modification/activation publie un événement audit-trail.</li>
  * </ol>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ChartOfAccountsService {
 
@@ -152,7 +157,7 @@ public class ChartOfAccountsService {
  created = initializeFree(companyId, framework, templateDto);
  }
 
- // Restructuration 2026-07-24 (suite) : seed sectoriel — génère les comptes niveau 2+
+ //(suite) : seed sectoriel — génère les comptes niveau 2+
  // typiques du type métier (ex. RETAIL_COMMERCE → 401 Fournisseurs, 411 Clients, etc.).
  int sectorCreated = 0;
  if (businessTypeCode != null && !businessTypeCode.isBlank()) {
@@ -554,7 +559,7 @@ public class ChartOfAccountsService {
  * <li>Compte verrouillé ({@code locked = true}) → 409 sur toute modification.</li>
  * <li>Activation → toujours permise.</li>
  * <li>Désactivation → refusée si {@link AccountBalanceGuard#hasNonZeroBalance} retourne
- * true (Phase 3 : toujours false, Phase 5 : vraie vérification).</li>
+ * truetoujours false,vraie vérification).</li>
  * </ul>
  */
  @Transactional
@@ -758,7 +763,7 @@ public class ChartOfAccountsService {
  }
 
  // Mapping par défaut (SYSCOHADA_REVISED / PCG_FRANCE)
- // Audit v4.7 §3.2 — classe 4 (Tiers) et classe 8 (HAO) affinées par sous-classe.
+ //— classe 4 (Tiers) et classe 8 (HAO) affinées par sous-classe.
  if (first == '4') {
  // Classe 4 : Tiers — distinction ACTIF (clients, débiteurs) vs PASSIF (fournisseurs, dettes)
  if (classCode.length() >= 2) {

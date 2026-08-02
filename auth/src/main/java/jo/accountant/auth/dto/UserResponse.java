@@ -6,7 +6,12 @@ import java.util.UUID;
 
 /**
  * UserResponse — réponse de {@code GET/PATCH /api/v1/auth/me}.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record UserResponse(
     UUID userId,
     String email,

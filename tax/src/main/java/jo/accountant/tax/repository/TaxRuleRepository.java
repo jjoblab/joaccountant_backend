@@ -8,19 +8,27 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Repository JPA TaxRule.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface TaxRuleRepository extends JpaRepository<TaxRule, UUID> {
     List<TaxRule> findByCompanyIdOrCompanyIdIsNull(UUID companyId);
     List<TaxRule> findByCompanyId(UUID companyId);
 
     /**
-     * Règles de TVA actives ET valides à une date donnée (audit v4.7 §4.2 Finding HAUT).
+     * Règles de TVA actives ET valides à une date donnéeFinding HAUT).
      *
      * <p>Filtre par {@code applicableFrom <= date <= applicableTo} (avec null = non borné).
      * Une règle avec {@code applicableFrom=null, applicableTo=null} est toujours valide.
      * Une règle avec {@code applicableTo < date} est expirée (ex: taux réduit COVID 5.5% en 2022).
      *
      * @param companyId identifiant de l'entreprise (les règles globales companyId IS NULL sont incluses)
-     * @param date      date de référence (ex: date d'émission de la facture)
+     * @param date date de référence (ex: date d'émission de la facture)
      * @return règles actives et valides à la date donnée
      */
     @Query("select r from TaxRule r where " +

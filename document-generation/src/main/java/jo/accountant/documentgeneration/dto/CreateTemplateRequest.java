@@ -4,6 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 
+/**
+ * CreateTemplateRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateTemplateRequest(
     @NotNull GeneratedDocumentType documentType,
     @NotBlank String htmlTemplate,

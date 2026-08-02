@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Contrôleur REST pour les règles de cotisation sociale (audit v4.7 §4.1 #3 — session 7).
+ * Contrôleur REST pour les règles de cotisation sociale#3 — session 7).
  *
  * <p>Expose le CRUD pour {@link ContributionRule} — débloque l'intégration mobile du moteur
  * de paie par tranches (PMSS, CSG abattue, Tranche A/B). Le {@link jo.accountant.payroll.service.PayrollCalculator}
@@ -46,6 +46,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/tax/contribution-rules")
 @Tag(name = "Tax", description = "Règles fiscales + TVA (débits/encaissements, V55) + cotisations (V51)")
+/**
+ * Contrôleur REST ContributionRule.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code DELETE /}</li>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class ContributionRuleController {
 
     private final ContributionRuleRepository repository;

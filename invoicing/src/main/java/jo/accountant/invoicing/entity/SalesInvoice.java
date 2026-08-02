@@ -14,7 +14,7 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Facture de vente (§13 Phase 12).
+ * Facture de vente (§13.
  *
  * <p>Une facture peut être de type {@link InvoiceType#STANDARD} (facture classique) ou
  * {@link InvoiceType#CREDIT_NOTE} (avoir). L'avoir a sa propre séquence dans
@@ -32,7 +32,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * (DRAFT → ISSUED, ISSUED → PAID/PARTIALLY_PAID). Les setters existants sont conservés
  * (backward compat — InvoicingService les utilise) ; les méthodes métier sont ajoutées
  * pour usage progressif.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "sales_invoice")
 public class SalesInvoice extends TenantAwareEntity {
@@ -58,7 +63,7 @@ public class SalesInvoice extends TenantAwareEntity {
  @Column(name = "due_date")
  private LocalDate dueDate;
 
- /** Code ISO 4217 de la devise. En Phase 12, devrait être la devise fonctionnelle. */
+ /** Code ISO 4217 de la devise. En, devrait être la devise fonctionnelle. */
  @Column(name = "currency", nullable = false, length = 3)
  private String currency;
 

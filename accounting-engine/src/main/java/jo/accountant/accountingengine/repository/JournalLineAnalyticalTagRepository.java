@@ -12,7 +12,12 @@ import org.springframework.data.repository.query.Param;
  *
  * <p>Ajout de méthodes pour filtrer les lignes POSTED par tag analytique —
  * utilisé par :funds-grants pour le calcul exact des fonds dédiés (Vague 2, item 2.6).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface JournalLineAnalyticalTagRepository
     extends JpaRepository<JournalLineAnalyticalTag, UUID> {
 

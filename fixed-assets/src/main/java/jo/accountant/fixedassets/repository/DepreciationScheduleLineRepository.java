@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository des lignes d'échéancier d'amortissement.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface DepreciationScheduleLineRepository
     extends JpaRepository<DepreciationScheduleLine, UUID> {
 

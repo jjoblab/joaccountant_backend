@@ -13,12 +13,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Snapshot figé d'un état financier à la clôture (§13 Phase 6).
+ * Snapshot figé d'un état financier à la clôture (§13.
  *
  * <p>Le snapshot fige l'état au moment de la clôture pour qu'une modification ultérieure du
  * plan comptable ou des tiers ne réécrive jamais l'historique déjà produit — cohérent avec
- * la règle "une facture ISSUED n'est jamais éditée" (Phase 12) et l'immuabilité des écritures
- * POSTED (Phase 5).
+ * la règle "une facture ISSUED n'est jamais éditée"et l'immuabilité des écritures
+ * POSTED.
  *
  * <p>Le {@code contentJson} contient l'état complet au format JSON (bilan ou compte de
  * résultat, avec tous les montants agrégés par {@code reportingClass} et
@@ -27,12 +27,20 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>Un snapshot par (companyId, type, periodId) — contrainte unique. Pour régénérer un
  * snapshot d'une période déjà figée, il faut explicitement supprimer l'ancien (opération
- * d'audit, à exposer via un endpoint dédié si besoin — non fait en Phase 6).
+ * d'audit, à exposer via un endpoint dédié si besoin — non fait en.
  */
 @Entity
 @Table(name = "financial_statement_snapshot",
     uniqueConstraints = @UniqueConstraint(name = "uc_fss_company_type_period",
         columnNames = {"company_id", "type", "period_id"}))
+/**
+ * FinancialStatementSnapshot.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class FinancialStatementSnapshot extends TenantAwareEntity {
 
     @Enumerated(EnumType.STRING)

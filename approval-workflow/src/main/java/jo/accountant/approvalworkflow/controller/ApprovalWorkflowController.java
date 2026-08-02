@@ -33,18 +33,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints du workflow d'approbation (§7, §13 Phase 4).
+ * Endpoints du workflow d'approbation (§7, §13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/approval-workflow/...}.
  *
  * <p>Endpoints :
  * <ul>
- *   <li>{@code POST /rules} — créer une règle</li>
- *   <li>{@code GET /rules} — lister les règles</li>
- *   <li>{@code GET /requests?status=} — lister les demandes (filtrées par statut)</li>
- *   <li>{@code POST /requests/{id}/approve} — approuver une demande</li>
- *   <li>{@code POST /requests/{id}/reject} — rejeter une demande</li>
+ * <li>{@code POST /rules} — créer une règle</li>
+ * <li>{@code GET /rules} — lister les règles</li>
+ * <li>{@code GET /requests?status=} — lister les demandes (filtrées par statut)</li>
+ * <li>{@code POST /requests/{id}/approve} — approuver une demande</li>
+ * <li>{@code POST /requests/{id}/reject} — rejeter une demande</li>
  * </ul>
  *
  * <p>Aucun endpoint {@code evaluate} : la méthode
@@ -54,6 +54,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/approval-workflow")
 @Tag(name = "ApprovalWorkflow", description = "Seuils d'approbation transverses, mécanisme 'quatre yeux' (§7)")
+/**
+ * Contrôleur REST ApprovalWorkflow.
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+ */
+
 public class ApprovalWorkflowController {
 
     private final ApprovalWorkflowService service;

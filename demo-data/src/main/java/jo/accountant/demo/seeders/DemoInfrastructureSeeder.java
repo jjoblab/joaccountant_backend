@@ -13,11 +13,16 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * V8.2 — Crée l'infrastructure comptable pour les entreprises démo.
+ * Crée l'infrastructure comptable pour les entreprises démo.
  *
  * <p>Utilise JdbcTemplate directement pour éviter les problèmes de cache Caffeine
  * (@Cacheable n'accepte pas les valeurs null).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class DemoInfrastructureSeeder {
 
@@ -156,8 +161,8 @@ public class DemoInfrastructureSeeder {
         if (count != null && count > 0) {
             return;
         }
-        // V8.2 Phase 3 — inférer le type depuis le code (VT→VENTES, AC→ACHATS, etc.)
-        // et setter active=true pour aligner avec le modèle V8.2 enrichi.
+        // V8.2inférer le type depuis le code (VT→VENTES, AC→ACHATS, etc.)
+        // et setter active=true pour aligner avec le modèle enrichi.
         jo.accountant.accountingengine.entity.JournalType journalType =
             jo.accountant.accountingengine.entity.JournalType.fromCode(code);
         String typeValue = journalType != null ? journalType.name() : null;

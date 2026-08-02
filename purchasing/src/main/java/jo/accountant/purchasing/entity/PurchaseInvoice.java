@@ -21,7 +21,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * DRAFT → RECEIVED (DocumentType.PURCHASE_INVOICE, scopeKey = code journal "AC").
  *
  * <p>Symétrique de {@code SalesInvoice} du module :invoicing — débit/crédit inversés.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "purchase_invoice")
 public class PurchaseInvoice extends TenantAwareEntity {

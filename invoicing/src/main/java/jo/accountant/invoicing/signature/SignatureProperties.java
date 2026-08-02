@@ -23,7 +23,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @see XAdESSignatureService
  * @see SignatureConfig
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @ConfigurationProperties(prefix = "app.signature.xades")
 public class SignatureProperties {
 

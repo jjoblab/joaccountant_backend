@@ -27,7 +27,12 @@ import java.util.UUID;
  * {@code false} sinon
  * @param journalEntryId ID de l'écriture comptable générée (null si aucune dépréciation)
  * @param testedAt horodatage du test
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record ImpairmentTestResult(
  UUID assetId,
  BigDecimal netBookValue,

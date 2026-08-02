@@ -14,12 +14,17 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Règle de retenue à la source (§13 Phase 16).
+ * Règle de retenue à la source (§13.
  *
  * <p>Pertinent pour la retenue à la source sur prestations de service, fréquente en Haïti
  * et en zone OHADA. {@link #applicableThirdPartyTypes} filtre les tiers concernés
  * (ex. "SUPPLIER" pour la retenue sur factures fournisseurs).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "withholding_rule")
 public class WithholdingRule {

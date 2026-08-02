@@ -10,7 +10,12 @@ import java.util.UUID;
  *
  * <p>Liste les entrées approuvées, billables, non facturées, avec le taux applicable et
  * le montant total du WIP.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record UnbilledWip(
     UUID projectId,
     String projectCode,

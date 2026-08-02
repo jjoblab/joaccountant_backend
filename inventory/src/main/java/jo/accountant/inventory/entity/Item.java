@@ -11,28 +11,36 @@ import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
 
 /**
- * Article / produit stocké (§13 Phase 9).
+ * Article / produit stocké (§13.
  *
  * <p>Référence deux comptes du plan comptable :
  * <ul>
- *   <li>{@link #inventoryAccountId} — compte de stock (ex. 30 "Stocks de marchandises" en SYSCOHADA)</li>
- *   <li>{@link #cogsAccountId} — compte de COGS / variation de stock (ex. 603 "Variation de stocks")</li>
+ * <li>{@link #inventoryAccountId} — compte de stock (ex. 30 "Stocks de marchandises" en SYSCOHADA)</li>
+ * <li>{@link #cogsAccountId} — compte de COGS / variation de stock (ex. 603 "Variation de stocks")</li>
  * </ul>
  *
  * <p>{@link #costingMethod} détermine comment les sorties sont valorisées :
  * <ul>
- *   <li>{@link CostingMethod#FIFO} — utilise {@link StockValuationLayer} pour suivre les couches</li>
- *   <li>{@link CostingMethod#WEIGHTED_AVERAGE} — recalcule le coût moyen à chaque entrée</li>
+ * <li>{@link CostingMethod#FIFO} — utilise {@link StockValuationLayer} pour suivre les couches</li>
+ * <li>{@link CostingMethod#WEIGHTED_AVERAGE} — recalcule le coût moyen à chaque entrée</li>
  * </ul>
  *
  * <p>{@link #reorderThreshold} — si renseigné et que le stock total passe sous ce seuil,
- * un événement de domaine est publié (consommé par :notifications Phase 15). Nullable :
+ * un événement de domaine est publié (consommé par :notifications. Nullable :
  * null = pas de seuil défini pour cet article.
  */
 @Entity
 @Table(name = "item",
     uniqueConstraints = @UniqueConstraint(name = "uc_item_company_sku",
         columnNames = {"company_id", "sku"}))
+/**
+ * Item.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public class Item extends TenantAwareEntity {
 
     @Column(name = "sku", nullable = false, length = 50)

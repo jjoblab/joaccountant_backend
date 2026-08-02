@@ -28,7 +28,11 @@ package jo.accountant.invoicing.signature;
  * {@code SignableDocumentType} pour la distinguer des 2 autres enums homonymes du projet
  * ({@code documentnumbering.entity.SignableDocumentType} pour les séquences de numérotation,
  * {@code documentgeneration.entity.GeneratedDocumentType} pour les PDF générables).
- */
+ 
+ *
+ * @author jo@Dev
+
+*/
 public enum SignableDocumentType {
  INVOICE,
  CREDIT_NOTE,

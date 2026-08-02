@@ -54,24 +54,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service des fonds et subventions (§13 Phase 14).
+ * Service des fonds et subventions (§13.
  *
- * <p>Mécanisme des fonds dédiés (§13 Phase 14) :
- * <ol>
- *   <li>À la clôture d'exercice, pour chaque subvention RESTRICTED, le module calcule :
- *       produit constaté cette année − charges de l'année portant le tag analytique de ce fonds.</li>
- *   <li>Si le solde est positif (ressource affectée non encore utilisée), le module soumet
- *       une {@link jo.accountant.approvalworkflow.entity.ApprovalRequest} via approval-workflow
- *       pour l'écriture proposée (Débit compte de charge "engagement à réaliser" / Crédit
- *       compte de passif "fonds dédiés").</li>
- *   <li>Tant que la demande n'est pas APPROVED, aucune écriture n'est postée.</li>
- *   <li>Les exercices suivants, au rythme des dépenses réelles, une écriture inverse suit
- *       le même circuit d'approbation.</li>
+ * <p>Mécanisme des fonds dédiés (§13* <ol>
+ * <li>À la clôture d'exercice, pour chaque subvention RESTRICTED, le module calcule :
+ * produit constaté cette année − charges de l'année portant le tag analytique de ce fonds.</li>
+ * <li>Si le solde est positif (ressource affectée non encore utilisée), le module soumet
+ * une {@link jo.accountant.approvalworkflow.entity.ApprovalRequest} via approval-workflow
+ * pour l'écriture proposée (Débit compte de charge "engagement à réaliser" / Crédit
+ * compte de passif "fonds dédiés").</li>
+ * <li>Tant que la demande n'est pas APPROVED, aucune écriture n'est postée.</li>
+ * <li>Les exercices suivants, au rythme des dépenses réelles, une écriture inverse suit
+ * le même circuit d'approbation.</li>
  * </ol>
  *
  * <p>Numérotation des comptes concernés non figée en dur : dépend du référentiel actif (§4).
  * Seuls le mécanisme et les {@code reportingClass} cibles sont fixes.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class FundsGrantsService {
 
@@ -175,10 +179,10 @@ public class FundsGrantsService {
      *
      * <p><b>Écriture générée</b> (journal "OD" — opérations diverses) :
      * <ul>
-     *   <li>Débit : compte de trésorerie (ACTIF, taxMappingCode="CASH") ou fallback sur le
-     *       premier compte d'ACTIF actif.</li>
-     *   <li>Crédit : compte de produit de don (PRODUITS, taxMappingCode="DONATION_REVENUE")
-     *       ou fallback sur le premier compte de PRODUITS actif.</li>
+     * <li>Débit : compte de trésorerie (ACTIF, taxMappingCode="CASH") ou fallback sur le
+     * premier compte d'ACTIF actif.</li>
+     * <li>Crédit : compte de produit de don (PRODUITS, taxMappingCode="DONATION_REVENUE")
+     * ou fallback sur le premier compte de PRODUITS actif.</li>
      * </ul>
      *
      * <p>Si le reçu est rattaché à une subvention elle-même rattachée à une valeur analytique
@@ -242,10 +246,10 @@ public class FundsGrantsService {
      *
      * <p>Résolution des comptes référentiel-agnostique (même principe que InvoicingService) :
      * <ul>
-     *   <li><b>Trésorerie</b> : (1) ACTIF + taxMappingCode="CASH", (2) fallback sur le premier
-     *       compte d'ACTIF actif (pour rétro-compatibilité SYSCOHADA — codes "5x").</li>
-     *   <li><b>Produit de don</b> : (1) PRODUITS + taxMappingCode="DONATION_REVENUE",
-     *       (2) fallback sur le premier compte de PRODUITS actif.</li>
+     * <li><b>Trésorerie</b> : (1) ACTIF + taxMappingCode="CASH", (2) fallback sur le premier
+     * compte d'ACTIF actif (pour rétro-compatibilité SYSCOHADA — codes "5x").</li>
+     * <li><b>Produit de don</b> : (1) PRODUITS + taxMappingCode="DONATION_REVENUE",
+     * (2) fallback sur le premier compte de PRODUITS actif.</li>
      * </ul>
      */
     private void generateDonationReceiptEntry(UUID companyId, DonationReceipt receipt, Grant grant,
@@ -286,7 +290,7 @@ public class FundsGrantsService {
                 "Aucun compte de produit de don trouvé. Configurer un compte PRODUITS " +
                 "(idéalement marqué taxMappingCode=\"DONATION_REVENUE\") dans le plan comptable."));
 
-        // V8.2 Phase 3 — getOrCreateJournal retourne le journal existant ou le crée avec
+        // V8.2getOrCreateJournal retourne le journal existant ou le crée avec
         // le code/label par défaut du type (jamais d'exception pour les types standards).
         // (Journal OD — opérations diverses)
         String journalCode = accountingEngineService.getOrCreateJournal(companyId,
@@ -351,15 +355,15 @@ public class FundsGrantsService {
      * {@code JournalLine} (même source que {@code totalSpent}) afin que les deux montants
      * soient reconciliables. La logique est la suivante :
      * <ol>
-     *   <li>Si le grant porte un {@code analyticalValueId} : on somme les crédits des
-     *       JournalLine POSTED sur un compte de PRODUITS, taguées avec cette valeur
-     *       analytique (mécanisme symétrique à {@link #calculateChargesByAnalyticalTag}).</li>
-     *   <li>Sinon (grant sans analyticalValueId, cas des dons non affectés) : on somme les
-     *       crédits des JournalLine PRODUITS des écritures générées par les reçus du grant
-     *       (lien via {@code DonationReceipt.journalEntryId}).</li>
-     *   <li>Rétro-compatibilité : pour les reçus créés avant la correction (sans
-     *       {@code journalEntryId}), on ajoute leur montant (fallback sur
-     *       {@code DonationReceipt.amount}).</li>
+     * <li>Si le grant porte un {@code analyticalValueId} : on somme les crédits des
+     * JournalLine POSTED sur un compte de PRODUITS, taguées avec cette valeur
+     * analytique (mécanisme symétrique à {@link #calculateChargesByAnalyticalTag}).</li>
+     * <li>Sinon (grant sans analyticalValueId, cas des dons non affectés) : on somme les
+     * crédits des JournalLine PRODUITS des écritures générées par les reçus du grant
+     * (lien via {@code DonationReceipt.journalEntryId}).</li>
+     * <li>Rétro-compatibilité : pour les reçus créés avant la correction (sans
+     * {@code journalEntryId}), on ajoute leur montant (fallback sur
+     * {@code DonationReceipt.amount}).</li>
      * </ol>
      */
     @Transactional(readOnly = true)
@@ -367,7 +371,7 @@ public class FundsGrantsService {
         Grant grant = loadGrant(companyId, grantId);
         ThirdParty donor = thirdPartyRepository.findById(grant.getDonorThirdPartyId())
             .orElseThrow(() -> new NotFoundException("ThirdParty", grant.getDonorThirdPartyId()));
-        // Audit v4.7 §6.2 — defense-in-depth
+        //— defense-in-depth
         if (!donor.getCompanyId().equals(companyId)) {
             throw new NotFoundException("ThirdParty", grant.getDonorThirdPartyId());
         }
@@ -404,14 +408,14 @@ public class FundsGrantsService {
 
     /**
      * Clôture d'exercice pour une subvention — génère la proposition d'écriture de fonds
-     * dédiés et la soumet à {@code approval-workflow} (§13 Phase 14).
+     * dédiés et la soumet à {@code approval-workflow} (§13.
      *
      * <p>Pour une subvention RESTRICTED :
      * <ol>
-     *   <li>Calcule : produit constaté − charges de l'année portant le tag analytique.</li>
-     *   <li>Si solde positif (ressource affectée non utilisée) → soumet une ApprovalRequest
-     *       pour l'écriture proposée (Débit "engagement à réaliser" / Crédit "fonds dédiés").</li>
-     *   <li>Tant que la demande n'est pas APPROVED, aucune écriture n'est postée.</li>
+     * <li>Calcule : produit constaté − charges de l'année portant le tag analytique.</li>
+     * <li>Si solde positif (ressource affectée non utilisée) → soumet une ApprovalRequest
+     * pour l'écriture proposée (Débit "engagement à réaliser" / Crédit "fonds dédiés").</li>
+     * <li>Tant que la demande n'est pas APPROVED, aucune écriture n'est postée.</li>
      * </ol>
      *
      * <p>Pour une subvention UNRESTRICTED → pas de fonds dédiés, retourne un message informatif.
@@ -450,7 +454,7 @@ public class FundsGrantsService {
             ApprovalActionType.GRANT_DISBURSEMENT_PROPOSAL,
             "Grant", grant.getId(),
             balance,
-            List.of()  // approverEmails — à résoudre par l'appelant
+            List.of() // approverEmails — à résoudre par l'appelant
         );
 
         if (evalResult.autoApproved()) {
@@ -474,7 +478,7 @@ public class FundsGrantsService {
 
     /**
      * Expose la consommation d'une subvention via un service public — utilisé par
-     * :notifications (Phase 15) pour l'alerte de seuil.
+     * :notificationspour l'alerte de seuil.
      */
     @Transactional(readOnly = true)
     public BigDecimal getConsumptionPercentage(UUID companyId, UUID grantId) {
@@ -500,9 +504,9 @@ public class FundsGrantsService {
      *
      * <p>Filtre les JournalLine par :
      * <ol>
-     *   <li>Tag analytique = analyticalValueId du grant</li>
-     *   <li>Compte de classe CHARGES (ReportingClass.CHARGES) — pas tous les comptes</li>
-     *   <li>Écriture POSTED uniquement (pas DRAFT/PENDING_APPROVAL)</li>
+     * <li>Tag analytique = analyticalValueId du grant</li>
+     * <li>Compte de classe CHARGES (ReportingClass.CHARGES) — pas tous les comptes</li>
+     * <li>Écriture POSTED uniquement (pas DRAFT/PENDING_APPROVAL)</li>
      * </ol>
      *
      * <p>Somme les débits des lignes filtrées (= charges consommées par le fonds).
@@ -535,14 +539,14 @@ public class FundsGrantsService {
             // Vérifier que la ligne est POSTED
             if (!postedLineIds.contains(lineId)) continue;
 
-            // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+            //— defense-in-depth : filtrer par companyId
             JournalLine line = journalLineRepository.findById(lineId)
                 .filter(l -> l.getCompanyId().equals(companyId))
                 .orElse(null);
             if (line == null) continue;
 
             // F3 (fix) : vérifier que le compte est de classe CHARGES
-            // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+            //— defense-in-depth : filtrer par companyId
             Account account = accountRepository.findById(line.getAccountId())
                 .filter(a -> a.getCompanyId().equals(companyId))
                 .orElse(null);
@@ -563,9 +567,9 @@ public class FundsGrantsService {
      *
      * <p>Filtre les JournalLine par :
      * <ol>
-     *   <li>Tag analytique = analyticalValueId du grant</li>
-     *   <li>Compte de classe PRODUITS (ReportingClass.PRODUITS) — pas tous les comptes</li>
-     *   <li>Écriture POSTED uniquement (pas DRAFT/PENDING_APPROVAL)</li>
+     * <li>Tag analytique = analyticalValueId du grant</li>
+     * <li>Compte de classe PRODUITS (ReportingClass.PRODUITS) — pas tous les comptes</li>
+     * <li>Écriture POSTED uniquement (pas DRAFT/PENDING_APPROVAL)</li>
      * </ol>
      *
      * <p>Somme les crédits des lignes filtrées (= produits reçus via le fonds).
@@ -595,13 +599,13 @@ public class FundsGrantsService {
         for (UUID lineId : taggedLineIds) {
             if (!postedLineIds.contains(lineId)) continue;
 
-            // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+            //— defense-in-depth : filtrer par companyId
             JournalLine line = journalLineRepository.findById(lineId)
                 .filter(l -> l.getCompanyId().equals(companyId))
                 .orElse(null);
             if (line == null) continue;
 
-            // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+            //— defense-in-depth : filtrer par companyId
             Account account = accountRepository.findById(line.getAccountId())
                 .filter(a -> a.getCompanyId().equals(companyId))
                 .orElse(null);
@@ -633,12 +637,12 @@ public class FundsGrantsService {
 
         BigDecimal products = BigDecimal.ZERO;
         for (DonationReceipt receipt : receipts) {
-            if (receipt.getJournalEntryId() == null) continue;  // reçu pré-correction (legacy)
+            if (receipt.getJournalEntryId() == null) continue; // reçu pré-correction (legacy)
 
             List<JournalLine> lines = journalLineRepository
                 .findByJournalEntryIdOrderByLineNumber(receipt.getJournalEntryId());
             for (JournalLine line : lines) {
-                // Audit v4.7 §6.2 — defense-in-depth : filtrer par companyId
+                //— defense-in-depth : filtrer par companyId
                 Account account = accountRepository.findById(line.getAccountId())
                     .filter(a -> a.getCompanyId().equals(companyId))
                     .orElse(null);

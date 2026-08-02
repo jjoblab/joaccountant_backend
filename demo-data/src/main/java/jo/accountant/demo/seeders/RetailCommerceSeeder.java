@@ -87,16 +87,21 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
  * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
  *
- * <p><b>Bug historique corrigé</b> — la V8.1 pointait par erreur sur le framework {@code ...004}
+ * <p><b>Bug historique corrigé</b> — la version précédente pointait par erreur sur le framework {@code ...004}
  * (PCG_FRANCE). La V9 utilise {@code ...005} (PCN_HAITI — cf. V3__core_seeds.sql ligne 26).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class RetailCommerceSeeder implements CompanySeeder {
 
  private static final Logger LOG = LoggerFactory.getLogger(RetailCommerceSeeder.class);
 
  /**
- * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la V8.1
+ * UUID du référentiel PCN_HAITI (V3__core_seeds.sql ligne 26 — correctif V9 : la version précédente
  * pointait par erreur sur ...004 = PCG_FRANCE).
  */
  private static final UUID PCN_HAITI_FRAMEWORK_ID =
@@ -147,7 +152,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  private final BankReconciliationService bankReconciliationService;
 
  /**
- * v2.5.2-rls-proper-fix — Self-injection via le proxy Spring.
+ * rls-proper-fix — Self-injection via le proxy Spring.
  *
  * <p>Permet d'appeler {@link #seedBusinessData(UUID, UUID)} depuis {@link #seed()} en traversant
  * le proxy CGLIB → l'annotation {@code @Transactional} sur {@code seedBusinessData} sera
@@ -220,7 +225,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  *
  * <p>Idempotent : si la Company existe déjà (name + isDemo=true), retourne 0.
  *
- * <p><b>v2.5.2-rls-proper-fix</b> — La méthode n'est PLUS {@code @Transactional}. La Company +
+ * <p>La méthode n'est PLUS {@code @Transactional}. La Company +
  * l'user owner sont créés via les méthodes {@code @Transactional} par défaut des repositories
  * Spring Data JPA (chaque {@code save()} est sa propre transaction sur des tables non
  * RLS-protégées : {@code companies}, {@code users}, {@code user_company_role}). Les données
@@ -275,7 +280,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  }
 
  /**
- * v2.5.2-rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
+ * rls-proper-fix — Méthode {@code @Transactional} qui crée toutes les données métier
  * (COA, journaux, exercices, séquences, clients, fournisseurs, employés, banque, items, 12 mois
  * d'opérations).
  *
@@ -349,7 +354,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  return totalCreated;
  }
 
- // ══ Étape 2 — Création Company ══
+ // ══Création Company ══
 
  private Company createCompany() {
  Company company = new Company();
@@ -474,7 +479,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  }
  }
 
- // ══ Étape d — Clients retail (8) ══
+ // ══Clients retail (8) ══
 
  private List<ThirdPartyResponse> createDemoClients(UUID companyId, UUID clientsAccountId) {
  String[] names = {
@@ -508,7 +513,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  return created;
  }
 
- // ══ Étape e — Fournisseurs (5) ══
+ // ══Fournisseurs (5) ══
 
  private List<ThirdPartyResponse> createDemoSuppliers(UUID companyId, UUID suppliersAccountId) {
  String[][] defs = {
@@ -541,7 +546,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  return created;
  }
 
- // ══ Étape f — Employés (4) ══
+ // ══Employés (4) ══
 
  private List<EmployeeResponse> createDemoEmployees(UUID companyId, UUID personnelAccountId) {
  Object[][] defs = {
@@ -589,7 +594,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  return created;
  }
 
- // ══ Étape g — Compte bancaire (Sogebank) ══
+ // ══Compte bancaire (Sogebank) ══
 
  private void createDemoBankAccount(UUID companyId, UUID banqueAccountId) {
  try {
@@ -604,7 +609,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  }
  }
 
- // ══ Étape h — Entrepôt + 8 articles + stock initial ══
+ // ══Entrepôt + 8 articles + stock initial ══
 
  private List<ItemResponse> createDemoItems(UUID companyId, Warehouse warehouse) {
  List<HaitianProducts.Product> catalog = HaitianProducts.retailCatalog();
@@ -674,7 +679,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  return created;
  }
 
- // ══ Étape i — 12 mois d'opérations sur FY2025-2026 ══
+ // ══12 mois d'opérations sur FY2025-2026 ══
 
  /**
  * Génère 12 mois d'opérations (Oct 2025 → Sep 2026). Chaque mois est isolé dans un try/catch : un

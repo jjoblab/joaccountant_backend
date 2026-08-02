@@ -20,7 +20,12 @@ import org.springframework.test.context.DynamicPropertySource;
  *
  * <p>Classe délibérément dans un module séparé ({@code :test-support}) pour éviter la dépendance
  * circulaire :test → :app — l'app est le consommateur final du module :app, pas un helper.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public abstract class EmbeddedPostgresSupport {
 
     private static volatile EmbeddedPostgres pg;

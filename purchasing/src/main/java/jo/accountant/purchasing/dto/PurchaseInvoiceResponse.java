@@ -8,6 +8,14 @@ import java.util.UUID;
 import jo.accountant.purchasing.entity.PurchaseInvoiceStatus;
 import jo.accountant.purchasing.entity.PurchaseInvoiceType;
 
+/**
+ * PurchaseInvoiceResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record PurchaseInvoiceResponse(
     UUID id,
     UUID companyId,

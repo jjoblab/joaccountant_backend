@@ -5,9 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * V8.1 — Catalogue de produits retail haïtiens (alimentation, ménagers, cosmétiques). Utilisé par
+ * Catalogue de produits retail haïtiens (alimentation, ménagers, cosmétiques). Utilisé par
  * le seeder PME1 Boutik Lakay.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public final class HaitianProducts {
 
  public record Product(

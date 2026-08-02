@@ -47,14 +47,37 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints des tiers et du lettrage (§13 Phase 7).
+ * Endpoints des tiers et du lettrage (§13.
  *
  * <p>Convention d'URL (§3.8) :
  * {@code /api/v1/companies/{companyId}/third-parties/...}.
- */
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/third-parties")
-@Tag(name = "ThirdParties", description = "Clients/fournisseurs/donateurs, lettrage, balance âgée (§13 Phase 7)")
+@Tag(name = "ThirdParties", description = "Clients/fournisseurs/donateurs, lettrage, balance âgée (§13")
 public class ThirdPartiesController {
 
  private static final Logger LOG = LoggerFactory.getLogger(ThirdPartiesController.class);
@@ -294,13 +317,13 @@ public class ThirdPartiesController {
  }
 
  // ======================================================================
- // step7-backend — Reports Hub v2.5.0 : endpoint liste + PDF pour le
+ // Reports Hub : endpoint liste + PDF pour le
  // rapport LETTERING. L'URL /third-parties/lettrage (GET) retourne une page
  // JSON filtrable ; /third-parties/lettrage/pdf génère un PDF binaire via
  // DocumentGenerationService (template LETTERING_REPORT seedé par V100).
  // ======================================================================
 
- @Operation(summary = "Lister les lettrages (paginé, filtrable) — Reports Hub v2.5.0",
+ @Operation(summary = "Lister les lettrages (paginé, filtrable) — Reports Hub",
  description = "Retourne une page de lettrages actifs (FULL + PARTIAL — DELETED exclu) " +
  "avec le nom du tiers et le code compte dédié résolus. " +
  "Filtres optionnels : ?thirdPartyId=&from=&to=&status=&page=&size= (défaut 0/50, size capped à 200).")
@@ -327,7 +350,7 @@ public class ThirdPartiesController {
  return service.listLettrages(companyId, thirdPartyId, from, to, status, pageable);
  }
 
- @Operation(summary = "Générer la liste des lettrages en PDF (Reports Hub v2.5.0)",
+ @Operation(summary = "Générer la liste des lettrages en PDF (Reports Hub)",
  description = "Rendu PDF de la liste des lettrages via :document-generation (template LETTERING_REPORT). " +
  "Sert un PDF binaire en attachment. Délègue au même service métier que GET /lettrage.")
  @ApiResponses({
@@ -442,10 +465,10 @@ public class ThirdPartiesController {
  }
 
  // ======================================================================
- // step2-backend — Reports Hub v2.4.0 : export CSV des tiers
+ // Reports Hub : export CSV des tiers
  // ======================================================================
 
- @Operation(summary = "Exporter les tiers en CSV (Reports Hub v2.4.0)",
+ @Operation(summary = "Exporter les tiers en CSV (Reports Hub)",
  description = "Export CSV de tous les tiers (clients, fournisseurs, donateurs, etc.). " +
  "Format : UTF-8 avec BOM (compatible Excel français), séparateur point-virgule, CRLF. " +
  "Colonnes : Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif.")
@@ -483,7 +506,7 @@ public class ThirdPartiesController {
  }
 
  // Génération du CSV (séparateur ';', CRLF) — le BOM UTF-8 et les headers sont
- // ajoutés par CsvEndpointHelper (v2.5.0-task8).
+ //ajoutés par CsvEndpointHelper (0-task8).
  StringBuilder sb = new StringBuilder();
  String LINE_SEP = "\r\n";
  sb.append("Type;Nom;Email;Adresse;NIF;SIRET;TVA;Compte collectif;Compte dedie;Actif").append(LINE_SEP);

@@ -43,7 +43,12 @@ import jo.accountant.core.tenant.TenantAwareEntity;
  * comptes en devises étrangères sont généralement créés en sous-comptes (521-USD, 521-EUR),
  * mais la résolution ici utilise le 521 unique pour rester simple au MVP. À affiner en
  * production avec une convention de mapping compte ↔ devise.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Entity
 @Table(name = "fx_operation")
 public class FxOperation extends TenantAwareEntity {

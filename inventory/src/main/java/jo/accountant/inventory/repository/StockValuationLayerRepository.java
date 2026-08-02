@@ -13,17 +13,22 @@ import org.springframework.data.repository.query.Param;
 /**
  * Repository des couches de valorisation FIFO.
  *
- * <p><b>Audit v4.7 §3.2 Finding HAUT — race condition FIFO</b> : la méthode
+ * <p><b>Finding HAUT — race condition FIFO</b> : la méthode
  * {@link #findFifoLayersForUpdate} utilise {@code SELECT ... FOR UPDATE} (pessimistic write lock)
  * pour empêcher deux mouvements OUT simultanés de consommer la même couche FIFO. Sans ce verrou,
  * la transaction T1 lit la couche (quantityRemaining=10), T2 lit la même couche (10), T1 décrémente
  * (→5), T2 décrémente (→-5) → surconsommation et stock négatif.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface StockValuationLayerRepository
     extends JpaRepository<StockValuationLayer, UUID> {
 
     /** Couches non épuisées (quantityRemaining > 0) pour un item + entrepôt, triées par
-     *  date de réception (plus ancienne d'abord = première à consommer en FIFO). */
+     * date de réception (plus ancienne d'abord = première à consommer en FIFO). */
     @Query("select l from StockValuationLayer l " +
            "where l.companyId = :companyId and l.itemId = :itemId " +
            "and l.warehouseId = :warehouseId and l.quantityRemaining > 0 " +
@@ -33,7 +38,7 @@ public interface StockValuationLayerRepository
                                               @Param("warehouseId") UUID warehouseId);
 
     /**
-     * Variante avec verrou pessimiste {@code SELECT FOR UPDATE} (audit v4.7 §3.2 Finding HAUT).
+     * Variante avec verrou pessimiste {@code SELECT FOR UPDATE}Finding HAUT).
      *
      * <p>À utiliser dans les transactions de consommation FIFO ({@code consumeFifoLayers}) pour
      * empêcher la race condition. Le verrou est libéré au commit/rollback de la transaction.

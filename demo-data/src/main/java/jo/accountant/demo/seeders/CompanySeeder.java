@@ -1,12 +1,17 @@
 package jo.accountant.demo.seeders;
 
 /**
- * V8.1 — Interface commune aux 4 seeders d'entreprises démo.
+ * Interface commune aux 4 seeders d'entreprises démo.
  *
  * <p>Chaque implémentation crée une entreprise fictive haïtienne + ses données métier (employés,
  * clients, fournisseurs, produits, écritures, factures, paie) sur 2 exercices fiscaux (FY2024-2025
  * + FY2025-2026).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface CompanySeeder {
 
   /** Code court identifiant la démo (ex : "BOUTIK_LAKAY"). */

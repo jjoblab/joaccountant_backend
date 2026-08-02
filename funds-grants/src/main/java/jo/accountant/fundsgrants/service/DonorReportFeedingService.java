@@ -33,15 +33,20 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Planification :
  * <ul>
- *   <li>Cron ShedLock mensuel — 1er du mois à 02:00 UTC (rafraîchit l'année courante).</li>
- *   <li>Endpoint manuel — {@code POST /donor-reports/refresh?year=&quarter=} pour rafraîchir
- *       une période précise (tests, catch-up après import rétroactif).</li>
+ * <li>Cron ShedLock mensuel — 1er du mois à 02:00 UTC (rafraîchit l'année courante).</li>
+ * <li>Endpoint manuel — {@code POST /donor-reports/refresh?year=&quarter=} pour rafraîchir
+ * une période précise (tests, catch-up après import rétroactif).</li>
  * </ul>
  *
  * <p>Politique d'upsert : si la ligne existe déjà, on écrase {@code actual_amount} mais on
  * préserve {@code budget_amount} (saisi manuellement via endpoint séparé). {@code cost_share_amount}
  * est également préservé.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class DonorReportFeedingService {
 
@@ -92,8 +97,8 @@ public class DonorReportFeedingService {
      * Endpoint manuel — rafraîchissement on-demand (pour tests ou catch-up).
      *
      * @param companyId tenant
-     * @param year      année fiscale (ex: 2026)
-     * @param quarter   trimestre 1-4
+     * @param year année fiscale (ex: 2026)
+     * @param quarter trimestre 1-4
      * @return nombre de lignes upserted
      */
     @Transactional
@@ -106,10 +111,10 @@ public class DonorReportFeedingService {
     /**
      * V7-1 — Met à jour les budgets saisis manuellement pour un (grant, year, quarter).
      *
-     * @param companyId        tenant
-     * @param grantId          subvention
-     * @param year             année fiscale
-     * @param quarter          trimestre (1-4) ou null pour annuel
+     * @param companyId tenant
+     * @param grantId subvention
+     * @param year année fiscale
+     * @param quarter trimestre (1-4) ou null pour annuel
      * @param budgetsByCategory map cost_category → montant budget
      */
     @Transactional
@@ -196,7 +201,7 @@ public class DonorReportFeedingService {
                 newLine.setPeriodYear(row.periodYear());
                 newLine.setPeriodQuarter(row.periodQuarter());
                 newLine.setCostCategory(row.costCategory());
-                newLine.setBudgetAmount(BigDecimal.ZERO);  // à saisir via endpoint séparé
+                newLine.setBudgetAmount(BigDecimal.ZERO); // à saisir via endpoint séparé
                 newLine.setActualAmount(row.actualAmount());
                 newLine.setCostShareAmount(BigDecimal.ZERO);
                 donorReportLineRepository.save(newLine);
@@ -224,11 +229,11 @@ public class DonorReportFeedingService {
                 try {
                     String donorType = jdbcTemplate.queryForObject(
                         "SELECT CASE " +
-                        "  WHEN code LIKE 'USAID%' THEN 'USAID' " +
-                        "  WHEN code LIKE 'EU%' THEN 'EU' " +
-                        "  WHEN code LIKE 'BM%' OR code LIKE 'WB%' OR code LIKE 'WORLD%' THEN 'WORLD_BANK' " +
-                        "  WHEN code LIKE 'CRS%' THEN 'CRS' " +
-                        "  ELSE 'OTHER' END " +
+                        " WHEN code LIKE 'USAID%' THEN 'USAID' " +
+                        " WHEN code LIKE 'EU%' THEN 'EU' " +
+                        " WHEN code LIKE 'BM%' OR code LIKE 'WB%' OR code LIKE 'WORLD%' THEN 'WORLD_BANK' " +
+                        " WHEN code LIKE 'CRS%' THEN 'CRS' " +
+                        " ELSE 'OTHER' END " +
                         "FROM fg_grant WHERE id = ?",
                         String.class, grantId);
                     return DonorType.valueOf(donorType);

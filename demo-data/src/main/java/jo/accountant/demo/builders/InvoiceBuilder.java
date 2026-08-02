@@ -8,8 +8,13 @@ import jo.accountant.invoicing.entity.InvoiceType;
 import jo.accountant.invoicing.entity.SalesInvoice;
 
 /**
- * V8.1 — Builder fluent pour créer des factures de vente démo (insertion JPA directe).
- */
+ * Builder fluent pour créer des factures de vente démo (insertion JPA directe).
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public class InvoiceBuilder {
 
     private final SalesInvoice invoice = new SalesInvoice();

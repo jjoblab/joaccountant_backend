@@ -8,7 +8,7 @@ import jo.accountant.core.tax.WithholdingBracketType;
 
 /**
  * Port d'accès aux règles de retenue à la source (WithholdingRule) pour les modules qui ne
- * peuvent pas dépendre de {@code :tax} directement (audit v4.7 §4.1 suite).
+ * peuvent pas dépendre de {@code :tax} directementsuite).
  *
  * <p><b>Problème d'architecture</b> : {@code :tax} dépend de {@code :purchasing} (pour
  * {@code PurchaseInvoiceRepository} utilisé dans {@code TaxService.getDeclaration} afin de
@@ -37,7 +37,12 @@ import jo.accountant.core.tax.WithholdingBracketType;
  * {@code WithholdingRule} depuis la DB et les mappe en {@link WithholdingRuleSnapshot}.
  *
  * @see jo.accountant.tax.entity.WithholdingRule
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public interface WithholdingRulePort {
 
  /**

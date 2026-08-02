@@ -7,6 +7,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.fundsgrants.entity.RestrictionType;
 
+/**
+ * CreateGrantRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateGrantRequest(
     @NotNull UUID donorThirdPartyId,
     @NotBlank String code,

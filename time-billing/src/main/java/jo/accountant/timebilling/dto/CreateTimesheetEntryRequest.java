@@ -6,6 +6,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * CreateTimesheetEntryRequest.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record CreateTimesheetEntryRequest(
     @NotNull UUID projectId,
     @NotNull UUID resourceUserId,

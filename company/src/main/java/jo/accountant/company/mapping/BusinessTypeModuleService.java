@@ -20,7 +20,12 @@ import org.springframework.stereotype.Component;
  * <p>Les modules <em>always-on</em> (socle commun + infrastructure transverse) restent codés
  * en dur ici : ils sont stables par construction (le socle ne change pas selon le type métier)
  * et ne justifieraient pas un détour par la base.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class BusinessTypeModuleService {
 
@@ -38,7 +43,7 @@ public class BusinessTypeModuleService {
      * transverse). Identique à {@code SectorModuleMapping.alwaysOnModules()} précédent —
      * inchangé par la restructuration.
      *
-     * <p>Restructuration 2026-07-24 (suite — 4 nouveaux modules bonus) : {@code EMPLOYEES},
+     * <p>(suite — 4 nouveaux modules bonus) : {@code EMPLOYEES},
      * {@code EXPENSES} et {@code PAYROLL} sont ajoutés au socle always-on. Ce sont des modules
      * transverses (toute entreprise a des employés, des dépenses et paie des salaires), au
      * même titre qu'{@code INVOICING} (toute entreprise facture). {@code PURCHASING} reste
@@ -59,7 +64,7 @@ public class BusinessTypeModuleService {
             ModuleCode.FINANCIAL_STATEMENTS,
             ModuleCode.ANALYTICS,
             ModuleCode.REPORTING,
-            // Restructuration 2026-07-24 (suite) — modules transverses toujours actifs
+            //(suite) — modules transverses toujours actifs
             ModuleCode.EMPLOYEES,
             ModuleCode.EXPENSES,
             ModuleCode.PAYROLL
@@ -70,7 +75,7 @@ public class BusinessTypeModuleService {
      * Renvoie la liste des modules sectoriels activés automatiquement pour un type métier
      * donné. Pour le type {@code CUSTOM} (qui remplace l'ancien secteur {@code MIXTE}), cette
      * liste est vide par construction — c'est l'utilisateur qui sélectionne manuellement les
-     * modules à l'étape 8 du wizard (correction du bug documenté « MIXTE non testé »).
+     * modules à l'du wizard (correction du bug documenté « MIXTE non testé »).
      */
     public List<ModuleCode> modulesFor(String businessTypeCode) {
         if (businessTypeCode == null) {
@@ -91,7 +96,7 @@ public class BusinessTypeModuleService {
                 "Type métier introuvable ou inactif : " + businessTypeCode));
     }
 
-    /** Liste tous les types métier actifs (pour l'étape 4 du wizard). */
+    /** Liste tous les types métier actifs (pour l'du wizard). */
     public List<BusinessType> listActive() {
         return businessTypeRepository.findByActiveTrueOrderByCodeAsc();
     }
@@ -111,7 +116,7 @@ public class BusinessTypeModuleService {
     /**
      * Indique si un module fait partie du socle always-on (non désactivable par l'utilisateur).
      *
-     * <p>Restructuration 2026-07-24 (suite — feature toggle) : utilisé par
+     * <p>(suite — feature toggle) : utilisé par
      * {@code CompanyModuleService.deactivate} pour refuser la désactivation d'un module
      * always-on. La désactivation d'un module always-on casserait des dépendances
      * transverses (ex. désactiver {@code ACCOUNTING_ENGINE} empêcherait toute écriture

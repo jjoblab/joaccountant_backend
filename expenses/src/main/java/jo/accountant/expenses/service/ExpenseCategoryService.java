@@ -47,7 +47,12 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code BusinessTypeModuleService.alwaysOnModules}), donc pas de {@code ModuleAccessGuard}
  * requise sur le contrôleur. Le contrôle d'accès se fait via {@code RoleChecker} côté
  * contrôleur.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ExpenseCategoryService {
 

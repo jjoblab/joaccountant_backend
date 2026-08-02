@@ -32,11 +32,38 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoints des fonds et subventions (§13 Phase 14).
- */
+ * Endpoints des fonds et subventions (§13.
+ 
+ *
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+
+ *
+ * <p>Endpoints exposés :
+ * <ul>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code GET  /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ *   <li>{@code POST /}</li>
+ * </ul>
+
+ * @author jo@Dev
+
+
+*/
 @RestController
 @RequestMapping("/api/v1/companies/{companyId}/funds-grants")
-@Tag(name = "FundsGrants", description = "Fonds, subventions, dons, fonds dédiés (secteur ONG, §13 Phase 14)")
+@Tag(name = "FundsGrants", description = "Fonds, subventions, dons, fonds dédiés (secteur ONG, §13")
 public class FundsGrantsController {
 
     private final FundsGrantsService service;

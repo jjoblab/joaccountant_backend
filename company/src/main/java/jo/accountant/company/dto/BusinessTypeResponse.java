@@ -7,14 +7,19 @@ import jo.accountant.company.entity.BusinessType;
 import java.util.List;
 
 /**
- * Catalogue public d'un type métier + ses champs requis (étape 4 et 7 du wizard).
+ * Catalogue public d'un type métier + ses champs requiset 7 du wizard).
  *
  * <p>Sert de payload de réponse pour :
  * <ul>
- *   <li>{@code GET /api/v1/business-types} — liste de tous les types actifs ;</li>
- *   <li>{@code GET /api/v1/business-types/{code}} — détail d'un type + ses champs requis.</li>
+ * <li>{@code GET /api/v1/business-types} — liste de tous les types actifs ;</li>
+ * <li>{@code GET /api/v1/business-types/{code}} — détail d'un type + ses champs requis.</li>
  * </ul>
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record BusinessTypeResponse(
     String code,
     String label,

@@ -7,6 +7,14 @@ import java.util.UUID;
 import jo.accountant.employees.entity.ContractType;
 import jo.accountant.employees.entity.EmployeeStatus;
 
+/**
+ * EmployeeResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record EmployeeResponse(
     UUID id,
     UUID companyId,

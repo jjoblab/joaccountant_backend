@@ -7,6 +7,14 @@ import java.util.UUID;
 import jo.accountant.timebilling.entity.BillingType;
 import jo.accountant.timebilling.entity.ProjectStatus;
 
+/**
+ * ProjectResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record ProjectResponse(
     UUID id,
     UUID companyId,

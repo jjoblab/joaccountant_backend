@@ -19,26 +19,26 @@ import org.springframework.stereotype.Service;
  * <p>Responsabilités :
  *
  * <ol>
- *   <li><b>Initialisation du squelette PCN_HAITI</b> — appelle {@link
- *       ChartOfAccountsService#initialize(UUID, UUID,
- *       jo.accountant.chartofaccounts.dto.InitializeRequest.AccountNumberingTemplateDto)} qui
- *       génère les classes de niveau 1 (codes 1 à 8) ET les comptes niveau 2/3 du {@code
- *       PcnHaitiAccountTemplate} (wiring V6-6 dans {@code initializeMandated}).
- *   <li><b>Création des comptes feuilles</b> — pour chaque {@link AccountFixture} passé en
- *       paramètre, crée le compte de niveau 2 (code à 6 chiffres) rattaché à la classe de niveau 1
- *       correspondante (ex. {@code 411000 Clients} rattaché à la classe {@code 4}).
+ * <li><b>Initialisation du squelette PCN_HAITI</b> — appelle {@link
+ * ChartOfAccountsService#initialize(UUID, UUID,
+ * jo.accountant.chartofaccounts.dto.InitializeRequest.AccountNumberingTemplateDto)} qui
+ * génère les classes de niveau 1 (codes 1 à 8) ET les comptes niveau 2/3 du {@code
+ * PcnHaitiAccountTemplate} (wiring V6-6 dans {@code initializeMandated}).
+ * <li><b>Création des comptes feuilles</b> — pour chaque {@link AccountFixture} passé en
+ * paramètre, crée le compte de niveau 2 (code à 6 chiffres) rattaché à la classe de niveau 1
+ * correspondante (ex. {@code 411000 Clients} rattaché à la classe {@code 4}).
  * </ol>
  *
  * <p><b>Idempotence</b> — les seeders démo peuvent tourner plusieurs fois (démo itérative, re-seed
  * après修正). Chaque appel vérifie donc :
  *
  * <ul>
- *   <li>Si {@code initialize} lance une {@link ConflictException} ({@code
- *       CHART_OF_ACCOUNTS_ALREADY_INITIALIZED}), on attrape et on continue — le squelette existe
- *       déjà.
- *   <li>Si un compte feuille existe déjà (même code), on skip sans erreur — l'absence de {@code
- *       findByCompanyIdAndCode} publique sur le service nous oblige à charger la liste complète une
- *       fois et à construire un index par code (efficace : 1 SELECT au lieu de N).
+ * <li>Si {@code initialize} lance une {@link ConflictException} ({@code
+ * CHART_OF_ACCOUNTS_ALREADY_INITIALIZED}), on attrape et on continue — le squelette existe
+ * déjà.
+ * <li>Si un compte feuille existe déjà (même code), on skip sans erreur — l'absence de {@code
+ * findByCompanyIdAndCode} publique sur le service nous oblige à charger la liste complète une
+ * fois et à construire un index par code (efficace : 1 SELECT au lieu de N).
  * </ul>
  *
  * <p><b>Stratégie de rattachement</b> — la consigne demande de rattacher chaque compte feuille à la
@@ -54,7 +54,12 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Thread-safety</b> — le service est stateless et donc thread-safe. Le contexte tenant doit
  * être posé par l'appelant (typiquement via {@link DemoTenantContext}).
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Service
 public class ChartOfAccountsBootstrap {
 
@@ -71,7 +76,7 @@ public class ChartOfAccountsBootstrap {
    *
    * @param companyId identifiant de l'entreprise démo
    * @param frameworkId identifiant du référentiel comptable (typiquement {@code
-   *     00000000-0000-0000-0000-000000000004} pour PCN_HAITI)
+   * 00000000-0000-0000-0000-000000000004} pour PCN_HAITI)
    * @param accounts liste des comptes feuilles à créer (typiquement {@link AccountFixture#all()})
    */
   public void bootstrap(UUID companyId, UUID frameworkId, List<AccountFixture> accounts) {
@@ -87,8 +92,8 @@ public class ChartOfAccountsBootstrap {
 
     // --- 1. Initialisation du squelette PCN (classes niveau 1 + comptes template V6-6) ---
     // Idempotent : si déjà initialisé, le service lève ConflictException — on l'attrape.
-    // v2.5.2 fix : si initialize échoue (ex: IFRS require template), on skip aussi
-    // l'étape 2 (création des comptes feuilles) car les classes parent de niveau 1
+    // fix : si initialize échoue (ex: IFRS require template), on skip aussi
+    // l'(création des comptes feuilles) car les classes parent de niveau 1
     // n'existent pas → évite les warnings "Classe parente de niveau 1 introuvable".
     // Le seeder appelant a son propre fallback (ex: ensureIfrsFallbackAccounts).
     boolean initializeSucceeded = true;
@@ -105,7 +110,7 @@ public class ChartOfAccountsBootstrap {
           ex.getMessage());
     } catch (RuntimeException ex) {
       // Autre erreur (ex: IFRS require template, framework introuvable) — on logue
-      // et on skip l'étape 2. Le seeder appelant gère le fallback.
+      // et on skip l'Le seeder appelant gère le fallback.
       LOG.warn(
           "V9 — Erreur non-fatale lors de l'initialisation du plan comptable pour companyId={} : {} "
               + "— skip de la création des comptes feuilles (le seeder doit gérer le fallback).",
@@ -115,7 +120,7 @@ public class ChartOfAccountsBootstrap {
     }
 
     if (!initializeSucceeded) {
-      return;  // v2.5.2 — skip step 2, le seeder a son propre fallback.
+      return; // — skip step 2, le seeder a son propre fallback.
     }
 
     // --- 2. Création des comptes feuilles (6 chiffres) ---
@@ -216,9 +221,9 @@ public class ChartOfAccountsBootstrap {
    * <p>Exemples :
    *
    * <ul>
-   *   <li>{@code firstDigit="4"} → retourne la classe "4" (Tiers), qui est un compte de niveau 1
-   *       créé par {@code initializeMandated} (PCN_HAITI class seed)
-   *   <li>{@code firstDigit="6"} → retourne la classe "6" (Charges)
+   * <li>{@code firstDigit="4"} → retourne la classe "4" (Tiers), qui est un compte de niveau 1
+   * créé par {@code initializeMandated} (PCN_HAITI class seed)
+   * <li>{@code firstDigit="6"} → retourne la classe "6" (Charges)
    * </ul>
    *
    * @param firstDigit chiffre unique (1-9) correspondant à la classe PCN recherchée

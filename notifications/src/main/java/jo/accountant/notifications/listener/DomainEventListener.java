@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Listener de domaine du module {@code :notifications} — point d'entrée unique pour la
- * <b>future distribution de notifications métier v4.9</b> sur les événements à plus fort
+ * <b>future distribution de notifications métier</b> sur les événements à plus fort
  * impact opérationnel.
  *
  * <p><b>Events de domaine</b> (audit batch 2) : 26/30 events publiés dans le
@@ -48,7 +48,7 @@ import org.springframework.stereotype.Component;
  * <p><b>Comportement actuel (forensique no-op)</b> : chaque listener ne fait qu'écrire une ligne
  * de log INFO avec les champs clés. <b>Aucune notification réelle n'est envoyée</b> —
  * l'envoi effectif (NotificationChannelPort, templates, règles de routing par
- * préférence/utilisateur) sera branché en <b>v4.9</b>. L'objectif immédiat est :
+ * préférence/utilisateur) sera branché ultérieurement. L'objectif immédiat est :
  * <ol>
  * <li>Fournir un trail d'audit lisible dans les logs serveur pour investigation
  * post-incident.</li>
@@ -69,10 +69,15 @@ import org.springframework.stereotype.Component;
  * <p><b>Note d'architecture</b> : un listener forensique similaire
  * ({@code jo.accountant.notifications.service.ForensicEventListener}) existe déjà dans le
  * sous-paquetage {@code service}. Ce présent listener, dans le sous-paquetage {@code listener},
- * est l'<b>emblème du package</b> : tout ajout d'abonné notification (v4.9) doit être placé ici.
+ * est l'<b>emblème du package</b> : tout ajout d'abonné notification doit être placé ici.
  * La séparation {@code service} (forensique pur) vs {@code listener} (notifications utilisateur)
  * évite que la logique d'envoi n'interfère avec le trail d'audit.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 @Component
 public class DomainEventListener {
 
@@ -81,14 +86,14 @@ public class DomainEventListener {
  /**
  * Émission d'une facture client — événement à fort impact financier (CA, TVA, recouvrement).
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification in-app + e-mail au dirigeant /
+ * <p><b>À venir</b> : déclenchera une notification in-app + e-mail au dirigeant /
  * expert-comptable + alimentation des KPI temps-réel. Pour l'heure, log INFO forensique.
  */
  @Async("audit-async-executor")
  @EventListener
  public void onInvoiceIssued(InvoiceIssuedEvent event) {
  try {
- // TODO(v4.9): NotificationDispatcher.dispatch(
+ // TODO: NotificationDispatcher.dispatch(
  // event.companyId(), NotificationTemplate.INVOICE_ISSUED,
  // Map.of("invoiceNumber", event.invoiceNumber(),
  // "totalAmount", event.totalAmount(),
@@ -107,7 +112,7 @@ public class DomainEventListener {
  * Postage effectif d'une écriture comptable — impacte tous les états financiers et l'équilibre
  * du bilan.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification au manager si montant &gt; seuil
+ * <p><b>À venir</b> : déclenchera une notification au manager si montant &gt; seuil
  * configurable, et invalidation du cache des états financiers.
  */
  @Async("audit-async-executor")
@@ -126,7 +131,7 @@ public class DomainEventListener {
  /**
  * Import d'un relevé bancaire — déclenche le rapprochement automatique et la détection d'anomalies.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification « N écritures rapprochées /
+ * <p><b>À venir</b> : déclenchera une notification « N écritures rapprochées /
  * N anomalies détectées » au comptable en charge du rapprochement.
  */
  @Async("audit-async-executor")
@@ -146,7 +151,7 @@ public class DomainEventListener {
  * Cession d'immobilisation — impacte la plus/moins-value, l'IS à payer et le registre des
  * immobilisations.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification au responsable comptable +
+ * <p><b>À venir</b> : déclenchera une notification au responsable comptable +
  * intégration dans la déclaration IS prévisionnelle.
  */
  @Async("audit-async-executor")
@@ -172,9 +177,9 @@ public class DomainEventListener {
  * <p>Toute contre-passation doit être tracée pour investigation post-incident : pattern
  * anormal (ex: 10 contre-passations en 1h sur le même compte) peut indiquer une fraude
  * ou une erreur de saisie récurrente. Le log forensique est la source pour le futur
- * détecteur d'anomalies (v4.9 + machine learning).
+ * détecteur d'anomalies (+ machine learning).
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification au contrôleur interne si la
+ * <p><b>À venir</b> : déclenchera une notification au contrôleur interne si la
  * contre-passation porte sur une écriture de l'exercice précédent (N-1 verrouillé).
  */
  @Async("audit-async-executor")
@@ -194,7 +199,7 @@ public class DomainEventListener {
  /**
  * Création d'immobilisation — impacte le bilan, le plan d'amortissement et l'IS futur.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification au responsable comptable pour
+ * <p><b>À venir</b> : déclenchera une notification au responsable comptable pour
  * validation manuelle des données d'acquisition (coût, durée, méthode).
  */
  @Async("audit-async-executor")
@@ -213,7 +218,7 @@ public class DomainEventListener {
  /**
  * Postage d'une ligne d'amortissement — impacte la charge d'exploitation et le résultat net.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera un agrégat mensuel « N amortissements postés pour
+ * <p><b>À venir</b> : déclenchera un agrégat mensuel « N amortissements postés pour
  * un total de X » au responsable comptable.
  */
  @Async("audit-async-executor")
@@ -233,7 +238,7 @@ public class DomainEventListener {
  * Initialisation du plan comptable d'une entreprise — évènement rare et normalement unique
  * par entreprise. Une réinitialisation en production est suspecte et doit être tracée.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une alerte sécurité si une réinitialisation est
+ * <p><b>À venir</b> : déclenchera une alerte sécurité si une réinitialisation est
  * détectée (la première initialisation est attendue à l'onboarding, toute autre est
  * potentiellement malveillante).
  */
@@ -258,7 +263,7 @@ public class DomainEventListener {
  * l'event) pour audit complet. La modification d'un compte verrouillé est impossible
  * (409 côté service) — cet event n'est donc publié QUE pour des comptes non verrouillés.
  *
- * <p><b>v4.9 (à venir)</b> : déclenchera une notification au contrôleur interne si la
+ * <p><b>À venir</b> : déclenchera une notification au contrôleur interne si la
  * modification porte sur le mapping fiscal d'un compte (impact déclarations TVA/IS).
  */
  @Async("audit-async-executor")

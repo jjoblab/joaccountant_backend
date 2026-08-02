@@ -7,6 +7,14 @@ import jo.accountant.documentgeneration.entity.DocumentTemplate;
 import jo.accountant.documentgeneration.entity.GeneratedDocumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * Repository JPA DocumentTemplate.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public interface DocumentTemplateRepository extends JpaRepository<DocumentTemplate, UUID> {
 
     /** Gabarit par défaut actif pour un (companyId, documentType). */

@@ -7,6 +7,14 @@ import java.util.List;
 import java.util.UUID;
 import jo.accountant.expenses.entity.ExpenseReportStatus;
 
+/**
+ * ExpenseReportResponse.
+ *
+ * @author jo@Dev
+
+
+ */
+
 public record ExpenseReportResponse(
     UUID id,
     UUID companyId,

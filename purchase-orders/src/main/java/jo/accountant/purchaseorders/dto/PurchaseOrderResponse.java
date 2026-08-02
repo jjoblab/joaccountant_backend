@@ -9,7 +9,12 @@ import jo.accountant.purchaseorders.entity.PurchaseOrderStatus;
 
 /**
  * Réponse d'une commande fournisseur.
- */
+ 
+ *
+ * @author jo@Dev
+
+
+*/
 public record PurchaseOrderResponse(
  UUID id,
  UUID companyId,
