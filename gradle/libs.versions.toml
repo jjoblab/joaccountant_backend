@@ -21,7 +21,7 @@ springBoot = "3.5.0"
 springDependencyManagement = "1.1.6"
 
 # ----- Build tooling (plugins) -----
-spotless = "6.25.0"
+spotless = "8.9.0"
 jacoco = "0.8.11"
 spotbugs = "6.0.18"
 
