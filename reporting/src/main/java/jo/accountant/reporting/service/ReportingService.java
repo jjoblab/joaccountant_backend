@@ -39,15 +39,13 @@ import jo.accountant.inventory.entity.Item;
 import jo.accountant.inventory.repository.ItemRepository;
 import jo.accountant.inventory.repository.WarehouseRepository;
 import jo.accountant.inventory.service.InventoryService;
+import jo.accountant.invoicing.entity.InvoiceDirection;
 import jo.accountant.invoicing.entity.InvoiceStatus;
-import jo.accountant.invoicing.entity.SalesInvoice;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.entity.Invoice;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.payroll.entity.PayrollRun;
 import jo.accountant.payroll.repository.PayslipRepository;
 import jo.accountant.payroll.repository.PayrollRunRepository;
-import jo.accountant.purchasing.entity.PurchaseInvoice;
-import jo.accountant.purchasing.entity.PurchaseInvoiceStatus;
-import jo.accountant.purchasing.repository.PurchaseInvoiceRepository;
 import jo.accountant.reporting.dto.AgedBalance;
 import jo.accountant.reporting.dto.Dashboard;
 import jo.accountant.reporting.dto.ExportResult;
@@ -108,7 +106,7 @@ public class ReportingService {
  private final DocumentGenerationService documentGenerationService;
  private final FundsGrantsService fundsGrantsService;
  private final AccountRepository accountRepository;
- private final SalesInvoiceRepository invoiceRepository;
+ private final InvoiceRepository invoiceRepository;
  private final ApprovalRequestRepository approvalRequestRepository;
  private final ModuleAccessGuard moduleAccessGuard;
 
@@ -116,7 +114,6 @@ public class ReportingService {
 
  private final TaxService taxService;
  private final ThirdPartyRepository thirdPartyRepository;
- private final PurchaseInvoiceRepository purchaseInvoiceRepository;
  private final ExpenseReportRepository expenseReportRepository;
  private final ExpenseLineRepository expenseLineRepository;
  private final PayrollRunRepository payrollRunRepository;
@@ -134,12 +131,11 @@ public class ReportingService {
  DocumentGenerationService documentGenerationService,
  FundsGrantsService fundsGrantsService,
  AccountRepository accountRepository,
- SalesInvoiceRepository invoiceRepository,
+ InvoiceRepository invoiceRepository,
  ApprovalRequestRepository approvalRequestRepository,
  ModuleAccessGuard moduleAccessGuard,
  TaxService taxService,
  ThirdPartyRepository thirdPartyRepository,
- PurchaseInvoiceRepository purchaseInvoiceRepository,
  ExpenseReportRepository expenseReportRepository,
  ExpenseLineRepository expenseLineRepository,
  PayrollRunRepository payrollRunRepository,
@@ -161,7 +157,6 @@ public class ReportingService {
  this.moduleAccessGuard = moduleAccessGuard;
  this.taxService = taxService;
  this.thirdPartyRepository = thirdPartyRepository;
- this.purchaseInvoiceRepository = purchaseInvoiceRepository;
  this.expenseReportRepository = expenseReportRepository;
  this.expenseLineRepository = expenseLineRepository;
  this.payrollRunRepository = payrollRunRepository;
@@ -537,7 +532,8 @@ public class ReportingService {
  // ── 2. Factures échues ─────────────────────────────────────────────
  try {
  overdueInvoices = (int) invoiceRepository
- .findByCompanyIdAndStatus(companyId, InvoiceStatus.ISSUED).stream()
+ .findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.SALES, InvoiceStatus.ISSUED).stream()
  .filter(inv -> inv.getDueDate() != null && inv.getDueDate().isBefore(LocalDate.now()))
  .count();
  } catch (Exception e) {
@@ -712,7 +708,8 @@ public class ReportingService {
  Map<UUID, BigDecimal> amountByClient = new HashMap<>();
  for (InvoiceStatus st : new InvoiceStatus[]{
  InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID}) {
- for (SalesInvoice inv : invoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+ for (Invoice inv : invoiceRepository.findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.SALES, st)) {
  if (inv.getThirdPartyId() == null) continue;
  BigDecimal total = inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO;
  amountByClient.merge(inv.getThirdPartyId(), total, BigDecimal::add);
@@ -723,13 +720,14 @@ public class ReportingService {
 
  /**
  * Top 5 fournisseurs par volume d'achat (total TTC des factures d'achat
- * RECEIVED/PARTIALLY_PAID/PAID, agrégé par thirdPartyId).
+ * ISSUED/PARTIALLY_PAID/PAID, agrégé par thirdPartyId).
  */
  private List<jo.accountant.reporting.dto.AnalyticsTopEntity> computeTopSuppliers(UUID companyId) {
  Map<UUID, BigDecimal> amountBySupplier = new HashMap<>();
- for (PurchaseInvoiceStatus st : new PurchaseInvoiceStatus[]{
- PurchaseInvoiceStatus.RECEIVED, PurchaseInvoiceStatus.PARTIALLY_PAID, PurchaseInvoiceStatus.PAID}) {
- for (PurchaseInvoice inv : purchaseInvoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+ for (InvoiceStatus st : new InvoiceStatus[]{
+ InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID}) {
+ for (Invoice inv : invoiceRepository.findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.PURCHASE, st)) {
  if (inv.getThirdPartyId() == null) continue;
  BigDecimal total = inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO;
  amountBySupplier.merge(inv.getThirdPartyId(), total, BigDecimal::add);
@@ -781,7 +779,8 @@ public class ReportingService {
  int overdueCount = 0;
  BigDecimal overdueAmount = BigDecimal.ZERO;
  for (InvoiceStatus st : new InvoiceStatus[]{InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID}) {
- for (SalesInvoice inv : invoiceRepository.findByCompanyIdAndStatus(companyId, st)) {
+ for (Invoice inv : invoiceRepository.findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.SALES, st)) {
  if (inv.getDueDate() == null) continue;
  if (inv.getDueDate().isBefore(ninetyDaysAgo)) {
  overdueCount++;
@@ -846,28 +845,26 @@ public class ReportingService {
  LocalDate prevYearStart = LocalDate.of(today.getYear() - 1, 1, 1);
  LocalDate prevYearEnd = LocalDate.of(today.getYear() - 1, 12, 31);
 
- List<String> statuses = List.of(
- InvoiceStatus.ISSUED.name(),
- InvoiceStatus.PARTIALLY_PAID.name(),
- InvoiceStatus.PAID.name());
+ List<InvoiceStatus> invoiceStatuses = List.of(
+ InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
 
- BigDecimal currentMonth = sumSalesInvoiced(companyId, monthStart, today, statuses);
- BigDecimal previousMonth = sumSalesInvoiced(companyId, prevMonthStart, prevMonthEnd, statuses);
- BigDecimal currentYear = sumSalesInvoiced(companyId, yearStart, today, statuses);
- BigDecimal previousYear = sumSalesInvoiced(companyId, prevYearStart, prevYearEnd, statuses);
+ BigDecimal currentMonth = sumInvoiced(companyId, monthStart, today, invoiceStatuses);
+ BigDecimal previousMonth = sumInvoiced(companyId, prevMonthStart, prevMonthEnd, invoiceStatuses);
+ BigDecimal currentYear = sumInvoiced(companyId, yearStart, today, invoiceStatuses);
+ BigDecimal previousYear = sumInvoiced(companyId, prevYearStart, prevYearEnd, invoiceStatuses);
 
  return new jo.accountant.reporting.dto.AnalyticsPeriodComparison(
  currentMonth, previousMonth, currentYear, previousYear);
  }
 
  /** Wrapper défensif autour du repository pour ne pas casser le dashboard si la query échoue. */
- private BigDecimal sumSalesInvoiced(UUID companyId, LocalDate from, LocalDate to, List<String> statuses) {
+ private BigDecimal sumInvoiced(UUID companyId, LocalDate from, LocalDate to, List<InvoiceStatus> statuses) {
  try {
  return invoiceRepository
- .sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(companyId, from, to, statuses)
- .orElse(BigDecimal.ZERO);
+ .sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(
+ companyId, InvoiceDirection.SALES, statuses, from, to);
  } catch (Exception e) {
- LOG.debug("[Analytics] sumSalesInvoiced failed companyId={} from={} to={}: {}",
+ LOG.debug("[Analytics] sumInvoiced failed companyId={} from={} to={}: {}",
  companyId, from, to, e.getMessage());
  return BigDecimal.ZERO;
  }
@@ -900,7 +897,8 @@ public class ReportingService {
 
  // Inclure ISSUED et PARTIALLY_PAID (les deux statuts où il reste un solde dû).
  for (InvoiceStatus status : new InvoiceStatus[]{InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID}) {
- for (SalesInvoice inv : invoiceRepository.findByCompanyIdAndStatus(companyId, status)) {
+ for (Invoice inv : invoiceRepository.findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.SALES, status)) {
  if (inv.getDueDate() == null) continue;
  BigDecimal balanceDue = inv.getBalanceDue();
  if (balanceDue == null || balanceDue.compareTo(BigDecimal.ZERO) <= 0) continue;
@@ -929,11 +927,11 @@ public class ReportingService {
  * Calcule la balance âgée des factures fournisseurs (Part D1).
  *
  * <p>Symétrique de {@link #getAgedBalance(UUID)} pour le côté fournisseur : ventile le
- * solde dû des {@link PurchaseInvoice} RECEIVED et PARTIALLY_PAID par tranche d'âge depuis
+ * solde dû des {@link Invoice} ISSUED et PARTIALLY_PAID par tranche d'âge depuis
  * la date d'échéance ({@code dueDate}). Les factures DRAFT (non encore reçues — pas
  * d'écriture comptable) et VOID/PAID (solde dû nul) sont exclues.
  *
- * <p>Utilise directement {@link PurchaseInvoiceRepository} plutôt que les JournalLine
+ * <p>Utilise directement {@link InvoiceRepository} plutôt que les JournalLine
  * SUPPLIER — l'information d'échéance est portée par la facture elle-même (dueDate),
  * pas par l'écriture comptable (qui ne connaît que la date de l'écriture).
  */
@@ -947,11 +945,12 @@ public class ReportingService {
  BigDecimal d90_plus = BigDecimal.ZERO;
  int invoiceCount = 0;
 
- // RECEIVED et PARTIALLY_PAID = statuts où la facture a une écriture comptable
+ // ISSUED et PARTIALLY_PAID = statuts où la facture a une écriture comptable
  // (crédit fournisseur) et un solde restant à payer.
- for (PurchaseInvoiceStatus status : new PurchaseInvoiceStatus[]{
- PurchaseInvoiceStatus.RECEIVED, PurchaseInvoiceStatus.PARTIALLY_PAID}) {
- for (PurchaseInvoice inv : purchaseInvoiceRepository.findByCompanyIdAndStatus(companyId, status)) {
+ for (InvoiceStatus status : new InvoiceStatus[]{
+ InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID}) {
+ for (Invoice inv : invoiceRepository.findByCompanyIdAndDirectionAndStatusOrderByIssueDateDesc(
+ companyId, InvoiceDirection.PURCHASE, status)) {
  if (inv.getDueDate() == null) continue;
  BigDecimal balanceDue = inv.getBalanceDue();
  if (balanceDue == null || balanceDue.compareTo(BigDecimal.ZERO) <= 0) continue;
@@ -1048,12 +1047,16 @@ public class ReportingService {
  * factures triées par date d'émission décroissante.
  */
  private ExportResult exportPurchaseRegisterCsv(UUID companyId, LocalDate from, LocalDate to) {
- List<PurchaseInvoice> invoices;
+ List<Invoice> invoices;
  if (from != null && to != null) {
- invoices = purchaseInvoiceRepository
- .findByCompanyIdAndIssueDateBetweenOrderByIssueDateDesc(companyId, from, to);
+ invoices = invoiceRepository
+ .findByCompanyIdAndDirectionOrderByIssueDateDesc(companyId, InvoiceDirection.PURCHASE).stream()
+ .filter(inv -> inv.getIssueDate() != null
+ && !inv.getIssueDate().isBefore(from) && !inv.getIssueDate().isAfter(to))
+ .toList();
  } else {
- invoices = purchaseInvoiceRepository.findByCompanyIdOrderByIssueDateDesc(companyId);
+ invoices = invoiceRepository.findByCompanyIdAndDirectionOrderByIssueDateDesc(
+ companyId, InvoiceDirection.PURCHASE);
  }
 
  // Indexer les tiers fournisseurs une seule fois (évite N+1 sur le nom du fournisseur).
@@ -1065,7 +1068,7 @@ public class ReportingService {
 
  StringBuilder csv = new StringBuilder();
  csv.append("N° facture;Fournisseur;Date;HT;TVA;TTC;Statut\n");
- for (PurchaseInvoice inv : invoices) {
+ for (Invoice inv : invoices) {
  String supplierName = supplierNameById.getOrDefault(inv.getThirdPartyId(), "");
  String number = inv.getInvoiceNumber() != null ? inv.getInvoiceNumber() : "";
  String date = inv.getIssueDate() != null ? inv.getIssueDate().toString() : "";

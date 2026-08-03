@@ -50,17 +50,20 @@ public interface InvoiceLineRepository extends JpaRepository<InvoiceLine, UUID> 
  "from InvoiceLine l " +
  "where l.companyId = :companyId " +
  "and l.invoiceId in (" +
- " select s.id from SalesInvoice s " +
- " where s.status in :statuses " +
+ " select s.id from Invoice s " +
+ " where s.direction = :direction " +
+ " and s.status in :statuses " +
  " and s.issueDate >= coalesce(:from, s.issueDate) " +
  " and s.issueDate <= coalesce(:to, s.issueDate)" +
  ") " +
  "group by l.taxRate " +
  "order by l.taxRate")
  List<TaxRateAggregate> aggregateByTaxRate(@Param("companyId") UUID companyId,
+ @Param("direction") String direction,
  @Param("from") LocalDate from,
  @Param("to") LocalDate to,
  @Param("statuses") List<jo.accountant.invoicing.entity.InvoiceStatus> statuses);
+
 
  /**
  *Projection pour l'agrégation SQL par taux de TVA.

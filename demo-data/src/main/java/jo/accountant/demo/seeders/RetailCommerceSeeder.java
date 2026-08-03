@@ -58,10 +58,6 @@ import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.service.PayrollService;
-import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
-import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
-import jo.accountant.purchasing.entity.PurchaseInvoiceType;
-import jo.accountant.purchasing.service.PurchasingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
@@ -82,7 +78,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Données générées (idempotent) : company + user owner + 50 comptes PCN_HAITI + 6 journaux
  * (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux + 14 séquences documentaires + 8 clients + 5
  * fournisseurs + 4 employés + 1 banque + 1 entrepôt + 8 articles + 12 mois d'opérations
- * (SalesInvoice/PurchaseInvoice/ExpenseReport/PayrollRun sur FY2025-2026).
+ * (Invoice/Invoice/ExpenseReport/PayrollRun sur FY2025-2026).
  *
  * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
  * enveloppé d'un try/catch pour ne pas faire échouer le démarrage de l'application.
@@ -145,7 +141,6 @@ public class RetailCommerceSeeder implements CompanySeeder {
  private final ThirdPartiesService thirdPartiesService;
  private final EmployeesService employeesService;
  private final InvoicingService invoicingService;
- private final PurchasingService purchasingService;
  private final ExpensesService expensesService;
  private final PayrollService payrollService;
  private final InventoryService inventoryService;
@@ -180,7 +175,6 @@ public class RetailCommerceSeeder implements CompanySeeder {
  ThirdPartiesService thirdPartiesService,
  EmployeesService employeesService,
  InvoicingService invoicingService,
- PurchasingService purchasingService,
  ExpensesService expensesService,
  PayrollService payrollService,
  InventoryService inventoryService,
@@ -198,7 +192,6 @@ public class RetailCommerceSeeder implements CompanySeeder {
  this.thirdPartiesService = thirdPartiesService;
  this.employeesService = employeesService;
  this.invoicingService = invoicingService;
- this.purchasingService = purchasingService;
  this.expensesService = expensesService;
  this.payrollService = payrollService;
  this.inventoryService = inventoryService;
@@ -305,7 +298,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  fiscalYearBootstrap.bootstrap(companyId);
  numberingBootstrap.bootstrap(companyId);
  // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
- // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+ // services InvoicingService/InvoicingService/PayrollService attendent mais que le
  // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
  ensureExtraDocumentSequences(companyId);
  // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
@@ -435,7 +428,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
 
  /**
  * Crée les 4 séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les services
- * InvoicingService/PurchasingService/PayrollService attendent mais que le bootstrap générique ne
+ * InvoicingService/InvoicingService/PayrollService attendent mais que le bootstrap générique ne
  * crée pas (il ne crée que les variants à scopeKey="").
  */
  private void ensureExtraDocumentSequences(UUID companyId) {
@@ -707,14 +700,14 @@ public class RetailCommerceSeeder implements CompanySeeder {
  while (!month.isAfter(FY2526_END)) {
  int monthCount = 0;
  try {
- // 6-8 SalesInvoice/mois
+ // 6-8 Invoice/mois
  int nSales = 6 + (monthIdx % 3); // 6, 7, 8, 6, 7, 8, ...
  for (int i = 0; i < nSales; i++) {
  if (createSalesInvoice(companyId, month, i, clients, items)) {
  monthCount++;
  }
  }
- // 2-3 PurchaseInvoice/mois
+ // 2-3 Invoice/mois
  int nPur = 2 + (monthIdx % 2); // 2, 3, 2, 3, ...
  for (int i = 0; i < nPur; i++) {
  if (createPurchaseInvoice(companyId, month, i, suppliers, items)) {
@@ -802,42 +795,43 @@ public class RetailCommerceSeeder implements CompanySeeder {
  * l'écriture).
  */
  private boolean createPurchaseInvoice(
- UUID companyId,
- LocalDate month,
- int seq,
- List<ThirdPartyResponse> suppliers,
+            UUID companyId,
+            LocalDate month,
+            int seq,
+            List<ThirdPartyResponse> suppliers,
  List<ItemResponse> items) {
  ThirdPartyResponse supplier = suppliers.get((month.getMonthValue() + seq) % suppliers.size());
  int nLines = 1 + (seq % 3); // 1, 2, 3
- List<CreatePurchaseInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+ List<CreateInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
  for (int i = 0; i < nLines; i++) {
  int qty = 5 + ((seq + i) * 13) % 50; // 5-54
  BigDecimal unitPrice =
  new BigDecimal(300 + ((seq + i) * 211) % 2500) // 300-2799
  .setScale(2, RoundingMode.HALF_UP);
  lines.add(
- new CreatePurchaseInvoiceRequest.LineDto(
- "Achat marchandises — "
+ new CreateInvoiceRequest.LineDto(
+              "Achat marchandises — "
  + (items.isEmpty() ? "lot " + i : items.get((seq + i) % items.size()).label()),
- new BigDecimal(qty),
- unitPrice,
- VAT_RATE, // taxRate 10% (TVA déductible côté achat)
- null // expenseAccountId null → le service résout un compte CHARGES par défaut
- ));
+              new BigDecimal(qty),
+              unitPrice,
+              BigDecimal.ZERO, // discountPercent=0
+              VAT_RATE, // taxRate
+              null // itemId=null
+              ));
  }
  LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 8, 27));
- CreatePurchaseInvoiceRequest req =
- new CreatePurchaseInvoiceRequest(
- supplier.id(),
- PurchaseInvoiceType.STANDARD,
- "FOURN-" + month.getYear() + month.getMonthValue() + "-" + seq,
- issueDate,
- issueDate.plusDays(30),
- "HTG",
- lines);
+ CreateInvoiceRequest req =
+ new CreateInvoiceRequest(
+            supplier.id(),
+            InvoiceType.STANDARD,
+            issueDate,
+            issueDate.plusDays(30),
+            "HTG",
+            lines,
+            null);
  try {
- PurchaseInvoiceResponse inv = purchasingService.createPurchaseInvoice(companyId, req);
- purchasingService.receive(companyId, inv.id());
+ InvoiceResponse inv = invoicingService.createInvoice(companyId, req);
+ invoicingService.issueInvoice(companyId, inv.id());
  return true;
  } catch (ConflictException ex) {
  LOG.debug("V9 — Facture achat déjà existante pour {} seq={} — skip", month, seq);

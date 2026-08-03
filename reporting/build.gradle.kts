@@ -26,7 +26,6 @@ dependencies {
 
     // Part D/E — repositories pour les exports CSV sectoriels.
     implementation(project(":tax"))              // TaxService.getDeclaration (D2)
-    implementation(project(":purchasing"))       // PurchaseInvoiceRepository (D3, D1)
     implementation(project(":expenses"))         // ExpenseReportRepository (D4)
     implementation(project(":payroll"))          // PayrollRunRepository + PayslipRepository (D5)
     implementation(project(":inventory"))        // ItemRepository, StockMoveRepository, StockValuationLayerRepository (E1, E2, E4)

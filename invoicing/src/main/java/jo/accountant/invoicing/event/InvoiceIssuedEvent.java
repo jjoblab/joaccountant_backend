@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 import jo.accountant.core.audit.AuditEvent;
 import jo.accountant.core.audit.AuditableAction;
-import jo.accountant.invoicing.entity.SalesInvoice;
+import jo.accountant.invoicing.entity.Invoice;
 
 /**
  * Événement publié à chaque émission effective d'une facture (transition vers ISSUED).
@@ -25,12 +25,12 @@ public record InvoiceIssuedEvent(
  UUID companyId, UUID actorUserId, UUID invoiceId, String invoiceNumber,
  BigDecimal totalAmount, Instant occurredAt
 ) implements AuditableAction {
- public InvoiceIssuedEvent(SalesInvoice inv, UUID actorUserId) {
+ public InvoiceIssuedEvent(Invoice inv, UUID actorUserId) {
  this(inv.getCompanyId(), actorUserId, inv.getId(), inv.getInvoiceNumber(),
  inv.getTotalAmount(), Instant.now());
  }
  @Override public AuditEvent toAuditEvent() {
- return AuditEvent.of(companyId, actorUserId, "SalesInvoice", invoiceId, "ISSUE",
+ return AuditEvent.of(companyId, actorUserId, "Invoice", invoiceId, "ISSUE",
  null, "{\"invoiceNumber\":\"" + invoiceNumber + "\",\"totalAmount\":" + totalAmount + "}", null);
  }
 }

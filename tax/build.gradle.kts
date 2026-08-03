@@ -11,7 +11,6 @@ dependencies {
     implementation(project(":accounting-engine"))
     implementation(project(":financial-statements"))
     implementation(project(":invoicing"))
-    implementation(project(":purchasing"))
     implementation(project(":company"))
     // step2-backend — Reports Hub v2.4.0 : rendu PDF des déclarations TVA/TCA et
     // de la projection d'IS via DocumentGenerationService. Pas de cycle (Rule 24

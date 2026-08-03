@@ -12,8 +12,8 @@ import jo.accountant.chartofaccounts.entity.Account;
 import jo.accountant.chartofaccounts.repository.AccountRepository;
 import jo.accountant.employees.entity.Employee;
 import jo.accountant.employees.repository.EmployeeRepository;
-import jo.accountant.invoicing.entity.SalesInvoice;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.entity.Invoice;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.thirdparties.entity.ThirdParty;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
 import jo.accountant.thirdparties.repository.ThirdPartyRepository;
@@ -103,14 +103,14 @@ public class SearchController {
     private static final int HARD_LIMIT_CAP = 25;
 
     private final ThirdPartyRepository thirdPartyRepository;
-    private final SalesInvoiceRepository salesInvoiceRepository;
+    private final InvoiceRepository salesInvoiceRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final AccountRepository accountRepository;
     private final EmployeeRepository employeeRepository;
     private final jo.accountant.core.security.RoleChecker roleChecker;
 
     public SearchController(ThirdPartyRepository thirdPartyRepository,
-                             SalesInvoiceRepository salesInvoiceRepository,
+                             InvoiceRepository salesInvoiceRepository,
                              JournalEntryRepository journalEntryRepository,
                              AccountRepository accountRepository,
                              EmployeeRepository employeeRepository,
@@ -181,10 +181,12 @@ public class SearchController {
 
         // 2. Invoices
         try {
-            var page = salesInvoiceRepository
-                    .findByCompanyIdAndInvoiceNumberContainingIgnoreCaseOrderByIssueDateDesc(
-                            companyId, q, PageRequest.of(0, PER_MODULE_LIMIT));
-            for (SalesInvoice inv : page.getContent()) {
+            List<Invoice> invoices = salesInvoiceRepository
+                    .searchByNumber(companyId, q);
+            if (invoices.size() > PER_MODULE_LIMIT) {
+                invoices = invoices.subList(0, PER_MODULE_LIMIT);
+            }
+            for (Invoice inv : invoices) {
                 if (results.size() >= cappedLimit) break;
                 if (inv == null || inv.getId() == null) continue;
                 results.add(new GlobalSearchResult(
@@ -283,7 +285,7 @@ public class SearchController {
         };
     }
 
-    private static String invoiceSubtitle(SalesInvoice inv) {
+    private static String invoiceSubtitle(Invoice inv) {
         StringBuilder sb = new StringBuilder();
         if (inv.getIssueDate() != null) {
             sb.append(inv.getIssueDate());

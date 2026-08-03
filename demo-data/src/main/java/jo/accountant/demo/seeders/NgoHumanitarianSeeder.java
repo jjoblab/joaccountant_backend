@@ -55,13 +55,13 @@ import jo.accountant.fundsgrants.service.FundsGrantsService;
 import jo.accountant.fxoperations.dto.CreateFxOperationRequest;
 import jo.accountant.fxoperations.entity.FxOperationType;
 import jo.accountant.fxoperations.service.FxOperationsService;
+import jo.accountant.invoicing.service.InvoicingService;
+import jo.accountant.invoicing.dto.CreateInvoiceRequest;
+import jo.accountant.invoicing.dto.InvoiceResponse;
+import jo.accountant.invoicing.entity.InvoiceType;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.service.PayrollService;
-import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
-import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
-import jo.accountant.purchasing.entity.PurchaseInvoiceType;
-import jo.accountant.purchasing.service.PurchasingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
@@ -86,7 +86,7 @@ import org.springframework.transaction.annotation.Transactional;
  * journaux (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux + 14 séquences documentaires + 4 bailleurs
  * DONOR + 8 fournisseurs SUPPLIER + 12 bénéficiaires CLIENT + 35 employés (5 staff HQ + 30 field
  * workers) + 1 banque USD + 4 subventions (1 par bailleur) + 12 mois d'opérations (DonationReceipt
- * CASH + IN_KIND, PurchaseInvoice TVA 0%, ExpenseReport, PayrollRun, FxOperation trimestrielle
+ * CASH + IN_KIND, Invoice TVA 0%, ExpenseReport, PayrollRun, FxOperation trimestrielle
  * USD→HTG).
  *
  * <p><b>Spécificités NGO</b> :
@@ -165,7 +165,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
       accountingEngineService;
   private final ThirdPartiesService thirdPartiesService;
   private final EmployeesService employeesService;
-  private final PurchasingService purchasingService;
+  private final InvoicingService invoicingService;
   private final ExpensesService expensesService;
   private final PayrollService payrollService;
   private final BankReconciliationService bankReconciliationService;
@@ -202,7 +202,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
       jo.accountant.accountingengine.service.AccountingEngineService accountingEngineService,
       ThirdPartiesService thirdPartiesService,
       EmployeesService employeesService,
-      PurchasingService purchasingService,
+      InvoicingService invoicingService,
       ExpensesService expensesService,
       PayrollService payrollService,
       BankReconciliationService bankReconciliationService,
@@ -222,7 +222,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     this.accountingEngineService = accountingEngineService;
     this.thirdPartiesService = thirdPartiesService;
     this.employeesService = employeesService;
-    this.purchasingService = purchasingService;
+    this.invoicingService = invoicingService;
     this.expensesService = expensesService;
     this.payrollService = payrollService;
     this.bankReconciliationService = bankReconciliationService;
@@ -333,7 +333,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     fiscalYearBootstrap.bootstrap(companyId);
     numberingBootstrap.bootstrap(companyId);
     // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
-    // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+    // services InvoicingService/InvoicingService/PayrollService attendent mais que le
     // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
     ensureExtraDocumentSequences(companyId);
     // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
@@ -472,7 +472,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
 
   /**
    * Crée les 4 séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les services
-   * InvoicingService/PurchasingService/PayrollService attendent mais que le bootstrap générique ne
+   * InvoicingService/InvoicingService/PayrollService attendent mais que le bootstrap générique ne
    * crée pas (il ne crée que les variants à scopeKey="").
    */
   private void ensureExtraDocumentSequences(UUID companyId) {
@@ -875,7 +875,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
             monthCount++;
           }
         }
-        // 2-3 PurchaseInvoice/mois — achats pour programmes (TVA 0% VAT_EXEMPT_NGO)
+        // 2-3 Invoice/mois — achats pour programmes (TVA 0% VAT_EXEMPT_NGO)
         int nPur = 2 + (monthIdx % 2); // 2, 3, 2, 3, ...
         for (int i = 0; i < nPur; i++) {
           if (createPurchaseInvoice(companyId, month, i, suppliers)) {
@@ -1025,7 +1025,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
       UUID companyId, LocalDate month, int seq, List<ThirdPartyResponse> suppliers) {
     ThirdPartyResponse supplier = suppliers.get((month.getMonthValue() + seq) % suppliers.size());
     int nLines = 1 + (seq % 3); // 1, 2, 3
-    List<CreatePurchaseInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+    List<CreateInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
     String[] itemLabels = {
       "Médicaments essentiels — kit santé",
       "Intrants agricoles — semences et engrais",
@@ -1043,27 +1043,27 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
               .setScale(2, RoundingMode.HALF_UP);
       String label = itemLabels[(seq + i) % itemLabels.length];
       lines.add(
-          new CreatePurchaseInvoiceRequest.LineDto(
+          new CreateInvoiceRequest.LineDto(
               "Achat programme — " + label,
               new BigDecimal(qty),
               unitPrice,
-              BigDecimal.ZERO, // taxRate=0 — TVA exonérée (VAT_EXEMPT_NGO)
-              null // expenseAccountId null → le service résout un compte CHARGES par défaut
+              BigDecimal.ZERO, // discountPercent=0
+              BigDecimal.ZERO, // taxRate=0
+              null // itemId=null
               ));
     }
     LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 8, 27));
-    CreatePurchaseInvoiceRequest req =
-        new CreatePurchaseInvoiceRequest(
+    CreateInvoiceRequest req =
+        new CreateInvoiceRequest(
             supplier.id(),
-            PurchaseInvoiceType.STANDARD,
-            "FOURN-" + month.getYear() + month.getMonthValue() + "-" + seq,
+            InvoiceType.STANDARD,
             issueDate,
             issueDate.plusDays(30),
             FUNCTIONAL_CURRENCY, // USD
-            lines);
+            lines, null);
     try {
-      PurchaseInvoiceResponse inv = purchasingService.createPurchaseInvoice(companyId, req);
-      purchasingService.receive(companyId, inv.id());
+      InvoiceResponse inv = invoicingService.createInvoice(companyId, req);
+      invoicingService.issueInvoice(companyId, inv.id());
       return true;
     } catch (ConflictException ex) {
       LOG.debug("V9 — Facture achat déjà existante pour {} seq={} — skip", month, seq);

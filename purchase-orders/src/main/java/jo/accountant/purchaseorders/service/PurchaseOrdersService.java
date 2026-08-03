@@ -138,10 +138,47 @@ public class PurchaseOrdersService {
  @Transactional
  public PurchaseOrderResponse changeStatus(UUID companyId, UUID poId, PurchaseOrderStatus newStatus) {
  PurchaseOrder po = loadPo(companyId, poId);
+ PurchaseOrderStatus current = po.getStatus();
+ // v9.0 — Validation des transitions autorisées.
+ // Workflow : DRAFT → SUBMITTED → RECEIVED → CLOSED
+ // - DRAFT → SUBMITTED, RECEIVED, CLOSED (avance rapide autorisée)
+ // - SUBMITTED → RECEIVED, CLOSED
+ // - RECEIVED → CLOSED
+ // - CLOSED → (terminal, aucune transition)
+ // - Rétrogradation (ex: RECEIVED → DRAFT) refusée.
+ if (current == newStatus) {
+ throw new jo.accountant.core.exception.ConflictException("PO_SAME_STATUS",
+ "La commande est déjà au statut " + current + ".");
+ }
+ if (!isTransitionAllowed(current, newStatus)) {
+ throw new jo.accountant.core.exception.ConflictException("PO_INVALID_TRANSITION",
+ "Transition interdite : " + current + " → " + newStatus
+ + ". Workflow autorisé : DRAFT → SUBMITTED → RECEIVED → CLOSED.");
+ }
  po.setStatus(newStatus);
  poRepository.save(po);
- LOG.info("Statut commande mis à jour : id={} newStatus={}", po.getId(), newStatus);
+ LOG.info("Statut commande mis à jour : id={} {} → {}", po.getId(), current, newStatus);
  return loadResponse(companyId, po.getId());
+ }
+
+ /**
+ * v9.0 — Vérifie qu'une transition de statut PO est autorisée.
+ * Le workflow est strictement forward : DRAFT → SUBMITTED → RECEIVED → CLOSED.
+ * Les sauts en avant sont autorisés (ex: DRAFT → RECEIVED) mais pas la rétrogradation.
+ */
+ private boolean isTransitionAllowed(PurchaseOrderStatus from, PurchaseOrderStatus to) {
+ int fromRank = poStatusRank(from);
+ int toRank = poStatusRank(to);
+ return toRank > fromRank;
+ }
+
+ private int poStatusRank(PurchaseOrderStatus s) {
+ return switch (s) {
+ case DRAFT -> 1;
+ case SUBMITTED -> 2;
+ case RECEIVED -> 3;
+ case CLOSED -> 4;
+ };
  }
 
  // --- Helpers ---

@@ -11,18 +11,15 @@ import java.util.UUID;
 import jo.accountant.core.exception.NotFoundException;
 import jo.accountant.core.exception.ValidationException;
 import jo.accountant.core.tenant.TenantContext;
+import jo.accountant.invoicing.entity.InvoiceDirection;
 import jo.accountant.invoicing.entity.InvoiceLine;
 import jo.accountant.invoicing.entity.InvoiceLineTaxType;
 import jo.accountant.invoicing.entity.InvoiceStatus;
-import jo.accountant.invoicing.entity.SalesInvoice;
+
+import jo.accountant.invoicing.entity.Invoice;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
 import jo.accountant.invoicing.repository.InvoiceLineTaxRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
-import jo.accountant.purchasing.entity.PurchaseInvoice;
-import jo.accountant.purchasing.entity.PurchaseInvoiceLine;
-import jo.accountant.purchasing.entity.PurchaseInvoiceStatus;
-import jo.accountant.purchasing.repository.PurchaseInvoiceLineRepository;
-import jo.accountant.purchasing.repository.PurchaseInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.company.entity.Company;
 import jo.accountant.company.entity.TaxExemptionStatus;
 import jo.accountant.company.repository.CompanyRepository;
@@ -60,10 +57,8 @@ public class TaxService {
 
  private final TaxRuleRepository taxRuleRepository;
  private final WithholdingRuleRepository withholdingRuleRepository;
- private final SalesInvoiceRepository invoiceRepository;
+ private final InvoiceRepository invoiceRepository;
  private final InvoiceLineRepository invoiceLineRepository;
- private final PurchaseInvoiceRepository purchaseInvoiceRepository; // Audit v4.7 §4.1 — TVA déductible
- private final PurchaseInvoiceLineRepository purchaseInvoiceLineRepository;
  private final ObjectMapper objectMapper;
 
  // v6-1 — Repository des lignes de taxe multi-taxes par InvoiceLine (null dans les tests
@@ -72,17 +67,13 @@ public class TaxService {
 
  public TaxService(TaxRuleRepository taxRuleRepository,
  WithholdingRuleRepository withholdingRuleRepository,
- SalesInvoiceRepository invoiceRepository,
+ InvoiceRepository invoiceRepository,
  InvoiceLineRepository invoiceLineRepository,
- PurchaseInvoiceRepository purchaseInvoiceRepository,
- PurchaseInvoiceLineRepository purchaseInvoiceLineRepository,
  ObjectMapper objectMapper) {
  this.taxRuleRepository = taxRuleRepository;
  this.withholdingRuleRepository = withholdingRuleRepository;
  this.invoiceRepository = invoiceRepository;
  this.invoiceLineRepository = invoiceLineRepository;
- this.purchaseInvoiceRepository = purchaseInvoiceRepository;
- this.purchaseInvoiceLineRepository = purchaseInvoiceLineRepository;
  this.objectMapper = objectMapper;
  }
 
@@ -190,7 +181,7 @@ public class TaxService {
  * {@code findByInvoiceIdOrderByCreatedAt(inv.getId())} → N+1 (1000 factures = 1003 requêtes).
  * Désormais, l'agrégation par taux de TVA est poussée en SQL via
  * {@link InvoiceLineRepository#aggregateByTaxRate} (ventes) et
- * {@link PurchaseInvoiceLineRepository#aggregateByTaxRate} (achats) : 2 requêtes SQL au total.
+ * {@link InvoiceLineRepository#aggregateByTaxRate} (achats) : 2 requêtes SQL au total.
  * Gain attendu : ~500× sur 1000 factures.
  *
  * <p>La signature publique et le format de retour ({@link TaxDeclaration}) sont inchangés
@@ -232,7 +223,7 @@ public class TaxService {
  * on lit/écrit le crédit comme avant. Pour les autres types, on ne lit ni n'écrit de crédit
  * (la TCA et les accises n'ont pas de mécanisme de crédit reporté en Haïti).
  *
- * <p><b>TVA déductible</b> : actuellement, les achats ({@code PurchaseInvoiceLine}) ne supportent
+ * <p><b>TVA déductible</b> : actuellement, les achats ({@code InvoiceLine}) ne supportent
  * pas encore le multi-taxe par ligne (uniquement {@code tax_rate} unique). Pour
  * {@code taxType=VAT} ou {@code null}, on agrège la TVA déductible comme avant. Pour les
  * autres types, {@code deductibleLines} est vide et {@code totalTaxDeductible} = 0.
@@ -295,17 +286,17 @@ public class TaxService {
  }
 
  // ── TVA / TCA / autres DÉDUCTIBLE (factures d'achats) ──
- // Les achats ne supportent pas encore le multi-taxe (PurchaseInvoiceLine n'a que taxRate).
+ // Les achats ne supportent pas encore le multi-taxe (InvoiceLine n'a que taxRate).
  // Pour taxType=VAT, on fallback sur l'agrégation existante (tout est considéré TVA).
  // Pour taxType=TCA/autres, on retourne vide (pas de TCA déductible implémenté).
  List<TaxDeclaration.TaxLine> deductibleLines = new ArrayList<>();
  BigDecimal totalTaxDeductible = BigDecimal.ZERO;
  if (lineTaxType == InvoiceLineTaxType.VAT) {
- List<PurchaseInvoiceStatus> purchaseStatuses = List.of(
- PurchaseInvoiceStatus.RECEIVED, PurchaseInvoiceStatus.PARTIALLY_PAID, PurchaseInvoiceStatus.PAID);
- List<PurchaseInvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
- purchaseInvoiceLineRepository.aggregateByTaxRate(companyId, from, to, purchaseStatuses);
- for (PurchaseInvoiceLineRepository.TaxRateAggregate agg : purchaseAggregates) {
+ List<InvoiceStatus> purchaseStatuses = List.of(
+ InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
+ List<InvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
+ invoiceLineRepository.aggregateByTaxRate(companyId, "PURCHASE", from, to, purchaseStatuses);
+ for (InvoiceLineRepository.TaxRateAggregate agg : purchaseAggregates) {
  BigDecimal rate = agg.getTaxRate() != null ? agg.getTaxRate() : BigDecimal.ZERO;
  if (rate.compareTo(BigDecimal.ZERO) == 0) continue; // TVA 0% non déductible
  BigDecimal base = agg.getTotalHt() != null ? agg.getTotalHt() : BigDecimal.ZERO;
@@ -368,7 +359,7 @@ public class TaxService {
  List<InvoiceStatus> salesStatuses = List.of(
  InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
  List<InvoiceLineRepository.TaxRateAggregate> salesAggregates =
- invoiceLineRepository.aggregateByTaxRate(companyId, from, to, salesStatuses);
+ invoiceLineRepository.aggregateByTaxRate(companyId, "SALES", from, to, salesStatuses);
 
  List<TaxDeclaration.TaxLine> collectedLines = new ArrayList<>();
  BigDecimal totalTaxCollected = BigDecimal.ZERO;
@@ -385,14 +376,14 @@ public class TaxService {
  // ── TVA DÉDUCTIBLE (factures d'achats RECEIVED + PARTIALLY_PAID + PAID) ──
  // Audit v4.7 §4.1 calcul de la TVA déductible (côté achats).
  // Une seule requête SQL GROUP BY au lieu de N+1.
- List<PurchaseInvoiceStatus> purchaseStatuses = List.of(
- PurchaseInvoiceStatus.RECEIVED, PurchaseInvoiceStatus.PARTIALLY_PAID, PurchaseInvoiceStatus.PAID);
- List<PurchaseInvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
- purchaseInvoiceLineRepository.aggregateByTaxRate(companyId, from, to, purchaseStatuses);
+ List<InvoiceStatus> purchaseStatuses = List.of(
+ InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
+ List<InvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
+ invoiceLineRepository.aggregateByTaxRate(companyId, "PURCHASE", from, to, purchaseStatuses);
 
  List<TaxDeclaration.TaxLine> deductibleLines = new ArrayList<>();
  BigDecimal totalTaxDeductible = BigDecimal.ZERO;
- for (PurchaseInvoiceLineRepository.TaxRateAggregate agg : purchaseAggregates) {
+ for (InvoiceLineRepository.TaxRateAggregate agg : purchaseAggregates) {
  BigDecimal rate = agg.getTaxRate() != null ? agg.getTaxRate() : BigDecimal.ZERO;
  if (rate.compareTo(BigDecimal.ZERO) == 0) continue; // TVA 0% non déductible
  BigDecimal base = agg.getTotalHt() != null ? agg.getTotalHt() : BigDecimal.ZERO;
@@ -711,9 +702,9 @@ public class TaxService {
 
  BigDecimal grossReceipts = invoiceRepository
  .sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(
- companyId, from, to,
- List.of("ISSUED", "PARTIALLY_PAID", "PAID"))
- .orElse(BigDecimal.ZERO);
+ companyId, InvoiceDirection.SALES,
+ List.of(InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID),
+ from, to);
 
  // 3. Acompte = encaissements × 1%
  BigDecimal installmentAmount = grossReceipts
@@ -1078,7 +1069,7 @@ public class TaxService {
  * ventes pour une période (Code Fiscal art. 156-1 Haïti).
  *
  * <p>Agrège les factures de ventes (STANDARD + CREDIT_NOTE) portant une RS
- * ({@code SalesInvoice.withholdingAmount > 0}) sur la période, par taux de RS. Les avoirs
+ * ({@code Invoice.withholdingAmount > 0}) sur la période, par taux de RS. Les avoirs
  * (CREDIT_NOTE) sont traités en négatif (ils inversent la RS de la facture originale).
  *
  * <p>Le {@link TaxDeclaration} retourné contient :
@@ -1125,12 +1116,8 @@ public class TaxService {
  public TaxDeclaration getWithholdingDeclaration(UUID companyId, LocalDate from, LocalDate to) {
  // Charger les factures avec RS sur la période (statuses ISSUED + PARTIALLY_PAID + PAID).
  // On exclut les DRAFT (pas encore émises) et VOID (annulées).
- List<jo.accountant.invoicing.entity.InvoiceStatus> salesStatuses = List.of(
- jo.accountant.invoicing.entity.InvoiceStatus.ISSUED,
- jo.accountant.invoicing.entity.InvoiceStatus.PARTIALLY_PAID,
- jo.accountant.invoicing.entity.InvoiceStatus.PAID);
- List<SalesInvoice> invoicesWithRs = invoiceRepository
- .findWithholdingInvoicesInPeriod(companyId, salesStatuses, from, to);
+ List<Invoice> invoicesWithRs = invoiceRepository
+ .findWithholdingInvoicesInPeriod(companyId, from, to);
 
  // Agréger par taux de RS — les avoirs (CREDIT_NOTE) sont en négatif.
  // Map<withholdingRate, AggregatedRs>
@@ -1138,7 +1125,7 @@ public class TaxService {
  BigDecimal totalWithholding = BigDecimal.ZERO;
  BigDecimal totalBase = BigDecimal.ZERO;
 
- for (SalesInvoice inv : invoicesWithRs) {
+ for (Invoice inv : invoicesWithRs) {
  BigDecimal rate = inv.getWithholdingRate() != null
  ? inv.getWithholdingRate() : BigDecimal.ZERO;
  if (rate.compareTo(BigDecimal.ZERO) == 0) continue; // taux 0% — ignoré

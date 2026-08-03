@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.invoicing.entity.InvoiceStatus;
 import jo.accountant.invoicing.entity.InvoiceType;
-import jo.accountant.invoicing.entity.SalesInvoice;
+import jo.accountant.invoicing.entity.Invoice;
 
 /**
  * Builder fluent pour créer des factures de vente démo (insertion JPA directe).
@@ -17,7 +17,7 @@ import jo.accountant.invoicing.entity.SalesInvoice;
 */
 public class InvoiceBuilder {
 
-    private final SalesInvoice invoice = new SalesInvoice();
+    private final Invoice invoice = new Invoice();
 
     public InvoiceBuilder() {
         invoice.setType(InvoiceType.STANDARD);
@@ -43,7 +43,7 @@ public class InvoiceBuilder {
     public InvoiceBuilder totalAmount(BigDecimal t) { invoice.setTotalAmount(t); return this; }
     public InvoiceBuilder paidAmount(BigDecimal p) { invoice.setPaidAmount(p); return this; }
 
-    public SalesInvoice build() {
+    public Invoice build() {
         if (invoice.getThirdPartyId() == null) throw new IllegalStateException("thirdPartyId required");
         return invoice;
     }

@@ -5,16 +5,16 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import jo.accountant.core.exception.NotFoundException;
+import jo.accountant.invoicing.entity.Invoice;
+import jo.accountant.invoicing.entity.InvoiceLine;
+import jo.accountant.invoicing.repository.InvoiceLineRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.purchaseorders.dto.ThreeWayMatchResult;
 import jo.accountant.purchaseorders.dto.ThreeWayMatchResult.Discrepancy;
 import jo.accountant.purchaseorders.entity.PurchaseOrder;
 import jo.accountant.purchaseorders.entity.PurchaseOrderLine;
 import jo.accountant.purchaseorders.entity.PurchaseOrderStatus;
 import jo.accountant.purchaseorders.repository.PurchaseOrderRepository;
-import jo.accountant.purchasing.entity.PurchaseInvoice;
-import jo.accountant.purchasing.entity.PurchaseInvoiceLine;
-import jo.accountant.purchasing.repository.PurchaseInvoiceLineRepository;
-import jo.accountant.purchasing.repository.PurchaseInvoiceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -56,13 +56,13 @@ public class ThreeWayMatchService {
 
  private static final Logger LOG = LoggerFactory.getLogger(ThreeWayMatchService.class);
 
- private final PurchaseInvoiceRepository invoiceRepository;
- private final PurchaseInvoiceLineRepository invoiceLineRepository;
+ private final InvoiceRepository invoiceRepository;
+ private final InvoiceLineRepository invoiceLineRepository;
  private final PurchaseOrderRepository poRepository;
  private final PurchaseOrdersService poService;
 
- public ThreeWayMatchService(PurchaseInvoiceRepository invoiceRepository,
- PurchaseInvoiceLineRepository invoiceLineRepository,
+ public ThreeWayMatchService(InvoiceRepository invoiceRepository,
+ InvoiceLineRepository invoiceLineRepository,
  PurchaseOrderRepository poRepository,
  PurchaseOrdersService poService) {
  this.invoiceRepository = invoiceRepository;
@@ -82,13 +82,13 @@ public class ThreeWayMatchService {
  @Transactional(readOnly = true)
  public ThreeWayMatchResult match(UUID companyId, UUID invoiceId) {
  // Charger la facture (avec defense-in-depth sur le tenant)
- PurchaseInvoice invoice = invoiceRepository.findById(invoiceId)
- .orElseThrow(() -> new NotFoundException("PurchaseInvoice", invoiceId));
+ Invoice invoice = invoiceRepository.findById(invoiceId)
+ .orElseThrow(() -> new NotFoundException("Invoice", invoiceId));
  if (!invoice.getCompanyId().equals(companyId)) {
- throw new NotFoundException("PurchaseInvoice", invoiceId);
+ throw new NotFoundException("Invoice", invoiceId);
  }
 
- List<PurchaseInvoiceLine> invoiceLines = invoiceLineRepository
+ List<InvoiceLine> invoiceLines = invoiceLineRepository
  .findByInvoiceIdOrderByCreatedAt(invoice.getId());
 
  List<Discrepancy> discrepancies = new ArrayList<>();
@@ -117,7 +117,7 @@ public class ThreeWayMatchService {
  List<PurchaseOrderLine> poLines = poService.listLinesInternal(selectedPo.getId());
 
  // (b) + (c) Vérifier chaque ligne facturée
- for (PurchaseInvoiceLine invLine : invoiceLines) {
+ for (InvoiceLine invLine : invoiceLines) {
  PurchaseOrderLine matchedPoLine = findMatchingPoLine(invLine, poLines);
  if (matchedPoLine == null) {
  discrepancies.add(new Discrepancy(
@@ -168,16 +168,16 @@ public class ThreeWayMatchService {
  *
  * <p>Stratégie :
  * <ul>
- * <li>Si la ligne de facture a un {@code itemId} (les PurchaseInvoiceLines n'en ont pas
+ * <li>Si la ligne de facture a un {@code itemId} (les InvoiceLines n'en ont pas
  * au MVP, mais le champ pourrait être ajouté plus tard), on cherche par itemId.</li>
  * <li>Sinon, on cherche par description exacte (case-insensitive).</li>
  * </ul>
  *
  * <p>Retourne la première ligne de commande qui matche, ou {@code null} si aucune ne matche.
  */
- private PurchaseOrderLine findMatchingPoLine(PurchaseInvoiceLine invLine,
+ private PurchaseOrderLine findMatchingPoLine(InvoiceLine invLine,
  List<PurchaseOrderLine> poLines) {
- // PurchaseInvoiceLine n'a pas d'itemId au MVP — fallback sur la description.
+ // InvoiceLine n'a pas d'itemId au MVP — fallback sur la description.
  String invDesc = invLine.getDescription() == null ? "" : invLine.getDescription().trim().toLowerCase();
  for (PurchaseOrderLine poLine : poLines) {
  String poDesc = poLine.getDescription() == null ? "" : poLine.getDescription().trim().toLowerCase();

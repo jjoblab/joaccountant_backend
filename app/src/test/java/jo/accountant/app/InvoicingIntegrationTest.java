@@ -46,7 +46,7 @@ import jo.accountant.invoicing.dto.RecordPaymentRequest;
 import jo.accountant.invoicing.entity.InvoiceStatus;
 import jo.accountant.invoicing.entity.InvoiceType;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
@@ -102,7 +102,7 @@ class InvoicingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
     @Autowired private JournalLineAnalyticalTagRepository jlatRepo;
     @Autowired private ThirdPartyRepository tpRepo;
     @Autowired private LettrageMatchRepository lmRepo;
-    @Autowired private SalesInvoiceRepository siRepo;
+    @Autowired private InvoiceRepository siRepo;
     @Autowired private InvoiceLineRepository ilRepo;
     @Autowired private DocumentTemplateRepository dtRepo;
     @Autowired private GeneratedDocumentRepository gdRepo;

@@ -32,9 +32,9 @@ import jo.accountant.invoicing.dto.CreateInvoiceRequest;
 import jo.accountant.invoicing.dto.InvoiceResponse;
 import jo.accountant.invoicing.dto.RecordPaymentRequest;
 import jo.accountant.invoicing.entity.InvoiceType;
-import jo.accountant.invoicing.entity.SalesInvoice;
+import jo.accountant.invoicing.entity.Invoice;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.tax.dto.CreateTaxRuleRequest;
 import jo.accountant.tax.entity.TaxRule;
@@ -103,7 +103,7 @@ class VatEncaissementIntegrationTest extends jo.accountant.testsupport.EmbeddedP
     @Autowired private JournalLineRepository jlRepo;
     @Autowired private ThirdPartyRepository tpRepo;
     @Autowired private LettrageMatchRepository lmRepo;
-    @Autowired private SalesInvoiceRepository siRepo;
+    @Autowired private InvoiceRepository siRepo;
     @Autowired private InvoiceLineRepository ilRepo;
     @Autowired private TaxRuleRepository taxRuleRepo;
     @Autowired private DocumentSequenceConfigRepository docSeqConfigRepo;
@@ -240,7 +240,7 @@ class VatEncaissementIntegrationTest extends jo.accountant.testsupport.EmbeddedP
             assertThat(credit443).isEqualByComparingTo("0");  // rien sur 443 (mais 4438 commence par 443 → filtre strict)
 
             // Vérifier que vatDeferredAmount a été mémorisé sur la facture (pour la bascule au règlement).
-            SalesInvoice reloaded = siRepo.findById(inv.id()).orElseThrow();
+            Invoice reloaded = siRepo.findById(inv.id()).orElseThrow();
             assertThat(reloaded.getVatDeferredAmount()).isEqualByComparingTo("1500.0000");
         }
     }
@@ -256,7 +256,7 @@ class VatEncaissementIntegrationTest extends jo.accountant.testsupport.EmbeddedP
             invoicingService.issueInvoice(COMPANY_A, inv.id());
 
             // Avant règlement : aucun settlement entry
-            SalesInvoice before = siRepo.findById(inv.id()).orElseThrow();
+            Invoice before = siRepo.findById(inv.id()).orElseThrow();
             assertThat(before.getVatSettlementEntryId()).isNull();
 
             // Règlement total (11500 TTC) → bascule intégrale de la TVA différée (1500)
@@ -265,7 +265,7 @@ class VatEncaissementIntegrationTest extends jo.accountant.testsupport.EmbeddedP
             assertThat(paid.status()).isIn("PAID");
 
             // Après règlement : vatSettlementEntryId est renseigné
-            SalesInvoice after = siRepo.findById(inv.id()).orElseThrow();
+            Invoice after = siRepo.findById(inv.id()).orElseThrow();
             assertThat(after.getVatSettlementEntryId()).isNotNull();
             // vatDeferredAmount est décrémenté (ramené à 0 après règlement total)
             assertThat(after.getVatDeferredAmount()).isEqualByComparingTo("0");

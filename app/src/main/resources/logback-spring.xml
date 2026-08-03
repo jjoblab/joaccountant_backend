@@ -26,7 +26,7 @@
     <!-- ─────────────────────────────────────────────────────────────────────── -->
     <!-- Profil DEV / TEST / DEFAULT / RENDER — pattern console lisible + MDC + couleurs. -->
     <!-- ─────────────────────────────────────────────────────────────────────── -->
-    <springProfile name="dev | test | default | render">
+    <springProfile name="dev | test | default | render | h2">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%5p) [%thread] %cyan(%-40.40logger{39}) [%X{correlationId:-}] [%X{userId:-}] [%X{companyId:-}] %msg%n%rEx{full,sun.reflect.,java.lang.reflect.,org.springframework.,org.hibernate.}</pattern>

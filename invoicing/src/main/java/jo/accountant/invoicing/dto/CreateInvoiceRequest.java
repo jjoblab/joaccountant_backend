@@ -56,6 +56,7 @@ public record CreateInvoiceRequest(
     String currency,
     @NotEmpty List<LineDto> lines,
     UUID creditNoteForInvoiceId,
+    String supplierReference,
 
     /** R-F-validation v6-2 — Code de la WithholdingRule à appliquer (ex : "RS_HT_PRESTATIONS_LOCAL"). */
     String withholdingRuleCode,
@@ -74,7 +75,16 @@ public record CreateInvoiceRequest(
                                  LocalDate dueDate, String currency, List<LineDto> lines,
                                  UUID creditNoteForInvoiceId) {
         this(thirdPartyId, type, issueDate, dueDate, currency, lines, creditNoteForInvoiceId,
-            null, null);
+            null, null, null);
+    }
+
+    /** v9.2 — Backward-compat 9-arg (with RS, without supplierReference). */
+    public CreateInvoiceRequest(UUID thirdPartyId, InvoiceType type, LocalDate issueDate,
+                                 LocalDate dueDate, String currency, List<LineDto> lines,
+                                 UUID creditNoteForInvoiceId,
+                                 String withholdingRuleCode, BigDecimal withholdingRate) {
+        this(thirdPartyId, type, issueDate, dueDate, currency, lines, creditNoteForInvoiceId,
+            null, withholdingRuleCode, withholdingRate);
     }
 
     public record LineDto(
@@ -85,6 +95,7 @@ public record CreateInvoiceRequest(
         @DecimalMin(value = "0", message = "Tax rate must be >= 0") @DecimalMax(value = "100", message = "Tax rate must be <= 100") BigDecimal taxRate,
         UUID itemId,
         UUID timesheetEntryId,
+        UUID expenseAccountId,
         @Valid List<TaxApplication> taxes
     ) {
         public LineDto {
@@ -103,7 +114,7 @@ public record CreateInvoiceRequest(
                        @DecimalMin(value = "0", message = "Discount must be >= 0") @DecimalMax(value = "100", message = "Discount must be <= 100") BigDecimal discountPercent,
                        @DecimalMin(value = "0", message = "Tax rate must be >= 0") @DecimalMax(value = "100", message = "Tax rate must be <= 100") BigDecimal taxRate,
                        UUID itemId) {
-            this(description, quantity, unitPrice, discountPercent, taxRate, itemId, null, null);
+            this(description, quantity, unitPrice, discountPercent, taxRate, itemId, null, null, null);
         }
 
         public LineDto(@NotNull String description,
@@ -113,7 +124,19 @@ public record CreateInvoiceRequest(
                        @DecimalMin(value = "0", message = "Tax rate must be >= 0") @DecimalMax(value = "100", message = "Tax rate must be <= 100") BigDecimal taxRate,
                        UUID itemId,
                        UUID timesheetEntryId) {
-            this(description, quantity, unitPrice, discountPercent, taxRate, itemId, timesheetEntryId, null);
+            this(description, quantity, unitPrice, discountPercent, taxRate, itemId, timesheetEntryId, null, null);
+        }
+
+        /** v9.2 — Backward-compat 8-arg (with taxes, without expenseAccountId). */
+        public LineDto(@NotNull String description,
+                       @NotNull @DecimalMin(value = "0", message = "Quantity must be >= 0") BigDecimal quantity,
+                       @NotNull @DecimalMin(value = "0", message = "Unit price must be >= 0") BigDecimal unitPrice,
+                       @DecimalMin(value = "0", message = "Discount must be >= 0") @DecimalMax(value = "100", message = "Discount must be <= 100") BigDecimal discountPercent,
+                       @DecimalMin(value = "0", message = "Tax rate must be >= 0") @DecimalMax(value = "100", message = "Tax rate must be <= 100") BigDecimal taxRate,
+                       UUID itemId,
+                       UUID timesheetEntryId,
+                       @Valid List<TaxApplication> taxes) {
+            this(description, quantity, unitPrice, discountPercent, taxRate, itemId, timesheetEntryId, null, taxes);
         }
     }
 }

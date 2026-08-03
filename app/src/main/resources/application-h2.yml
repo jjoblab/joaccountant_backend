@@ -1,0 +1,51 @@
+# Profil `h2` — base H2 en mémoire pour tests rapides sans PostgreSQL.
+#
+# Usage : ./gradlew :app:bootRun --args='--spring.profiles.active=h2'
+#
+# AVERTISSEMENT : ce profil est pour validation runtime uniquement (Spring Boot
+# démarre-t-il ? Les beans se câblent-ils ? Les contrôleurs répondent-ils ?).
+# Il ne valide PAS les migrations Flyway (désactivées) ni le dialecte PostgreSQL
+# (uuidv7(), pgcrypto, RLS). Pour une validation complète, utiliser le profil
+# `dev` avec Zonky embedded PostgreSQL (nécessite 6+ GB RAM).
+spring:
+  datasource:
+    url: jdbc:h2:mem:joaccountant;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  flyway:
+    enabled: false
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+  main:
+    allow-bean-definition-overriding: true
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: h2-test-secret-please-override-in-production-at-least-256-bits-long-string-1234567890
+    access-token-ttl-seconds: 900
+  subscription:
+    max-companies-per-user: 3
+  storage:
+    fs:
+      root: ./build/storage-h2
+
+logging:
+  level:
+    jo.accountant: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

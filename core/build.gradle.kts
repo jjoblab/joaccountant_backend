@@ -13,6 +13,7 @@ dependencies {
     api(libs.flyway.core)
     api(libs.flyway.database.postgresql)
     api(libs.postgresql)
+    runtimeOnly(libs.h2)
     api(libs.spring.data.commons)
     // Argon2 for password hashing (§3.4)
     api(libs.bouncy.castle)

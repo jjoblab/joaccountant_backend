@@ -129,7 +129,7 @@ public class MfaService {
  + "d'au moins 256 bits d'entropie.");
  }
 
- boolean isDevOrTest = environment.matchesProfiles("dev", "test");
+ boolean isDevOrTest = environment.matchesProfiles("dev", "test", "h2", "demo");
  if (!isDevOrTest && constantTimeEquals(rawEncryptionKey, DEFAULT_DEV_ENCRYPTION_KEY)) {
  throw new IllegalStateException(
  "Clé de chiffrement MFA inacceptable en production : la valeur par défaut "

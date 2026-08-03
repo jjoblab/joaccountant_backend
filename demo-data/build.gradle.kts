@@ -12,7 +12,6 @@ dependencies {
     implementation(project(":third-parties"))
     implementation(project(":employees"))
     implementation(project(":invoicing"))
-    implementation(project(":purchasing"))
     implementation(project(":inventory"))
     implementation(project(":payroll"))
     implementation(project(":tax"))

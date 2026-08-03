@@ -39,11 +39,12 @@ import jo.accountant.invoicing.entity.InvoiceLineTax;
 import jo.accountant.invoicing.entity.InvoiceLineTaxType;
 import jo.accountant.invoicing.entity.InvoiceStatus;
 import jo.accountant.invoicing.entity.InvoiceType;
-import jo.accountant.invoicing.entity.SalesInvoice;
+import jo.accountant.invoicing.entity.Invoice;
+import jo.accountant.invoicing.entity.InvoiceDirection;
 import jo.accountant.invoicing.event.InvoiceIssuedEvent;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
 import jo.accountant.invoicing.repository.InvoiceLineTaxRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.thirdparties.entity.ThirdParty;
 import jo.accountant.thirdparties.repository.ThirdPartyRepository;
 import org.slf4j.Logger;
@@ -83,7 +84,7 @@ public class InvoicingService {
  */
  private static final int INVOICE_LIST_HARD_CAP = 200;
 
- private final SalesInvoiceRepository invoiceRepository;
+ private final InvoiceRepository invoiceRepository;
  private final InvoiceLineRepository lineRepository;
  private final InvoiceLineTaxRepository lineTaxRepository;
  private final ThirdPartyRepository thirdPartyRepository;
@@ -115,7 +116,7 @@ public class InvoicingService {
  // à l'émission d'une facture qui consomme du WIP (lignes SERVICE avec timesheetEntryId).
  private final jo.accountant.timebilling.repository.TimesheetEntryRepository timesheetEntryRepository;
 
- public InvoicingService(SalesInvoiceRepository invoiceRepository,
+ public InvoicingService(InvoiceRepository invoiceRepository,
  InvoiceLineRepository lineRepository,
  InvoiceLineTaxRepository lineTaxRepository,
  ThirdPartyRepository thirdPartyRepository,
@@ -171,7 +172,8 @@ public class InvoicingService {
  }
  }
 
- SalesInvoice invoice = new SalesInvoice();
+ Invoice invoice = new Invoice();
+        invoice.setDirection(InvoiceDirection.SALES);
  invoice.setCompanyId(companyId);
  invoice.setThirdPartyId(tp.getId());
  invoice.setType(req.type() != null ? req.type() : InvoiceType.STANDARD);
@@ -181,12 +183,13 @@ public class InvoicingService {
  invoice.setDueDate(req.dueDate() != null ? req.dueDate()
  : invoice.getIssueDate().plusDays(30));
  invoice.setCreditNoteForInvoiceId(req.creditNoteForInvoiceId());
+ invoice.setSupplierReference(req.supplierReference());
  invoice.setPaidAmount(BigDecimal.ZERO);
  invoice.setSubtotal(BigDecimal.ZERO);
  invoice.setTaxAmount(BigDecimal.ZERO);
  invoice.setTotalAmount(BigDecimal.ZERO);
  // Sauvegarder d'abord l'invoice pour obtenir un ID
- SalesInvoice savedInvoice = invoiceRepository.save(invoice);
+ Invoice savedInvoice = invoiceRepository.save(invoice);
 
  // Créer les lignes avec l'ID de l'invoice
  BigDecimal subtotal = BigDecimal.ZERO;
@@ -250,6 +253,7 @@ public class InvoicingService {
  line.setTaxRate(lineDto.taxRate()); // conservé pour backward-compat lecture + audit
  line.setItemId(lineDto.itemId());
  line.setTimesheetEntryId(lineDto.timesheetEntryId());
+ line.setExpenseAccountId(lineDto.expenseAccountId());
  line.setLineTotalHt(lineHt);
  line.setLineTotalTax(lineTax);
  lineRepository.save(line);
@@ -277,6 +281,89 @@ public class InvoicingService {
 
  LOG.info("Facture créée : id={} type={} tiers={}", savedInvoice.getId(),
  savedInvoice.getType(), tp.getName());
+ return loadInvoiceResponse(companyId, savedInvoice.getId());
+ }
+
+ // ════════════════════════════════════════════════════════════════════════
+ // v9.2 — Création de facture d'achat (direction=PURCHASE)
+ // ════════════════════════════════════════════════════════════════════════
+
+ /**
+ * v9.2 — Crée une facture d'achat (direction=PURCHASE, statut DRAFT).
+ *
+ * <p>Valide que le tiers est de type SUPPLIER. Les lignes utilisent
+ * {@code expenseAccountId} (compte de charge classe 6) au lieu de
+ * {@code itemId}/{@code timesheetEntryId}.
+ *
+ * <p>Pas de RS persistée côté achat (calculée dynamiquement à la réception).
+ * Pas de multi-taxe (une seule taxRate par ligne). Pas de reverse-charge.
+ *
+ * @param companyId UUID de l'entreprise
+ * @param req       payload {@link CreateInvoiceRequest} avec {@code supplierReference}
+ *                  et lignes contenant {@code expenseAccountId}
+ * @return la facture créée en statut DRAFT
+ */
+ @Transactional
+ public InvoiceResponse createPurchaseInvoice(UUID companyId, CreateInvoiceRequest req) {
+ ThirdParty tp = thirdPartyRepository.findById(req.thirdPartyId())
+ .orElseThrow(() -> new NotFoundException("ThirdParty", req.thirdPartyId()));
+ if (!tp.getCompanyId().equals(companyId)) {
+ throw new NotFoundException("ThirdParty", req.thirdPartyId());
+ }
+ // Valider que le tiers est un fournisseur
+ if (tp.getType() != null
+ && tp.getType() != jo.accountant.thirdparties.entity.ThirdPartyType.SUPPLIER) {
+ throw new ValidationException("THIRD_PARTY_NOT_SUPPLIER",
+ "Le tiers doit être de type SUPPLIER pour une facture d'achat. "
+ + "Type actuel: " + tp.getType());
+ }
+
+ Invoice invoice = new Invoice();
+ invoice.setDirection(InvoiceDirection.PURCHASE);
+ invoice.setCompanyId(companyId);
+ invoice.setThirdPartyId(tp.getId());
+ invoice.setType(req.type() != null ? req.type() : InvoiceType.STANDARD);
+ invoice.setStatus(InvoiceStatus.DRAFT);
+ invoice.setCurrency(req.currency() != null ? req.currency().toUpperCase() : "HTG");
+ invoice.setIssueDate(req.issueDate() != null ? req.issueDate() : LocalDate.now());
+ invoice.setDueDate(req.dueDate() != null ? req.dueDate()
+ : invoice.getIssueDate().plusDays(30));
+ invoice.setSupplierReference(req.supplierReference());
+ invoice.setPaidAmount(BigDecimal.ZERO);
+ invoice.setSubtotal(BigDecimal.ZERO);
+ invoice.setTaxAmount(BigDecimal.ZERO);
+ invoice.setTotalAmount(BigDecimal.ZERO);
+ Invoice savedInvoice = invoiceRepository.save(invoice);
+
+ // Créer les lignes
+ BigDecimal subtotal = BigDecimal.ZERO;
+ BigDecimal taxAmount = BigDecimal.ZERO;
+ for (var lineDto : req.lines()) {
+ BigDecimal lineHt = lineDto.quantity().multiply(lineDto.unitPrice());
+ BigDecimal lineTax = lineHt.multiply(lineDto.taxRate())
+ .divide(HUNDRED, 6, RoundingMode.HALF_UP);
+ subtotal = subtotal.add(lineHt);
+ taxAmount = taxAmount.add(lineTax);
+
+ InvoiceLine line = new InvoiceLine();
+ line.setCompanyId(companyId);
+ line.setInvoiceId(savedInvoice.getId());
+ line.setDescription(lineDto.description());
+ line.setQuantity(lineDto.quantity());
+ line.setUnitPrice(lineDto.unitPrice());
+ line.setTaxRate(lineDto.taxRate());
+ line.setExpenseAccountId(lineDto.expenseAccountId());
+ line.setLineTotalHt(lineHt);
+ line.setLineTotalTax(lineTax);
+ lineRepository.save(line);
+ }
+
+ savedInvoice.setSubtotal(subtotal);
+ savedInvoice.setTaxAmount(taxAmount);
+ savedInvoice.setTotalAmount(subtotal.add(taxAmount));
+ invoiceRepository.save(savedInvoice);
+
+ LOG.info("Facture d'achat créée : id={} fournisseur={}", savedInvoice.getId(), tp.getName());
  return loadInvoiceResponse(companyId, savedInvoice.getId());
  }
 
@@ -310,7 +397,7 @@ public class InvoicingService {
  * ne sont fournis, la méthode ne fait rien (les 4 champs restent NULL sur l'invoice —
  * comportement pré-v6-2 inchangé).
  */
- private void applySalesWithholding(UUID companyId, SalesInvoice invoice, CreateInvoiceRequest req) {
+ private void applySalesWithholding(UUID companyId, Invoice invoice, CreateInvoiceRequest req) {
  String ruleCode = req.withholdingRuleCode();
  BigDecimal explicitRate = req.withholdingRate();
 
@@ -380,7 +467,7 @@ public class InvoicingService {
 
  @Transactional
  public InvoiceResponse issueInvoice(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = loadInvoice(companyId, invoiceId);
+ Invoice invoice = loadInvoice(companyId, invoiceId);
  if (invoice.getStatus() != InvoiceStatus.DRAFT) {
  throw new ConflictException("INVOICE_NOT_DRAFT",
  "Seules les factures DRAFT peuvent être émises. Statut : " + invoice.getStatus());
@@ -394,8 +481,8 @@ public class InvoicingService {
  // chacun passe le check createCreditNote (montant disponible = 100%), mais à l'émission
  // le 2e dépasserait le total.
  if (invoice.getType() == InvoiceType.CREDIT_NOTE && invoice.getCreditNoteForInvoiceId() != null) {
- SalesInvoice original = loadInvoice(companyId, invoice.getCreditNoteForInvoiceId());
- List<SalesInvoice> otherCreditNotes = invoiceRepository
+ Invoice original = loadInvoice(companyId, invoice.getCreditNoteForInvoiceId());
+ List<Invoice> otherCreditNotes = invoiceRepository
  .findByCompanyIdAndTypeAndCreditNoteForInvoiceId(
  companyId, InvoiceType.CREDIT_NOTE, original.getId())
  .stream()
@@ -403,7 +490,7 @@ public class InvoicingService {
  .filter(cn -> cn.getStatus() != InvoiceStatus.VOID && cn.getStatus() != InvoiceStatus.DRAFT)
  .toList();
  BigDecimal alreadyCredited = otherCreditNotes.stream()
- .map(SalesInvoice::getTotalAmount)
+ .map(Invoice::getTotalAmount)
  .reduce(BigDecimal.ZERO, BigDecimal::add);
  BigDecimal newTotal = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
  BigDecimal maxAllowed = original.getTotalAmount().subtract(alreadyCredited);
@@ -475,7 +562,7 @@ public class InvoicingService {
  * Envoie une relance pour une facture impayée (ajoute un événement d'audit REMINDED).
  */
  public InvoiceResponse remindInvoice(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = invoiceRepository.findById(invoiceId)
+ Invoice invoice = invoiceRepository.findById(invoiceId)
  .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId));
  if (!invoice.getCompanyId().equals(companyId)) {
  throw new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId);
@@ -484,6 +571,206 @@ public class InvoicingService {
  invoice.getInvoiceNumber());
  return loadInvoiceResponse(companyId, invoice.getId());
  }
+
+ // ════════════════════════════════════════════════════════════════════════
+ // v9.0 — Endpoints manquants : voidInvoice + deleteInvoice (DRAFT)
+ // ════════════════════════════════════════════════════════════════════════
+
+ /**
+ * v9.0 — Annule une facture (ISSUED/PAID/PARTIALLY_PAID → VOID).
+ *
+ * <p>Contrairement à un avoir (qui crée une nouvelle facture négative), le void
+ * marque la facture comme annulée. Si la facture a déjà été émise (ISSUED+), une
+ * écriture comptable de contre-passation est générée pour neutraliser l'écriture
+ * d'origine (sinon le bilan resterait déséquilibré).
+ *
+ * <p>Règles de transition :
+ * <ul>
+ *   <li>DRAFT → VOID : autorisé, pas d'écriture (la facture n'a jamais été comptabilisée) ;</li>
+ *   <li>ISSUED → VOID : autorisé, génère une écriture de contre-passation ;</li>
+ *   <li>PARTIALLY_PAID → VOID : refusé (409 INVOICE_HAS_PAYMENTS — utiliser un avoir) ;</li>
+ *   <li>PAID → VOID : refusé (409 INVOICE_HAS_PAYMENTS) ;</li>
+ *   <li>VOID → VOID : refusé (409 ALREADY_VOID).</li>
+ * </ul>
+ *
+ * @param companyId UUID de l'entreprise
+ * @param invoiceId UUID de la facture à annuler
+ * @return la facture mise à jour (status=VOID)
+ */
+ @org.springframework.transaction.annotation.Transactional
+ public InvoiceResponse voidInvoice(UUID companyId, UUID invoiceId) {
+ Invoice invoice = invoiceRepository.findById(invoiceId)
+ .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId));
+ if (!invoice.getCompanyId().equals(companyId)) {
+ throw new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId);
+ }
+
+ if (invoice.getStatus() == InvoiceStatus.VOID) {
+ throw new ConflictException("ALREADY_VOID",
+ "La facture " + invoice.getInvoiceNumber() + " est déjà annulée.");
+ }
+ if (invoice.getStatus() == InvoiceStatus.PAID
+ || invoice.getStatus() == InvoiceStatus.PARTIALLY_PAID) {
+ throw new ConflictException("INVOICE_HAS_PAYMENTS",
+ "Impossible d'annuler une facture ayant des paiements enregistrés "
+ + "(paidAmount=" + invoice.getPaidAmount()
+ + "). Créez un avoir à la place via POST /invoices/{id}/credit-note.");
+ }
+
+ // Si la facture était ISSUED, générer une écriture de contre-passation.
+ if (invoice.getStatus() == InvoiceStatus.ISSUED
+ && invoice.getJournalEntryId() != null) {
+ generateVoidReversalEntry(companyId, invoice);
+ }
+
+ invoice.setStatus(InvoiceStatus.VOID);
+ invoiceRepository.save(invoice);
+ LOG.info("Facture annulée (void) : id={} number={} previousStatus=ISSUED",
+ invoice.getId(), invoice.getInvoiceNumber());
+ return loadInvoiceResponse(companyId, invoice.getId());
+ }
+
+ /**
+ * v9.0 — Supprime définitivement une facture en statut DRAFT.
+ *
+ * <p>Refusé pour tout autre statut (409 INVOICE_NOT_DRAFT) car la facture a déjà
+ * un impact comptable (écriture postée) ou administrative (numéro attribué).
+ *
+ * <p>La suppression cascade automatiquement les lignes (FK ON DELETE CASCADE sur
+ * invoice_line). Les taxes de lignes (invoice_line_tax) sont aussi supprimées
+ * via leur propre FK ON DELETE CASCADE (V15_003).
+ *
+ * @param companyId UUID de l'entreprise
+ * @param invoiceId UUID de la facture DRAFT à supprimer
+ */
+ @org.springframework.transaction.annotation.Transactional
+ public void deleteInvoice(UUID companyId, UUID invoiceId) {
+ Invoice invoice = invoiceRepository.findById(invoiceId)
+ .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId));
+ if (!invoice.getCompanyId().equals(companyId)) {
+ throw new jo.accountant.core.exception.NotFoundException("Invoice", invoiceId);
+ }
+ if (invoice.getStatus() != InvoiceStatus.DRAFT) {
+ throw new ConflictException("INVOICE_NOT_DRAFT",
+ "Seules les factures en statut DRAFT peuvent être supprimées. "
+ + "Statut actuel: " + invoice.getStatus()
+ + ". Utilisez POST /invoices/{id}/void pour annuler une facture émise.");
+ }
+ String numberForLog = invoice.getInvoiceNumber();
+ invoiceRepository.delete(invoice);
+ LOG.info("Facture DRAFT supprimée : id={} number={}", invoice.getId(), numberForLog);
+ }
+
+ /**
+ * Génère une écriture comptable de contre-passation pour une facture annulée (VOID).
+ *
+ * <p>L'écriture est l'inverse exacte de {@link #generateInvoiceEntry} :
+ * même journal (VT), même date, mais débit/crédit inversés. La référence à
+ * l'écriture d'origine est conservée dans la description pour audit trail.
+ */
+ private void generateVoidReversalEntry(UUID companyId, Invoice invoice) {
+ // Charge les lignes pour recalculer les totaux (cohérence avec l'écriture d'origine).
+ List<InvoiceLine> lines = lineRepository.findByInvoiceIdOrderByCreatedAt(invoice.getId());
+ invoice.setLines(lines);
+ // Charge les taxes de lignes (pour audit, pas utilisé dans la contre-passation simplifiée).
+ List<UUID> lineIds = lines.stream().map(InvoiceLine::getId).toList();
+ List<InvoiceLineTax> allTaxes = lineIds.isEmpty()
+ ? java.util.Collections.emptyList()
+ : lineTaxRepository.findByInvoiceLineIdInOrderByDisplayOrderAscIdAsc(lineIds);
+
+ // Re-construit la même écriture que generateInvoiceEntry mais avec D/C inversés.
+ // Pour éviter de dupliquer les 296 lignes de generateInvoiceEntry, on délègue en
+ // appelant une variante « reverse=true » via une nouvelle méthode privée.
+ List<LineDto> reversalLines = buildReversalLines(companyId, invoice, lines, allTaxes);
+ CreateJournalEntryRequest req = new CreateJournalEntryRequest(
+ "VT",
+ invoice.getIssueDate(),
+ "Contre-passation annulation facture " + invoice.getInvoiceNumber()
+ + " (VOID — original entryId=" + invoice.getJournalEntryId() + ")",
+ reversalLines,
+ JournalEntrySourceModule.INVOICING);
+ JournalEntryResponse created = accountingEngineService.createJournalEntry(
+ companyId, "invoicing-void-" + invoice.getId(), req);
+ accountingEngineService.postJournalEntry(companyId, created.id(), java.util.List.of());
+ LOG.info("Écriture de contre-passation générée pour facture VOID : invoiceId={} reversalEntryId={}",
+ invoice.getId(), created.id());
+ }
+
+ /**
+ * Construit les lignes comptables inversées (D↔C) pour la contre-passation.
+ *
+ * <p>Pour une facture client STANDARD :
+ * <ul>
+ *   <li>C 411 Clients ........ totalAmount (au lieu de D)</li>
+ *   <li>D 70x Ventes ......... subtotal (au lieu de C)</li>
+ *   <li>D 443 TVA collectée .. taxAmount (au lieu de C)</li>
+ * </ul>
+ *
+ * <p>Pour un avoir (CREDIT_NOTE), l'écriture d'origine est déjà inversée, donc la
+ * contre-passation restore le sens normal.
+ */
+ private List<LineDto> buildReversalLines(UUID companyId, Invoice invoice,
+ List<InvoiceLine> lines, List<InvoiceLineTax> allTaxes) {
+ List<LineDto> reversal = new ArrayList<>();
+
+ // Résout le compte client (dédié ou collectif du tiers).
+ jo.accountant.thirdparties.entity.ThirdParty tp = thirdPartyRepository
+ .findById(invoice.getThirdPartyId())
+ .orElseThrow(() -> new ValidationException("THIRD_PARTY_NOT_FOUND",
+ "Tiers introuvable : " + invoice.getThirdPartyId()));
+ UUID clientAccountId = tp.getDedicatedAccountId() != null
+ ? tp.getDedicatedAccountId() : tp.getCollectiveAccountId();
+ Account clientAccount = accountRepository.findById(clientAccountId)
+ .orElseThrow(() -> new ValidationException("ACCOUNT_NOT_FOUND",
+ "Compte client introuvable"));
+
+ // Ligne 1 : Crédit client (inverse du débit d'origine)
+ reversal.add(new LineDto(
+ clientAccount.getCode(), invoice.getThirdPartyId(),
+ BigDecimal.ZERO,           // débit = 0
+ invoice.getTotalAmount(),  // crédit = total TTC
+ "Contre-passation client (VOID)",
+ null, null, null, null));
+
+ // Ligne 2 : Débit ventes (inverse du crédit d'origine)
+ Account salesAccount = accountResolver.resolveOrThrow(
+ companyId, jo.accountant.core.framework.ReportingClass.PRODUITS, "SALES_REVENUE",
+ "SALES_ACCOUNT_NOT_FOUND",
+ "Aucun compte de ventes trouvé (VOID reversal).",
+ "701000", "701");
+ reversal.add(new LineDto(
+ salesAccount.getCode(), null,
+ invoice.getSubtotal(),      // débit = subtotal HT
+ BigDecimal.ZERO,
+ "Contre-passation ventes (VOID)",
+ null, null, null, null));
+
+ // Ligne 3 : Débit TVA collectée (inverse du crédit d'origine) si taxAmount > 0
+ if (invoice.getTaxAmount().compareTo(BigDecimal.ZERO) > 0) {
+ Account vatAccount;
+ if (invoice.isReverseCharge()) {
+ vatAccount = accountResolver.resolveOrThrow(
+ companyId, jo.accountant.core.framework.ReportingClass.PASSIF,
+ "VAT_REVERSE_CHARGE", "VAT_REVERSE_CHARGE_ACCOUNT_NOT_FOUND",
+ "Compte TVA autoliquidation introuvable (VOID reversal).",
+ "444700", "4447");
+ } else {
+ vatAccount = accountResolver.resolveOrThrow(
+ companyId, jo.accountant.core.framework.ReportingClass.PASSIF,
+ "VAT_COLLECTED", "VAT_COLLECTED_ACCOUNT_NOT_FOUND",
+ "Compte TVA collectée introuvable (VOID reversal).",
+ "443000", "443");
+ }
+ reversal.add(new LineDto(
+ vatAccount.getCode(), null,
+ invoice.getTaxAmount(),
+ BigDecimal.ZERO,
+ "Contre-passation TVA (VOID)",
+ null, null, null, null));
+ }
+ return reversal;
+ }
+
 
  /**
  * Génère l'écriture comptable de facturation.
@@ -527,7 +814,7 @@ public class InvoicingService {
  * du CGI ». La logique de TVA différée est désactivée en autoliquidation (rien
  * à basculer au règlement — la TVA n'est pas collectée par l'émetteur).
  */
- private void generateInvoiceEntry(UUID companyId, SalesInvoice invoice) {
+ private void generateInvoiceEntry(UUID companyId, Invoice invoice) {
  ThirdParty tp = thirdPartyRepository.findById(invoice.getThirdPartyId())
  .orElseThrow(() -> new ValidationException("THIRD_PARTY_NOT_FOUND",
  "Tiers introuvable : " + invoice.getThirdPartyId()));
@@ -841,7 +1128,7 @@ public class InvoicingService {
  * fallback sur {@code InvoiceLine.taxRate} (comportement historique). Cela permet de couvrir
  * les factures mixtes (certaines lignes en multi-taxes, d'autres en mono-taxe via taxRate).
  */
- private boolean shouldDeferVat(UUID companyId, SalesInvoice invoice,
+ private boolean shouldDeferVat(UUID companyId, Invoice invoice,
  List<InvoiceLine> lines,
  List<InvoiceLineTax> lineTaxes) {
  LocalDate issueDate = invoice.getIssueDate() != null ? invoice.getIssueDate() : LocalDate.now();
@@ -907,7 +1194,7 @@ public class InvoicingService {
 
  @Transactional
  public InvoiceResponse recordPayment(UUID companyId, UUID invoiceId, RecordPaymentRequest req) {
- SalesInvoice invoice = loadInvoice(companyId, invoiceId);
+ Invoice invoice = loadInvoice(companyId, invoiceId);
  if (invoice.getStatus() == InvoiceStatus.DRAFT) {
  throw new ConflictException("INVOICE_NOT_ISSUED",
  "Une facture DRAFT ne peut pas recevoir de règlement");
@@ -970,7 +1257,7 @@ public class InvoicingService {
  * <p>Le cap par {@code vatDeferredAmount} garantit qu'on ne bascule jamais plus que le
  * montant restant à différer (évite les bascules négatives sur le dernier règlement).
  */
- private BigDecimal computeVatSettlementAmount(SalesInvoice invoice, BigDecimal paymentAmount) {
+ private BigDecimal computeVatSettlementAmount(Invoice invoice, BigDecimal paymentAmount) {
  BigDecimal taxAmount = invoice.getTaxAmount();
  BigDecimal totalAmount = invoice.getTotalAmount();
  if (taxAmount == null || totalAmount == null
@@ -1002,7 +1289,7 @@ public class InvoicingService {
  *
  * @return l'ID de l'écriture comptable postée
  */
- private UUID postVatSettlementEntry(UUID companyId, SalesInvoice invoice,
+ private UUID postVatSettlementEntry(UUID companyId, Invoice invoice,
  BigDecimal vatToTransfer) {
  Account vatCollectedAccount = accountResolver.resolveOrThrow(
  companyId, jo.accountant.core.framework.ReportingClass.PASSIF, "VAT_COLLECTED",
@@ -1065,7 +1352,7 @@ public class InvoicingService {
  @Transactional
  public InvoiceResponse createCreditNote(UUID companyId, UUID originalInvoiceId,
  CreateInvoiceRequest req) {
- SalesInvoice original = loadInvoice(companyId, originalInvoiceId);
+ Invoice original = loadInvoice(companyId, originalInvoiceId);
  if (original.getStatus() != InvoiceStatus.ISSUED
  && original.getStatus() != InvoiceStatus.PARTIALLY_PAID
  && original.getStatus() != InvoiceStatus.PAID) {
@@ -1079,12 +1366,12 @@ public class InvoicingService {
  // Désormais, on calcule le total des avoirs déjà émis et on refuse si le nouveau
  // avoir ferait dépasser le total de la facture originale.
  // Tolérance d'arrondi : 0.01 (pour éviter les faux positifs dus aux arrondis monétaires).
- List<SalesInvoice> existingCreditNotes = invoiceRepository
+ List<Invoice> existingCreditNotes = invoiceRepository
  .findByCompanyIdAndTypeAndCreditNoteForInvoiceId(
  companyId, jo.accountant.invoicing.entity.InvoiceType.CREDIT_NOTE, original.getId());
  BigDecimal alreadyCredited = existingCreditNotes.stream()
  .filter(cn -> cn.getStatus() != InvoiceStatus.VOID) // exclure les avoirs VOID
- .map(SalesInvoice::getTotalAmount)
+ .map(Invoice::getTotalAmount)
  .reduce(BigDecimal.ZERO, BigDecimal::add);
  BigDecimal maxCreditNoteAmount = original.getTotalAmount().subtract(alreadyCredited);
  if (maxCreditNoteAmount.compareTo(new BigDecimal("0.01")) < 0) {
@@ -1102,7 +1389,8 @@ public class InvoicingService {
  // Ensimplifié : on crée directement en DRAFT puis on issue
  // L'utilisateur doit appeler issueInvoice séparément
  // Pour simplifier le test, on force le type et le creditNoteForInvoiceId
- SalesInvoice creditNote = new SalesInvoice();
+ Invoice creditNote = new Invoice();
+        creditNote.setDirection(InvoiceDirection.SALES);
  creditNote.setCompanyId(companyId);
  creditNote.setThirdPartyId(original.getThirdPartyId());
  creditNote.setType(InvoiceType.CREDIT_NOTE);
@@ -1116,7 +1404,7 @@ public class InvoicingService {
  creditNote.setSubtotal(BigDecimal.ZERO);
  creditNote.setTaxAmount(BigDecimal.ZERO);
  creditNote.setTotalAmount(BigDecimal.ZERO);
- SalesInvoice savedCreditNote = invoiceRepository.save(creditNote);
+ Invoice savedCreditNote = invoiceRepository.save(creditNote);
 
  // Copier les lignes de l'original
  BigDecimal subtotal = BigDecimal.ZERO;
@@ -1202,7 +1490,7 @@ public class InvoicingService {
 
  @Transactional
  public byte[] getInvoicePdf(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = loadInvoice(companyId, invoiceId);
+ Invoice invoice = loadInvoice(companyId, invoiceId);
  if (invoice.getStatus() == InvoiceStatus.DRAFT) {
  throw new ConflictException("INVOICE_NOT_ISSUED",
  "Une facture DRAFT ne peut pas être générée en PDF");
@@ -1273,7 +1561,7 @@ public class InvoicingService {
  */
  @Transactional(readOnly = true)
  public byte[] getInvoiceFacturX(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = loadInvoice(companyId, invoiceId);
+ Invoice invoice = loadInvoice(companyId, invoiceId);
  if (invoice.getStatus() == InvoiceStatus.DRAFT) {
  throw new ConflictException("INVOICE_NOT_ISSUED",
  "Une facture DRAFT ne peut pas être exportée en Factur-X");
@@ -1385,7 +1673,7 @@ public class InvoicingService {
 
  @Transactional(readOnly = true)
  public InvoiceResponse loadInvoiceResponse(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = loadInvoice(companyId, invoiceId);
+ Invoice invoice = loadInvoice(companyId, invoiceId);
  List<InvoiceLine> lines = lineRepository.findByInvoiceIdOrderByCreatedAt(invoice.getId());
  // v6-1 — batch loading des InvoiceLineTax (1 SELECT au lieu de N si on faisait par ligne)
  java.util.List<UUID> lineIds = lines.stream().map(InvoiceLine::getId).toList();
@@ -1527,7 +1815,7 @@ public class InvoicingService {
  public org.springframework.data.domain.Page<InvoiceResponse> listInvoices(
  UUID companyId, java.util.UUID fiscalYearId,
  org.springframework.data.domain.Pageable pageable) {
- org.springframework.data.domain.Page<SalesInvoice> page;
+ org.springframework.data.domain.Page<Invoice> page;
  if (fiscalYearId != null) {
  // IDOR guard — vérifier que la FiscalYear appartient à la company avant de l'utiliser.
  jo.accountant.accountingengine.entity.FiscalYear fy =
@@ -1547,11 +1835,11 @@ public class InvoicingService {
 
  // --- Helpers ---
 
- private SalesInvoice loadInvoice(UUID companyId, UUID invoiceId) {
- SalesInvoice invoice = invoiceRepository.findById(invoiceId)
- .orElseThrow(() -> new NotFoundException("SalesInvoice", invoiceId));
+ private Invoice loadInvoice(UUID companyId, UUID invoiceId) {
+ Invoice invoice = invoiceRepository.findById(invoiceId)
+ .orElseThrow(() -> new NotFoundException("Invoice", invoiceId));
  if (!invoice.getCompanyId().equals(companyId)) {
- throw new NotFoundException("SalesInvoice", invoiceId);
+ throw new NotFoundException("Invoice", invoiceId);
  }
  return invoice;
  }
@@ -1582,7 +1870,7 @@ public class InvoicingService {
  org.springframework.data.domain.Pageable pageable =
  org.springframework.data.domain.PageRequest.of(0, pageSize);
 
- List<SalesInvoice> invoices = invoiceRepository.findKeysetAfter(
+ List<Invoice> invoices = invoiceRepository.findKeysetAfter(
  companyId, afterIssueDate, afterId, pageable);
 
  List<InvoiceResponse> dtos = invoices.stream()

@@ -15,9 +15,7 @@ import jo.accountant.company.repository.CompanyRepository;
 import jo.accountant.financialstatements.dto.IncomeStatement;
 import jo.accountant.financialstatements.service.FinancialStatementsService;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
-import jo.accountant.purchasing.repository.PurchaseInvoiceLineRepository;
-import jo.accountant.purchasing.repository.PurchaseInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.tax.dto.CorporateTaxProjection;
 import jo.accountant.tax.entity.CorporateTaxEligibility;
 import jo.accountant.tax.entity.CorporateTaxRule;
@@ -66,16 +64,13 @@ class TaxServiceTest {
         // Mocks secondaires (non utilisés par projectCorporateTax mais requis par le constructeur)
         TaxRuleRepository taxRuleRepository = mock(TaxRuleRepository.class);
         WithholdingRuleRepository withholdingRuleRepository = mock(WithholdingRuleRepository.class);
-        SalesInvoiceRepository invoiceRepository = mock(SalesInvoiceRepository.class);
+        InvoiceRepository invoiceRepository = mock(InvoiceRepository.class);
         InvoiceLineRepository invoiceLineRepository = mock(InvoiceLineRepository.class);
-        PurchaseInvoiceRepository purchaseInvoiceRepository = mock(PurchaseInvoiceRepository.class);
-        PurchaseInvoiceLineRepository purchaseInvoiceLineRepository = mock(PurchaseInvoiceLineRepository.class);
         ObjectMapper objectMapper = new ObjectMapper();
 
         taxService = new TaxService(
             taxRuleRepository, withholdingRuleRepository,
             invoiceRepository, invoiceLineRepository,
-            purchaseInvoiceRepository, purchaseInvoiceLineRepository,
             objectMapper);
 
         // Dépendances injectées via setter (CorporateTaxRuleRepository + FinancialStatementsService

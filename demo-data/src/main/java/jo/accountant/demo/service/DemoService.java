@@ -30,7 +30,7 @@ import jo.accountant.demo.dto.DemoDashboard.Kpi;
 import jo.accountant.demo.dto.DemoDashboard.MonthlyAmount;
 import jo.accountant.demo.dto.DemoDashboard.TransactionSummary;
 import jo.accountant.demo.seeders.CompanySeeder;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -74,7 +74,7 @@ public class DemoService {
   private final JournalLineRepository journalLineRepository;
   private final JournalEntryRepository journalEntryRepository;
   private final AccountRepository accountRepository;
-  private final SalesInvoiceRepository salesInvoiceRepository;
+  private final InvoiceRepository salesInvoiceRepository;
 
   public DemoService(
       CompanyRepository companyRepository,
@@ -82,7 +82,7 @@ public class DemoService {
       JournalLineRepository journalLineRepository,
       JournalEntryRepository journalEntryRepository,
       AccountRepository accountRepository,
-      SalesInvoiceRepository salesInvoiceRepository) {
+      InvoiceRepository salesInvoiceRepository) {
     this.companyRepository = companyRepository;
     this.seeders = seeders;
     this.journalLineRepository = journalLineRepository;

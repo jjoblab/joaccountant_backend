@@ -59,6 +59,14 @@ public class InvoiceLine extends TenantAwareEntity {
     @Column(name = "line_total_tax", nullable = false, precision = 19, scale = 4)
     private BigDecimal lineTotalTax = BigDecimal.ZERO;
 
+    /**
+     * v9.0 — PURCHASE only : compte de charge (classe 6) à débiter.
+     * <p>SALES lines utilisent {@code itemId} ou {@code timesheetEntryId} à la place.
+     * Null pour les lignes de vente.
+     */
+    @Column(name = "expense_account_id")
+    private UUID expenseAccountId;
+
     public UUID getInvoiceId() { return invoiceId; }
     public void setInvoiceId(UUID invoiceId) { this.invoiceId = invoiceId; }
 
@@ -88,4 +96,8 @@ public class InvoiceLine extends TenantAwareEntity {
 
     public BigDecimal getLineTotalTax() { return lineTotalTax; }
     public void setLineTotalTax(BigDecimal lineTotalTax) { this.lineTotalTax = lineTotalTax; }
+
+    /** v9.0 — PURCHASE only : compte de charge à débiter. */
+    public UUID getExpenseAccountId() { return expenseAccountId; }
+    public void setExpenseAccountId(UUID expenseAccountId) { this.expenseAccountId = expenseAccountId; }
 }

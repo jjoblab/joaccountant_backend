@@ -36,7 +36,7 @@ import jo.accountant.invoicing.dto.CreateInvoiceRequest;
 import jo.accountant.invoicing.dto.InvoiceResponse;
 import jo.accountant.invoicing.entity.InvoiceType;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
@@ -103,7 +103,7 @@ class ReverseChargeIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
     @Autowired private JournalLineRepository jlRepo;
     @Autowired private ThirdPartyRepository tpRepo;
     @Autowired private LettrageMatchRepository lmRepo;
-    @Autowired private SalesInvoiceRepository siRepo;
+    @Autowired private InvoiceRepository siRepo;
     @Autowired private InvoiceLineRepository ilRepo;
     @Autowired private DocumentSequenceConfigRepository docSeqConfigRepo;
     @Autowired private DocumentSequenceCounterRepository docSeqCounterRepo;

@@ -35,7 +35,7 @@ import jo.accountant.documentnumbering.repository.DocumentSequenceConfigReposito
 import jo.accountant.documentnumbering.repository.DocumentSequenceCounterRepository;
 import jo.accountant.documentnumbering.service.DocumentNumberingService;
 import jo.accountant.invoicing.repository.InvoiceLineRepository;
-import jo.accountant.invoicing.repository.SalesInvoiceRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
 
 import jo.accountant.reporting.dto.ExportResult;
 import jo.accountant.reporting.service.ReportingService;
@@ -79,7 +79,7 @@ class ReportingIntegrationTest extends jo.accountant.testsupport.EmbeddedPostgre
     @Autowired private JournalEntryRepository jeRepo;
     @Autowired private JournalLineRepository jlRepo;
     @Autowired private JournalLineAnalyticalTagRepository jlatRepo;
-    @Autowired private SalesInvoiceRepository siRepo;
+    @Autowired private InvoiceRepository siRepo;
     @Autowired private InvoiceLineRepository ilRepo;
     @Autowired private DocumentTemplateRepository dtRepo;
     @Autowired private GeneratedDocumentRepository gdRepo;

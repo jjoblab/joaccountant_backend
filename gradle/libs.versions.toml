@@ -88,6 +88,7 @@ hibernate-core = { module = "org.hibernate.orm:hibernate-core" }
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 postgresql = { module = "org.postgresql:postgresql" }
+h2 = { module = "com.h2database:h2" }
 
 # ----- Jakarta -----
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api" }

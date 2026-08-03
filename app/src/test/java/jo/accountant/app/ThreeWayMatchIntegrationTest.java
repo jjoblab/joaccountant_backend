@@ -33,11 +33,11 @@ import jo.accountant.purchaseorders.repository.PurchaseOrderLineRepository;
 import jo.accountant.purchaseorders.repository.PurchaseOrderRepository;
 import jo.accountant.purchaseorders.service.PurchaseOrdersService;
 import jo.accountant.purchaseorders.service.ThreeWayMatchService;
-import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
-import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
-import jo.accountant.purchasing.repository.PurchaseInvoiceLineRepository;
-import jo.accountant.purchasing.repository.PurchaseInvoiceRepository;
-import jo.accountant.purchasing.service.PurchasingService;
+import jo.accountant.invoicing.dto.CreateInvoiceRequest;
+import jo.accountant.invoicing.dto.InvoiceResponse;
+import jo.accountant.invoicing.repository.InvoiceLineRepository;
+import jo.accountant.invoicing.repository.InvoiceRepository;
+import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
@@ -87,7 +87,7 @@ class ThreeWayMatchIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
 
     @Autowired private PurchaseOrdersService poService;
     @Autowired private ThreeWayMatchService matchService;
-    @Autowired private PurchasingService purchasingService;
+    @Autowired private InvoicingService invoicingService;
     @Autowired private AccountingEngineService accountingService;
     @Autowired private ChartOfAccountsService coaService;
     @Autowired private ThirdPartiesService tpService;
@@ -102,8 +102,8 @@ class ThreeWayMatchIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
     @Autowired private LettrageMatchRepository lmRepo;
     @Autowired private PurchaseOrderRepository poRepo;
     @Autowired private PurchaseOrderLineRepository polRepo;
-    @Autowired private PurchaseInvoiceRepository piRepo;
-    @Autowired private PurchaseInvoiceLineRepository pilRepo;
+    @Autowired private InvoiceRepository piRepo;
+    @Autowired private InvoiceLineRepository pilRepo;
     @Autowired private DocumentSequenceConfigRepository docSeqConfigRepo;
     @Autowired private DocumentSequenceCounterRepository docSeqCounterRepo;
     @Autowired private TransactionTemplate txTemplate;
@@ -185,14 +185,15 @@ class ThreeWayMatchIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
     }
 
     /** Crée une facture fournisseur avec une ligne "Article A" qté=q prix=100. */
-    private PurchaseInvoiceResponse createInvoice(UUID supplierId, BigDecimal quantity) {
-        return purchasingService.createPurchaseInvoice(COMPANY_A, new CreatePurchaseInvoiceRequest(
-            supplierId, null, "SUP-REF-001",
+    private InvoiceResponse createInvoice(UUID supplierId, BigDecimal quantity) {
+        return invoicingService.createInvoice(COMPANY_A, new CreateInvoiceRequest(
+            supplierId, null,
             LocalDate.of(2026, 7, 15), LocalDate.of(2026, 8, 15),
             "HTG",
-            List.of(new CreatePurchaseInvoiceRequest.LineDto(
+            List.of(new CreateInvoiceRequest.LineDto(
                 "Article A", quantity, new BigDecimal("100"),
-                BigDecimal.ZERO, null))));
+                BigDecimal.ZERO, BigDecimal.ZERO, null)),
+            null));
     }
 
     @Nested
@@ -203,7 +204,7 @@ class ThreeWayMatchIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
         void threeWayMatchOk() {
             UUID supplierId = initFixture();
             createStandardPo(supplierId);
-            PurchaseInvoiceResponse inv = createInvoice(supplierId, new BigDecimal("10"));
+            InvoiceResponse inv = createInvoice(supplierId, new BigDecimal("10"));
 
             ThreeWayMatchResult result = matchService.match(COMPANY_A, inv.id());
 
@@ -222,7 +223,7 @@ class ThreeWayMatchIntegrationTest extends jo.accountant.testsupport.EmbeddedPos
             UUID supplierId = initFixture();
             createStandardPo(supplierId);  // PO avec qté=10
             // Facture avec qté=15 (supérieure à la commande)
-            PurchaseInvoiceResponse inv = createInvoice(supplierId, new BigDecimal("15"));
+            InvoiceResponse inv = createInvoice(supplierId, new BigDecimal("15"));
 
             ThreeWayMatchResult result = matchService.match(COMPANY_A, inv.id());
 

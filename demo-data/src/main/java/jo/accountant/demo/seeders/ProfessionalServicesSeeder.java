@@ -50,10 +50,6 @@ import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.service.PayrollService;
-import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
-import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
-import jo.accountant.purchasing.entity.PurchaseInvoiceType;
-import jo.accountant.purchasing.service.PurchasingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
@@ -96,7 +92,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Données générées (idempotent) : company + 2 users (owner consultant + manager approbateur) +
  * 50 comptes PCN_HAITI + 6 journaux (VT/AC/BQ/OD/PA/DP) + 2 exercices fiscaux + 14 séquences
  * documentaires + 12 clients pro + 4 fournisseurs + 8 employés + 1 banque + 6 projets + 8 taux
- * facturables + 12 mois d'opérations (TimesheetEntry + SalesInvoice + PurchaseInvoice +
+ * facturables + 12 mois d'opérations (TimesheetEntry + Invoice + Invoice +
  * ExpenseReport + PayrollRun sur FY2025-2026).
  *
  * <p><b>Résilience</b> — chaque mois est isolé dans un try/catch dédié ; le seed global est
@@ -170,7 +166,6 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
   private final ThirdPartiesService thirdPartiesService;
   private final EmployeesService employeesService;
   private final InvoicingService invoicingService;
-  private final PurchasingService purchasingService;
   private final ExpensesService expensesService;
   private final PayrollService payrollService;
   private final BankReconciliationService bankReconciliationService;
@@ -205,7 +200,6 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
       ThirdPartiesService thirdPartiesService,
       EmployeesService employeesService,
       InvoicingService invoicingService,
-      PurchasingService purchasingService,
       ExpensesService expensesService,
       PayrollService payrollService,
       BankReconciliationService bankReconciliationService,
@@ -223,7 +217,6 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     this.thirdPartiesService = thirdPartiesService;
     this.employeesService = employeesService;
     this.invoicingService = invoicingService;
-    this.purchasingService = purchasingService;
     this.expensesService = expensesService;
     this.payrollService = payrollService;
     this.bankReconciliationService = bankReconciliationService;
@@ -350,7 +343,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     fiscalYearBootstrap.bootstrap(companyId);
     numberingBootstrap.bootstrap(companyId);
     // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
-    // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+    // services InvoicingService/InvoicingService/PayrollService attendent mais que le
     // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
     ensureExtraDocumentSequences(companyId);
     // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
@@ -486,7 +479,7 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
 
   /**
    * Crée les 4 séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les services
-   * InvoicingService/PurchasingService/PayrollService attendent mais que le bootstrap générique ne
+   * InvoicingService/InvoicingService/PayrollService attendent mais que le bootstrap générique ne
    * crée pas (il ne crée que les variants à scopeKey="").
    */
   private void ensureExtraDocumentSequences(UUID companyId) {
@@ -819,9 +812,9 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
    * <ul>
    * <li>8-15 TimesheetEntry par consultant actif (entryDate aléatoire dans le mois, hours 4-8,
    * billable=true) → createTimesheetEntry + approveEntry (par le manager — règle v7-9)
-   * <li>3-5 SalesInvoice par mois (facturation au temps passé — getUnbilled → lignes avec
+   * <li>3-5 Invoice par mois (facturation au temps passé — getUnbilled → lignes avec
    * timesheetEntryId → issueInvoice génère écriture VT avec RS 2%)
-   * <li>1-2 PurchaseInvoice (abonnements logiciels, fournitures)
+   * <li>1-2 Invoice (abonnements logiciels, fournitures)
    * <li>2-3 ExpenseReport (transport, repas clients)
    * <li>1 PayrollRun (calculate + approve → écriture PA, 12% OFATMA)
    * </ul>
@@ -857,14 +850,14 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
             monthCount++;
           }
         }
-        // b. 3-5 SalesInvoice/mois (facturation au temps passé)
+        // b. 3-5 Invoice/mois (facturation au temps passé)
         int nInv = 3 + (monthIdx % 3); // 3, 4, 5, 3, 4, 5, ...
         for (int i = 0; i < nInv; i++) {
           if (createTimeBillingInvoice(companyId, month, i, projects)) {
             monthCount++;
           }
         }
-        // c. 1-2 PurchaseInvoice/mois (abonnements logiciels, fournitures)
+        // c. 1-2 Invoice/mois (abonnements logiciels, fournitures)
         int nPur = 1 + (monthIdx % 2); // 1, 2, 1, 2, ...
         for (int i = 0; i < nPur; i++) {
           if (createPurchaseInvoice(companyId, month, i, suppliers)) {
@@ -1022,34 +1015,35 @@ public class ProfessionalServicesSeeder implements CompanySeeder {
     }
     ThirdPartyResponse supplier = suppliers.get((month.getMonthValue() + seq) % suppliers.size());
     int nLines = 1 + (seq % 3); // 1, 2, 3
-    List<CreatePurchaseInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+    List<CreateInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
     for (int i = 0; i < nLines; i++) {
       int qty = 1 + ((seq + i) * 3) % 5; // 1-5 licences/unités
       BigDecimal unitPrice =
           new BigDecimal(2500 + ((seq + i) * 421) % 18000) // 2500-20499 HTG
               .setScale(2, RoundingMode.HALF_UP);
       lines.add(
-          new CreatePurchaseInvoiceRequest.LineDto(
+          new CreateInvoiceRequest.LineDto(
               "Abonnement/Fourniture — " + supplier.name() + " (lot " + i + ")",
               new BigDecimal(qty),
               unitPrice,
-              VAT_RATE, // taxRate 10% (TVA déductible côté achat)
-              null // expenseAccountId null → le service résout un compte CHARGES par défaut
+              BigDecimal.ZERO, // discountPercent=0
+              VAT_RATE, // taxRate
+              null // itemId=null
               ));
     }
     LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 8, 27));
-    CreatePurchaseInvoiceRequest req =
-        new CreatePurchaseInvoiceRequest(
+    CreateInvoiceRequest req =
+        new CreateInvoiceRequest(
             supplier.id(),
-            PurchaseInvoiceType.STANDARD,
-            "FOURN-MA-" + month.getYear() + month.getMonthValue() + "-" + seq,
+            InvoiceType.STANDARD,
             issueDate,
             issueDate.plusDays(30),
             "HTG",
-            lines);
+            lines,
+            null);
     try {
-      PurchaseInvoiceResponse inv = purchasingService.createPurchaseInvoice(companyId, req);
-      purchasingService.receive(companyId, inv.id());
+      InvoiceResponse inv = invoicingService.createInvoice(companyId, req);
+      invoicingService.issueInvoice(companyId, inv.id());
       return true;
     } catch (ConflictException ex) {
       LOG.debug("V9 — Facture achat déjà existante pour {} seq={} — skip", month, seq);

@@ -25,7 +25,6 @@ dependencies {
     implementation(project(":notifications"))
     implementation(project(":tax"))
     implementation(project(":reporting"))
-    implementation(project(":purchasing"))
     implementation(project(":purchase-orders"))
     implementation(project(":expenses"))
     implementation(project(":employees"))

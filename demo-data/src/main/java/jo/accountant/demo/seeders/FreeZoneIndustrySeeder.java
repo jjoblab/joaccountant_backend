@@ -68,10 +68,6 @@ import jo.accountant.invoicing.service.InvoicingService;
 import jo.accountant.payroll.dto.CreatePayrollRunRequest;
 import jo.accountant.payroll.dto.PayrollRunResponse;
 import jo.accountant.payroll.service.PayrollService;
-import jo.accountant.purchasing.dto.CreatePurchaseInvoiceRequest;
-import jo.accountant.purchasing.dto.PurchaseInvoiceResponse;
-import jo.accountant.purchasing.entity.PurchaseInvoiceType;
-import jo.accountant.purchasing.service.PurchasingService;
 import jo.accountant.thirdparties.dto.CreateThirdPartyRequest;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
@@ -112,8 +108,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>1 BankAccount Capital Bank USD
  * <li>30 Employee réalistes (1 directeur + 5 managers + 12 chefs d'équipe + 12 ouvriers types) en
  * USD avec thirteenthMonthEligible=true
- * <li>12 mois d'opérations sur FY2025-2026 (Oct 2025 → Sep 2026) : 5-10 SalesInvoice TVA 0%
- * (export), 3-5 PurchaseInvoice TVA 0% (imports en franchise), 2-3 ExpenseReport, 1
+ * <li>12 mois d'opérations sur FY2025-2026 (Oct 2025 → Sep 2026) : 5-10 Invoice TVA 0%
+ * (export), 3-5 Invoice TVA 0% (imports en franchise), 2-3 ExpenseReport, 1
  * PayrollRun/mois, et un lancement async du 13e mois en décembre 2025.
  * </ul>
  *
@@ -203,7 +199,6 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
   private final ThirdPartiesService thirdPartiesService;
   private final EmployeesService employeesService;
   private final InvoicingService invoicingService;
-  private final PurchasingService purchasingService;
   private final ExpensesService expensesService;
   private final PayrollService payrollService;
   private final InventoryService inventoryService;
@@ -240,7 +235,6 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
       ThirdPartiesService thirdPartiesService,
       EmployeesService employeesService,
       InvoicingService invoicingService,
-      PurchasingService purchasingService,
       ExpensesService expensesService,
       PayrollService payrollService,
       InventoryService inventoryService,
@@ -260,7 +254,6 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     this.thirdPartiesService = thirdPartiesService;
     this.employeesService = employeesService;
     this.invoicingService = invoicingService;
-    this.purchasingService = purchasingService;
     this.expensesService = expensesService;
     this.payrollService = payrollService;
     this.inventoryService = inventoryService;
@@ -378,7 +371,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     fiscalYearBootstrap.bootstrap(companyId);
     numberingBootstrap.bootstrap(companyId);
     // Compléter les séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les
-    // services InvoicingService/PurchasingService/PayrollService attendent mais que le
+    // services InvoicingService/InvoicingService/PayrollService attendent mais que le
     // bootstrap générique ne crée pas (il ne crée que les variants à scopeKey="").
     ensureExtraDocumentSequences(companyId);
     // Journal DP (Dépenses) requis par ExpensesService.generateExpenseEntry
@@ -676,7 +669,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
 
   /**
    * Crée les 4 séquences documentaires manquantes (scopeKey="VT"/"AC"/"PA") que les services
-   * InvoicingService/PurchasingService/PayrollService attendent mais que le bootstrap générique ne
+   * InvoicingService/InvoicingService/PayrollService attendent mais que le bootstrap générique ne
    * crée pas (il ne crée que les variants à scopeKey="").
    */
   private void ensureExtraDocumentSequences(UUID companyId) {
@@ -1151,17 +1144,17 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     while (!month.isAfter(FY2526_END)) {
       int monthCount = 0;
       try {
-        // 5-10 SalesInvoice/mois (export USA — TVA 0% VAT_EXEMPT_ZF)
+        // 5-10 Invoice/mois (export USA — TVA 0% VAT_EXEMPT_ZF)
         int nSales = 5 + (monthIdx % 6); // 5, 6, 7, 8, 9, 10, 5, 6, 7, 8, 9, 10
         for (int i = 0; i < nSales; i++) {
-          if (createExportSalesInvoice(companyId, month, i, clients, items)) {
+          if (createExportInvoice(companyId, month, i, clients, items)) {
             monthCount++;
           }
         }
-        // 3-5 PurchaseInvoice/mois (imports en franchise — TVA 0% VAT_EXEMPT_ZF)
+        // 3-5 Invoice/mois (imports en franchise — TVA 0% VAT_EXEMPT_ZF)
         int nPur = 3 + (monthIdx % 3); // 3, 4, 5, 3, 4, 5, ...
         for (int i = 0; i < nPur; i++) {
-          if (createFreeZonePurchaseInvoice(companyId, month, i, suppliers, items)) {
+          if (createFreeZoneInvoice(companyId, month, i, suppliers, items)) {
             monthCount++;
           }
         }
@@ -1206,7 +1199,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * <li>{@code taxes=[VAT_EXEMPT_ZF]} sur chaque ligne (marqueur d'exonération v8-6)
    * </ul>
    */
-  private boolean createExportSalesInvoice(
+  private boolean createExportInvoice(
       UUID companyId,
       LocalDate month,
       int seq,
@@ -1268,7 +1261,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * <li>{@code taxRate=0} sur chaque ligne (TVA 0% — imports en franchise douanière)
    * </ul>
    */
-  private boolean createFreeZonePurchaseInvoice(
+  private boolean createFreeZoneInvoice(
       UUID companyId,
       LocalDate month,
       int seq,
@@ -1276,7 +1269,7 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
       List<ItemResponse> items) {
     ThirdPartyResponse supplier = suppliers.get((month.getMonthValue() + seq) % suppliers.size());
     int nLines = 1 + (seq % 3); // 1, 2, 3
-    List<CreatePurchaseInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
+    List<CreateInvoiceRequest.LineDto> lines = new ArrayList<>(nLines);
     for (int i = 0; i < nLines; i++) {
       // Quantités industrielles : 2000-20000 unités
       int qty = 2000 + ((seq + i) * 2222) % 18000;
@@ -1284,28 +1277,28 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
       BigDecimal unitPrice =
           new BigDecimal(1 + ((seq + i) * 3) % 25).setScale(2, RoundingMode.HALF_UP);
       lines.add(
-          new CreatePurchaseInvoiceRequest.LineDto(
+          new CreateInvoiceRequest.LineDto(
               "Import matières premières — "
                   + (items.isEmpty() ? "lot " + i : items.get((seq + i) % items.size()).label()),
               new BigDecimal(qty),
               unitPrice,
-              VAT_RATE_FREE_ZONE, // taxRate=0 (TVA 0% imports en franchise zone franche)
-              null // expenseAccountId null → le service résout un compte CHARGES par défaut
+              BigDecimal.ZERO, // discountPercent=0
+              VAT_RATE_FREE_ZONE, // taxRate
+              null // itemId=null
               ));
     }
     LocalDate issueDate = month.withDayOfMonth(Math.min(seq + 8, 27));
-    CreatePurchaseInvoiceRequest req =
-        new CreatePurchaseInvoiceRequest(
+    CreateInvoiceRequest req =
+        new CreateInvoiceRequest(
             supplier.id(),
-            PurchaseInvoiceType.STANDARD,
-            "IMP-" + month.getYear() + month.getMonthValue() + "-" + seq,
+            InvoiceType.STANDARD,
             issueDate,
             issueDate.plusDays(45), // délai import USA
             "USD", // currency USD (imports depuis USA)
-            lines);
+            lines, null);
     try {
-      PurchaseInvoiceResponse inv = purchasingService.createPurchaseInvoice(companyId, req);
-      purchasingService.receive(companyId, inv.id());
+      InvoiceResponse inv = invoicingService.createInvoice(companyId, req);
+      invoicingService.issueInvoice(companyId, inv.id());
       return true;
     } catch (ConflictException ex) {
       LOG.debug("V9 — Facture achat déjà existante pour {} seq={} — skip", month, seq);
