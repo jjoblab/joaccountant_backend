@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -279,6 +280,42 @@ public class CompanyController {
                                              @Valid @RequestBody UpdateCompanyLegalFieldsRequest req) {
         roleChecker.ensureRole(companyId, "ADMIN");
         return CompanyService.toResponse(companyService.updateLegalFields(companyId, userId, req));
+    }
+
+    /**
+     * Fix PDF v9.4 — Upload du logo entreprise (multipart/form-data).
+     *
+     * <p>Le logo est stocké via {@link jo.accountant.core.port.FileStoragePort} et la clé opaque
+     * est persistée dans {@code companies.logo_storage_key} (migration V3_017). Le logo est
+     * ensuite résolu par {@code CompanyInfoPortAdapter} pour injection automatique dans les PDFs.
+     *
+     * <p>Contraintes :
+     * <ul>
+     *   <li>Format : PNG, JPEG, ou WebP (validated via Content-Type)</li>
+     *   <li>Taille max : 2 MB</li>
+     *   <li>Rôle requis : ADMIN</li>
+     * </ul>
+     */
+    @Operation(summary = "Upload logo entreprise",
+        description = "Téléverse le logo de l'entreprise (PNG/JPEG/WebP, max 2MB). " +
+                      "Le logo est stocké via FileStoragePort et résolu automatiquement dans les PDFs générés.")
+    @PostMapping(value = "/{companyId}/logo", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CompanyResponse uploadLogo(@CurrentUser java.util.UUID userId,
+                                       @PathVariable java.util.UUID companyId,
+                                       @org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return CompanyService.toResponse(companyService.uploadLogo(companyId, userId, file));
+    }
+
+    /**
+     * Fix PDF v9.4 — Supprime le logo entreprise.
+     */
+    @Operation(summary = "Supprime le logo entreprise")
+    @DeleteMapping("/{companyId}/logo")
+    public CompanyResponse deleteLogo(@CurrentUser java.util.UUID userId,
+                                       @PathVariable java.util.UUID companyId) {
+        roleChecker.ensureRole(companyId, "ADMIN");
+        return CompanyService.toResponse(companyService.deleteLogo(companyId, userId));
     }
 
     @Operation(summary = "Update wizard step 1 (identité — ré-éditable)",

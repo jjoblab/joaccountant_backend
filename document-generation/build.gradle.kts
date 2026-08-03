@@ -15,4 +15,9 @@ dependencies {
     // openhtmltopdf pour la conversion HTML → PDF (licence Apache 2.0, pas iText AGPL)
     api(libs.openhtmltopdf.core)
     api(libs.openhtmltopdf.pdfbox)
+    // Fix PDF v9.4 — ZXing pour QR-codes de paiement (licence Apache 2.0)
+    api(libs.zxing.core)
+    api(libs.zxing.javase)
+    // Fix PDF v9.4 — JFreeChart pour graphiques dans rapports financiers (licence LGPL)
+    api(libs.jfreechart)
 }

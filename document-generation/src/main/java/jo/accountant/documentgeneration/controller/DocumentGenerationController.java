@@ -126,4 +126,28 @@ public class DocumentGenerationController {
             companyId, documentType, resourceId, variables);
         return ResponseEntity.status(HttpStatus.CREATED).body(doc);
     }
+
+    /**
+     * Fix PDF v9.4 — Prévisualisation PDF (génère un PDF sans le persister).
+     *
+     * <p>Permet au frontend de prévisualiser un template avant génération définitive.
+     * Le PDF est retourné directement en binaire (pas de stockage FileStoragePort).
+     */
+    @Operation(summary = "Prévisualiser un PDF sans le persister",
+        description = "Génère un PDF de prévisualisation pour un type de document donné. " +
+                      "Le PDF n'est PAS persisté (pas de GeneratedDocument créé). " +
+                      "Idéal pour prévisualiser un template avant génération définitive.")
+    @PostMapping(value = "/preview", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> previewDocument(
+        @PathVariable UUID companyId,
+        @CurrentUser UUID userId,
+        @RequestParam GeneratedDocumentType documentType,
+        @RequestBody(required = false) Map<String, Object> variables) {
+        roleChecker.ensureRole(companyId, "VIEWER");
+        byte[] pdfBytes = service.previewDocument(companyId, documentType, variables);
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header("Content-Disposition", "inline; filename=preview-" + documentType + ".pdf")
+            .body(pdfBytes);
+    }
 }

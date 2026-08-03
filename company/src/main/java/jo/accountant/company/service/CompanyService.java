@@ -41,6 +41,7 @@ import jo.accountant.core.exception.ValidationException;
 import jo.accountant.core.framework.AccountingFramework;
 import jo.accountant.core.framework.AccountingFrameworkRepository;
 import jo.accountant.core.json.JsonUtil;
+import jo.accountant.core.port.FileStoragePort;
 import jo.accountant.core.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +105,7 @@ public class CompanyService {
     private final AccountingProvisioningPort accountingProvisioningPort;
     private final JwtService jwtService;
     private final ApplicationEventPublisher events;
+    private final FileStoragePort fileStorage;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -120,7 +122,8 @@ public class CompanyService {
                           OrganizationNatureLegalFormValidator natureLegalFormValidator,
                           AccountingProvisioningPort accountingProvisioningPort,
                           JwtService jwtService,
-                          ApplicationEventPublisher events) {
+                          ApplicationEventPublisher events,
+                          FileStoragePort fileStorage) {
         this.companyRepository = companyRepository;
         this.frameworkRepository = frameworkRepository;
         this.businessTypeRepository = businessTypeRepository;
@@ -134,6 +137,7 @@ public class CompanyService {
         this.accountingProvisioningPort = accountingProvisioningPort;
         this.jwtService = jwtService;
         this.events = events;
+        this.fileStorage = fileStorage;
     }
 
     // ── Étape 1 — Identité (création) ──────────────────────────────────────────
@@ -889,5 +893,93 @@ public class CompanyService {
             c.getCreatedAt(),
             c.getUpdatedAt()
         );
+    }
+
+    // ── Logo entreprise (Fix PDF v9.4) ────────────────────────────────────────
+
+    private static final long MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2 MB
+    private static final java.util.Set<String> ALLOWED_LOGO_TYPES = java.util.Set.of(
+        "image/png", "image/jpeg", "image/jpg", "image/webp");
+
+    /**
+     * Fix PDF v9.4 — Téléverse le logo entreprise.
+     *
+     * <p>Le logo est stocké via {@link FileStoragePort} et la clé opaque est persistée dans
+     * {@code companies.logo_storage_key}. L'ancien logo (si présent) est supprimé du storage.
+     *
+     * @param companyId identifiant du tenant
+     * @param userId utilisateur qui effectue l'upload (pour audit)
+     * @param file fichier multipart (PNG/JPEG/WebP, max 2MB)
+     * @return la company mise à jour
+     * @throws ValidationException si le fichier est vide, trop gros, ou format non supporté
+     */
+    @Transactional
+    public Company uploadLogo(java.util.UUID companyId, java.util.UUID userId,
+                               org.springframework.web.multipart.MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ValidationException("LOGO_FILE_EMPTY", "Le fichier logo est vide");
+        }
+        if (file.getSize() > MAX_LOGO_SIZE) {
+            throw new ValidationException("LOGO_FILE_TOO_LARGE",
+                "Le logo ne peut pas dépasser 2 MB (reçu : " + (file.getSize() / 1024) + " KB)");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_LOGO_TYPES.contains(contentType.toLowerCase())) {
+            throw new ValidationException("LOGO_FORMAT_UNSUPPORTED",
+                "Format non supporté : " + contentType + ". Formats acceptés : PNG, JPEG, WebP.");
+        }
+
+        Company company = getCompanyForUser(companyId, userId);
+
+        // Supprimer l'ancien logo du storage (best-effort)
+        if (company.getLogoStorageKey() != null && !company.getLogoStorageKey().isBlank()) {
+            try {
+                fileStorage.delete(company.getLogoStorageKey());
+            } catch (Exception e) {
+                LOG.warn("Impossible de supprimer l'ancien logo (key={}) : {}",
+                    company.getLogoStorageKey(), e.getMessage());
+            }
+        }
+
+        // Stocker le nouveau logo
+        String storageKey;
+        try {
+            storageKey = fileStorage.store(file.getBytes(), contentType, "logo");
+        } catch (Exception e) {
+            throw new ValidationException("LOGO_STORAGE_FAILED",
+                "Erreur lors du stockage du logo : " + e.getMessage());
+        }
+
+        company.setLogoStorageKey(storageKey);
+        company.setUpdatedAt(Instant.now());
+        company.setUpdatedBy(userId);
+        Company saved = companyRepository.save(company);
+        LOG.info("Logo uploadé pour company {} par user {} (key={}, size={}KB, type={})",
+            companyId, userId, storageKey, file.getSize() / 1024, contentType);
+        return saved;
+    }
+
+    /**
+     * Fix PDF v9.4 — Supprime le logo entreprise.
+     */
+    @Transactional
+    public Company deleteLogo(java.util.UUID companyId, java.util.UUID userId) {
+        Company company = getCompanyForUser(companyId, userId);
+        if (company.getLogoStorageKey() == null || company.getLogoStorageKey().isBlank()) {
+            throw new ValidationException("NO_LOGO_TO_DELETE",
+                "Aucun logo à supprimer pour cette entreprise");
+        }
+        try {
+            fileStorage.delete(company.getLogoStorageKey());
+        } catch (Exception e) {
+            LOG.warn("Impossible de supprimer le logo du storage (key={}) : {}",
+                company.getLogoStorageKey(), e.getMessage());
+        }
+        company.setLogoStorageKey(null);
+        company.setUpdatedAt(Instant.now());
+        company.setUpdatedBy(userId);
+        Company saved = companyRepository.save(company);
+        LOG.info("Logo supprimé pour company {} par user {}", companyId, userId);
+        return saved;
     }
 }

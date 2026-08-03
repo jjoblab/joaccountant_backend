@@ -1506,6 +1506,11 @@ public class InvoicingService {
  variables.put("issueDate", invoice.getIssueDate() != null ? invoice.getIssueDate().toString() : "");
  variables.put("dueDate", invoice.getDueDate() != null ? invoice.getDueDate().toString() : "");
  variables.put("clientName", tp != null ? tp.getName() : "");
+ // Fix PDF v9.4 — Variables manquantes pour le template INVOICE V14_008
+ variables.put("clientAddress", tp != null && tp.getAddress() != null ? tp.getAddress() : "");
+ variables.put("clientNif", tp != null && tp.getNif() != null ? tp.getNif() : "");
+ variables.put("currency", invoice.getCurrency() != null ? invoice.getCurrency() : "HTG");
+ variables.put("escompte", "Aucun"); // Fix PDF v9.4 — pas de champ escompte global sur Invoice
  variables.put("totalAmount", invoice.getTotalAmount().toString());
  variables.put("subtotal", invoice.getSubtotal().toString());
  variables.put("taxAmount", invoice.getTaxAmount().toString());
@@ -1523,6 +1528,7 @@ public class InvoicingService {
  }
 
  // Lignes
+ // Fix PDF v9.4 — Ajouter taxRate et lineTotalTax pour le template V14_008
  List<Map<String, Object>> lineMaps = new ArrayList<>();
  for (InvoiceLine line : lineRepository.findByInvoiceIdOrderByCreatedAt(invoice.getId())) {
  Map<String, Object> m = new HashMap<>();
@@ -1530,6 +1536,9 @@ public class InvoicingService {
  m.put("quantity", line.getQuantity().toString());
  m.put("unitPrice", line.getUnitPrice().toString());
  m.put("amount", line.getLineTotalHt().toString());
+ m.put("taxRate", line.getTaxRate() != null ? line.getTaxRate().toString() : "0");
+ m.put("lineTotalHt", line.getLineTotalHt() != null ? line.getLineTotalHt().toString() : "0");
+ m.put("lineTotalTax", line.getLineTotalTax() != null ? line.getLineTotalTax().toString() : "0");
  lineMaps.add(m);
  }
  variables.put("lines", lineMaps);

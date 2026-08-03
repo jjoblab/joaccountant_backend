@@ -146,6 +146,11 @@ spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boo
 ognl = { module = "ognl:ognl", version = "3.2.21" }
 openhtmltopdf-core = { module = "com.openhtmltopdf:openhtmltopdf-core", version = "1.0.10" }
 openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version = "1.0.10" }
+# Fix PDF v9.4 — ZXing pour QR-codes (licence Apache 2.0)
+zxing-core = { module = "com.google.zxing:core", version = "3.5.3" }
+zxing-javase = { module = "com.google.zxing:javase", version = "3.5.3" }
+# Fix PDF v9.4 — JFreeChart pour graphiques dans rapports financiers (licence LGPL)
+jfreechart = { module = "org.jfree:jfreechart", version = "1.5.4" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }

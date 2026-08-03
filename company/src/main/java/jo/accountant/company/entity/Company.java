@@ -122,6 +122,13 @@ public class Company {
  private String address;
 
  /**
+ * Fix PDF v9.4 — Clé opaque du logo entreprise (stocké via FileStoragePort).
+ * NULL = pas de logo configuré. Le PDF affiche alors le nom en texte brut.
+ */
+ @Column(name = "logo_storage_key", length = 200)
+ private String logoStorageKey;
+
+ /**
  * Secteur d'activité — <strong>purement descriptif</strong> depuis la restructuration.
  * Ne pilote plus l'activation des modules (rôle transféré à {@code businessTypeCode}).
  */
@@ -257,6 +264,8 @@ public class Company {
  public void setNif(String nif) { this.nif = nif; }
  public String getAddress() { return address; }
  public void setAddress(String address) { this.address = address; }
+ public String getLogoStorageKey() { return logoStorageKey; }
+ public void setLogoStorageKey(String logoStorageKey) { this.logoStorageKey = logoStorageKey; }
  public Sector getSector() { return sector; }
  public void setSector(Sector sector) { this.sector = sector; }
  public OrganizationNature getOrganizationNature() { return organizationNature; }
