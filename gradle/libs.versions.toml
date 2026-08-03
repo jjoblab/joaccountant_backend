@@ -17,7 +17,7 @@
 
 [versions]
 # ----- Spring -----
-springBoot = "3.5.0"
+springBoot = "4.1.0"
 springDependencyManagement = "1.1.6"
 
 # ----- Build tooling (plugins) -----
