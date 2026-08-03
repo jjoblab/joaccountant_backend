@@ -13,7 +13,7 @@
 # ============================================================
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 WORKDIR /workspace
 
 # Cache Gradle wrapper + dépendances (ces fichiers changent rarement)
@@ -94,7 +94,7 @@ COPY app ./app
 RUN ./gradlew :app:bootJar --no-daemon -x test
 
 # ─── Stage 2: Runtime ────────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 # Non-root user pour sécurité
 RUN groupadd -r joaccountant && useradd -r -g joaccountant joaccountant
