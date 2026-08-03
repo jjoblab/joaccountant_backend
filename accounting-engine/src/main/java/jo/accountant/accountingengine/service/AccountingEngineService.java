@@ -192,6 +192,12 @@ public class AccountingEngineService {
  "Exercice " + req.startDate().getYear() + "-" + req.endDate().getYear());
  fy.setStatus(FiscalYearStatus.OPEN);
  FiscalYear saved = fiscalYearRepository.save(fy);
+ // v9.4 fix — Flush explicite pour garantir que l'INSERT fiscal_year est envoyé au SGBD
+ // avant l'UPDATE companies.active_fiscal_year_id (qui passe par jdbcTemplate et bypass
+ // la session Hibernate). Sans ce flush, la contrainte FK fk_companies_active_fy (V8_009)
+ // échoue car la ligne fiscal_year n'est pas encore visible en DB → HTTP 500 sur
+ // POST /wizard/complete (cf. worklog Task 2-a, étape 4).
+ fiscalYearRepository.flush();
 
  // Génère 12 périodes mensuelles par défaut
  generateMonthlyPeriods(companyId, saved);
