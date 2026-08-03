@@ -1,7 +1,7 @@
 -- V8_006 — postgres rls (accounting-engine tables)
 -- Row-Level Security PostgreSQL sur les tables du module accounting-engine :
 -- journal_line et journal_entry.
--- Note : les blocs RLS sur sales_invoice, purchase_invoice, third_party et
+-- Note : les blocs RLS sur invoice, invoice, third_party et
 -- expense_report (tables créées par d'autres modules) ont été déplacés vers
 -- leurs modules respectifs : V15_007, V21_003, V10_003, V22_003.
 

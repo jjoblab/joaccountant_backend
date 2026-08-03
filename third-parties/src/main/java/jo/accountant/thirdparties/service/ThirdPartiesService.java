@@ -28,6 +28,7 @@ import jo.accountant.chartofaccounts.repository.AccountRepository;
 import jo.accountant.chartofaccounts.service.ChartOfAccountsService;
 import jo.accountant.core.exception.NotFoundException;
 import jo.accountant.core.exception.ValidationException;
+import jo.accountant.core.exception.ConflictException;
 import jo.accountant.core.framework.ReportingClass;
 import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.thirdparties.dto.AgedBalance;
@@ -37,6 +38,7 @@ import jo.accountant.thirdparties.dto.LettrageRequest;
 import jo.accountant.thirdparties.dto.LettrageResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyStatement;
+import jo.accountant.thirdparties.dto.UpdateThirdPartyRequest;
 import jo.accountant.thirdparties.entity.LettrageMatch;
 import jo.accountant.thirdparties.entity.LettrageStatus;
 import jo.accountant.thirdparties.entity.ThirdParty;
@@ -154,6 +156,7 @@ public class ThirdPartiesService {
  tp.setCollectiveAccountId(collectiveAccount.getId());
  tp.setActive(true);
  tp.setEmail(req.email());
+ tp.setPhone(req.phone());
  tp.setAddress(req.address());
  // R-F-validation: NIF tiers (Code Fiscal art. 196 — mentions factures)
  tp.setNif(req.nif());
@@ -293,6 +296,128 @@ public class ThirdPartiesService {
  return toResponse(tp,
  loadAccountOrNull(tp.getCollectiveAccountId()),
  loadAccountOrNull(tp.getDedicatedAccountId()));
+ }
+
+ // --- Recherche par nom ---
+
+ /**
+ * Recherche de tiers par nom (case-insensitive, partial match).
+ *
+ * <p>Wire la méthode {@code findByCompanyIdAndNameContainingIgnoreCaseOrderByName} du repository
+ * vers un endpoint {@code GET .../third-parties/search?q=...}. Utilisé par le mobile pour
+ * l'autocomplétion lors de la saisie d'une facture ou d'un règlement.
+ *
+ * @param companyId identifiant du tenant
+ * @param query texte recherché (au moins 1 caractère)
+ * @return liste des tiers dont le nom contient {@code query} (insensible à la casse)
+ */
+ @Transactional(readOnly = true)
+ public List<ThirdPartyResponse> searchByName(UUID companyId, String query) {
+ if (query == null || query.isBlank()) {
+ return List.of();
+ }
+ List<ThirdParty> tps = thirdPartyRepository
+ .findByCompanyIdAndNameContainingIgnoreCaseOrderByName(companyId, query.trim());
+ Map<UUID, Account> accountCache = new HashMap<>();
+ return tps.stream().map(tp -> toResponse(tp,
+ accountCache.computeIfAbsent(tp.getCollectiveAccountId(), this::loadAccountOrNull),
+ accountCache.computeIfAbsent(tp.getDedicatedAccountId(), this::loadAccountOrNull)
+ )).toList();
+ }
+
+ // --- Mise à jour partielle (PATCH) ---
+
+ /**
+ * Met à jour un tiers — sémantique PATCH : seuls les champs non-nuls de {@code req}
+ * sont appliqués. Les champs à {@code null} sont ignorés (la valeur existante est
+ * préservée).
+ *
+ * <p>Le {@code type} et le {@code collectiveAccountId} ne sont pas modifiables via ce
+ * endpoint (champs structurels — cf. {@link UpdateThirdPartyRequest}).
+ *
+ * @param companyId identifiant du tenant
+ * @param thirdPartyId identifiant du tiers à mettre à jour
+ * @param req corps de la requête PATCH (champs non-nuls = modifications à appliquer)
+ * @return le tiers mis à jour
+ * @throws NotFoundException si le tiers n'existe pas ou n'appartient pas à ce tenant
+ * @throws ValidationException si {@code name} est fourni mais vide/blanc
+ */
+ @Transactional
+ public ThirdPartyResponse updateThirdParty(UUID companyId, UUID thirdPartyId, UpdateThirdPartyRequest req) {
+ ThirdParty tp = loadThirdParty(companyId, thirdPartyId);
+
+ if (req.name() != null) {
+ if (req.name().isBlank()) {
+ throw new ValidationException("NAME_REQUIRED", "Le nom du tiers ne peut pas être vide");
+ }
+ tp.setName(req.name().trim());
+ }
+ if (req.email() != null) {
+ // Chaîne vide = effacer l'email ; null = pas de modification
+ tp.setEmail(req.email().isBlank() ? null : req.email());
+ }
+ if (req.phone() != null) {
+ tp.setPhone(req.phone().isBlank() ? null : req.phone());
+ }
+ if (req.address() != null) {
+ tp.setAddress(req.address().isBlank() ? null : req.address());
+ }
+ if (req.siret() != null) {
+ tp.setSiret(req.siret().isBlank() ? null : req.siret());
+ }
+ if (req.vatNumber() != null) {
+ tp.setVatNumber(req.vatNumber().isBlank() ? null : req.vatNumber());
+ }
+ if (req.nif() != null) {
+ tp.setNif(req.nif().isBlank() ? null : req.nif());
+ }
+ if (req.active() != null) {
+ tp.setActive(req.active());
+ }
+ tp.setUpdatedBy(TenantContext.getUserId());
+ ThirdParty saved = thirdPartyRepository.save(tp);
+ LOG.info("Tiers mis à jour (PATCH) : id={} by={}", saved.getId(), TenantContext.getUserId());
+ return toResponse(saved,
+ loadAccountOrNull(saved.getCompanyId(), saved.getCollectiveAccountId()),
+ loadAccountOrNull(saved.getCompanyId(), saved.getDedicatedAccountId()));
+ }
+
+ // --- Suppression (soft-delete) ---
+
+ /**
+ * Supprime un tiers — soft-delete uniquement (set active=false).
+ *
+ * <p>Refuse la suppression si le tiers est référencé par des écritures comptables
+ * (vérifié via {@code JournalLineRepository.existsByCompanyIdAndThirdPartyId}).
+ * Les factures émettent toujours des lignes d'écriture avec {@code thirdPartyId} renseigné,
+ * donc ce check couvre également les factures clients/fournisseurs existantes.
+ *
+ * <p>Si le tiers n'a aucune écriture, on le désactive (active=false) plutôt que de le
+ * supprimer physiquement — cela préserve l'intégrité référentielle si l'ID a été stocké
+ * côté mobile/cache, et permet la réactivation ultérieure via PATCH {@code active=true}.
+ *
+ * @param companyId identifiant du tenant
+ * @param thirdPartyId identifiant du tiers à supprimer
+ * @throws NotFoundException si le tiers n'existe pas ou n'appartient pas à ce tenant
+ * @throws ConflictException si le tiers a des écritures ou factures liées
+ */
+ @Transactional
+ public void deleteThirdParty(UUID companyId, UUID thirdPartyId) {
+ ThirdParty tp = loadThirdParty(companyId, thirdPartyId);
+
+ // Vérifier qu'aucune écriture ne référence ce tiers
+ if (journalLineRepository.existsByCompanyIdAndThirdPartyId(companyId, thirdPartyId)) {
+ throw new ConflictException("THIRD_PARTY_HAS_JOURNAL_ENTRIES",
+ "Impossible de supprimer le tiers '" + tp.getName() + "' : il est référencé par "
+ + "au moins une écriture comptable ou facture. Désactivez-le via PATCH {active:false} "
+ + "si vous souhaitez le masquer sans le supprimer.");
+ }
+
+ tp.setActive(false);
+ tp.setUpdatedBy(TenantContext.getUserId());
+ thirdPartyRepository.save(tp);
+ LOG.info("Tiers supprimé (soft-delete active=false) : id={} name={} by={}",
+ thirdPartyId, tp.getName(), TenantContext.getUserId());
  }
 
  // --- Relevé de compte ---
@@ -843,7 +968,7 @@ public class ThirdPartiesService {
  collectiveAccount != null ? collectiveAccount.getCode() : null,
  tp.getDedicatedAccountId(),
  dedicatedAccount != null ? dedicatedAccount.getCode() : null,
- tp.isActive(), tp.getEmail(), tp.getAddress(),
+ tp.isActive(), tp.getEmail(), tp.getPhone(), tp.getAddress(),
  //— champs légaux pour Factur-X + mentions légales
  tp.getSiret(), tp.getVatNumber(), tp.getNif(),
  tp.getCreatedAt(), tp.getUpdatedAt());

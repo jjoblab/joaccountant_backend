@@ -1,7 +1,7 @@
 -- V1_004 — flyway bypassrls
 -- V53__flyway_bypassrls — Accorde BYPASSRLS au user Flyway pour permettre les migrations
 -- DML (INSERT/UPDATE/DELETE) sur les tables protégées par RLS.
--- (journal_line, journal_entry, sales_invoice, purchase_invoice, third_party, expense_report).
+-- (journal_line, journal_entry, invoice, invoice, third_party, expense_report).
 -- Sans BYPASSRLS, le user Flyway (qui est OWNER de ces tables) est soumis aux policies RLS
 -- lors des DML futurs :
 -- - INSERT : OK car la policy V51 n'a que USING (pas de WITH CHECK) — les INSERT ne sont
@@ -38,7 +38,7 @@ BEGIN
         current_user;
 EXCEPTION
     WHEN insufficient_privilege THEN
-        RAISE NOTICE 'R-03 : BYPASSRLS NON accordé à % — manque le privilège SUPERUSER. Les migrations futures contenant UPDATE/DELETE sur les tables RLS-protégées (journal_line, journal_entry, sales_invoice, purchase_invoice, third_party, expense_report) peuvent silencieusement échouer (0 lignes affectées). Faire accorder BYPASSRLS manuellement par un DBA superuser.',
+        RAISE NOTICE 'R-03 : BYPASSRLS NON accordé à % — manque le privilège SUPERUSER. Les migrations futures contenant UPDATE/DELETE sur les tables RLS-protégées (journal_line, journal_entry, invoice, invoice, third_party, expense_report) peuvent silencieusement échouer (0 lignes affectées). Faire accorder BYPASSRLS manuellement par un DBA superuser.',
             current_user;
 END
 $$;

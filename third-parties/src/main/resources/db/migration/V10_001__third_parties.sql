@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS third_party (
     dedicated_account_id    UUID,
     active                  BOOLEAN     NOT NULL DEFAULT TRUE,
     email                   VARCHAR(255),
+    phone                   VARCHAR(30),
     address                 VARCHAR(500),
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS lettrage_match (
     created_by        UUID,
     updated_by        UUID,
     version           BIGINT      NOT NULL DEFAULT 0,
-    CONSTRAINT chk_lm_status CHECK (status IN ('PARTIAL','FULL'))
+    CONSTRAINT chk_lm_status CHECK (status IN ('PARTIAL','FULL','DELETED'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_lm_company_third_party ON lettrage_match (company_id, third_party_id);

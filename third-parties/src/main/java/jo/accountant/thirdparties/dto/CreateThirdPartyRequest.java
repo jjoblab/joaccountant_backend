@@ -27,11 +27,11 @@ import jo.accountant.thirdparties.entity.ThirdPartyType;
  * backend auto-résout un défaut basé sur le type — comportement
  * aligné avec la convention SYSCOHADA.
  * @param email email optionnel
+ * @param phone téléphone optionnel — envoyé par le mobile (V10_001 — phone VARCHAR(30))
  * @param address adresse optionnelle
  * @param nif NIF du tiers (Numéro d'Identification Fiscale). Format Haïti : 10 chiffres + 2 lettres {@code ^[0-9]{10}[A-Z]{2}$}.
  * Optionnel mais recommandé pour les clients/suppliers assujettis (Code Fiscal art. 196 — mentions factures).
  * R-F-validationprécédemment manquant côté API.
- 
  *
  * @author jo@Dev
 
@@ -42,11 +42,12 @@ public record CreateThirdPartyRequest(
     @NotBlank String name,
     UUID collectiveAccountId,
     String email,
+    String phone,
     String address,
     @Pattern(regexp = "^$|^[0-9]{10}[A-Z]{2}$", message = "NIF Haïti doit être au format 10 chiffres + 2 lettres majuscules (ex: 1234567890AB)")
     String nif
 ) {
-    /** Rétro-compatibilité — ancien constructeur 5-args sans nif. */
+    /** Rétro-compatibilité — ancien constructeur 5-args sans nif ni phone. */
     public CreateThirdPartyRequest(
         @NotNull ThirdPartyType type,
         @NotBlank String name,
@@ -54,6 +55,18 @@ public record CreateThirdPartyRequest(
         String email,
         String address
     ) {
-        this(type, name, collectiveAccountId, email, address, null);
+        this(type, name, collectiveAccountId, email, null, address, null);
+    }
+
+    /** Rétro-compatibilité — ancien constructeur 6-args avec nif mais sans phone. */
+    public CreateThirdPartyRequest(
+        @NotNull ThirdPartyType type,
+        @NotBlank String name,
+        UUID collectiveAccountId,
+        String email,
+        String address,
+        String nif
+    ) {
+        this(type, name, collectiveAccountId, email, null, address, nif);
     }
 }

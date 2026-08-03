@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 import jo.accountant.employees.entity.Employee;
 import jo.accountant.employees.entity.EmployeeStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,6 +30,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     /** Utilisé par :payroll pour lister les salariés à payer sur une période. */
     List<Employee> findByCompanyIdAndStatusOrderByIdAsc(UUID companyId, EmployeeStatus status);
+
+    // ── variantes paginées (fix mobile 2026-07-26 : GET /employees?page=&size=) ──
+
+    /** Variante paginée — tous les employés de l'entreprise, triés par date d'embauche desc. */
+    Page<Employee> findByCompanyId(UUID companyId, Pageable pageable);
+
+    /** Variante paginée — employés par statut dans l'entreprise. */
+    Page<Employee> findByCompanyIdAndStatus(UUID companyId, EmployeeStatus status, Pageable pageable);
 
     /**
      * V86 / v8-7 — Liste les employés éligibles au 13e mois pour une année donnée.

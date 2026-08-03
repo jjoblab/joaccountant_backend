@@ -88,8 +88,10 @@ public interface InvoiceLineTaxRepository extends JpaRepository<InvoiceLineTax, 
            "and t.invoiceLineId in (" +
            " select l.id from InvoiceLine l " +
            " where l.invoiceId in (" +
-           " select s.id from SalesInvoice s " +
-           " where s.status in :statuses " +
+           " select s.id from Invoice s " +
+           " where s.companyId = :companyId " +
+           " and s.direction = jo.accountant.invoicing.entity.InvoiceDirection.SALES " +
+           " and s.status in :statuses " +
            " and (:from is null or s.issueDate >= :from) " +
            " and (:to is null or s.issueDate <= :to)" +
            " )" +

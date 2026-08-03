@@ -28,6 +28,7 @@ import jo.accountant.thirdparties.dto.LettrageRequest;
 import jo.accountant.thirdparties.dto.LettrageResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyResponse;
 import jo.accountant.thirdparties.dto.ThirdPartyStatement;
+import jo.accountant.thirdparties.dto.UpdateThirdPartyRequest;
 import jo.accountant.thirdparties.entity.LettrageStatus;
 import jo.accountant.thirdparties.entity.ThirdPartyType;
 import jo.accountant.thirdparties.service.ThirdPartiesService;
@@ -38,7 +39,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -225,6 +228,69 @@ public class ThirdPartiesController {
  roleChecker.ensureRole(companyId, "BOOKKEEPER");
  ThirdPartyResponse tp = service.createThirdParty(companyId, req);
  return ResponseEntity.status(HttpStatus.CREATED).body(tp);
+ }
+
+ @Operation(summary = "Mettre à jour partiellement un tiers (PATCH)",
+ description = "Sémantique PATCH : seuls les champs non-nuls du corps sont appliqués. " +
+ "Les champs à null sont ignorés. Pour vider un champ, envoyer une chaîne vide \"\". " +
+ "Le type et le compte collectif ne sont pas modifiables (champs structurels).")
+ @ApiResponses({
+ @ApiResponse(responseCode = "200",
+ content = @Content(schema = @Schema(implementation = ThirdPartyResponse.class))),
+ @ApiResponse(responseCode = "404", description = "Tiers introuvable / hors tenant",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+ @ApiResponse(responseCode = "422", description = "Nom vide / NIF invalide",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+ })
+ @PatchMapping(value = "/{thirdPartyId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+ public ThirdPartyResponse updateThirdParty(
+ @PathVariable UUID companyId,
+ @PathVariable UUID thirdPartyId,
+ @CurrentUser UUID userId,
+ @Valid @RequestBody UpdateThirdPartyRequest req) {
+ roleChecker.ensureRole(companyId, "BOOKKEEPER");
+ return service.updateThirdParty(companyId, thirdPartyId, req);
+ }
+
+ @Operation(summary = "Supprimer un tiers (soft-delete)",
+ description = "Désactive le tiers (active=false). Refusé (409) si le tiers est référencé " +
+ "par au moins une écriture comptable ou facture. Pour masquer un tiers utilisé, " +
+ "utiliser PATCH {active:false} à la place.")
+ @ApiResponses({
+ @ApiResponse(responseCode = "204", description = "Tiers désactivé (soft-delete)"),
+ @ApiResponse(responseCode = "404", description = "Tiers introuvable / hors tenant",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+ @ApiResponse(responseCode = "409", description = "Tiers référencé par des écritures/factures",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+ })
+ @DeleteMapping("/{thirdPartyId}")
+ public ResponseEntity<Void> deleteThirdParty(
+ @PathVariable UUID companyId,
+ @PathVariable UUID thirdPartyId,
+ @CurrentUser UUID userId) {
+ roleChecker.ensureRole(companyId, "ADMIN");
+ service.deleteThirdParty(companyId, thirdPartyId);
+ return ResponseEntity.noContent().build();
+ }
+
+ @Operation(summary = "Rechercher des tiers par nom",
+ description = "Recherche case-insensitive, partial match sur le nom. " +
+ "Utilisé par le mobile pour l'autocomplétion (saisie facture/règlement). " +
+ "Retourne au plus 100 résultats (cap côté service).")
+ @ApiResponses({
+ @ApiResponse(responseCode = "200",
+ content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+ schema = @Schema(implementation = ThirdPartyResponse.class))),
+ @ApiResponse(responseCode = "403", description = "Rôle insuffisant (VIEWER minimum requis)",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+ })
+ @GetMapping("/search")
+ public List<ThirdPartyResponse> searchThirdParties(
+ @PathVariable UUID companyId,
+ @CurrentUser UUID userId,
+ @RequestParam(name = "q") String query) {
+ roleChecker.ensureRole(companyId, "VIEWER");
+ return service.searchByName(companyId, query);
  }
 
  @Operation(summary = "Relevé de compte d'un tiers",

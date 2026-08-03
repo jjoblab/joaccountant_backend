@@ -1,7 +1,7 @@
 -- V8_004 — audit perf indexes and stmt trigger
 -- Trigger statement-level pour l'équilibre débit=crédit + index composites
 -- sur les tables du module accounting-engine (journal_entry, journal_line, audit_log).
--- Note : les index sur sales_invoice, purchase_invoice et bank_statement_line
+-- Note : les index sur invoice, invoice et bank_statement_line
 -- (tables créées par d'autres modules) ont été déplacés vers leurs modules
 -- respectifs : V15_006 (invoicing), V21_002 (purchasing), V16_002 (bank-reconciliation).
 

@@ -70,6 +70,10 @@ public class ThirdParty extends TenantAwareEntity {
     @Column(name = "email", length = 255)
     private String email;
 
+    /** Téléphone optionnel — envoyé par le mobile (V10_001 — phone VARCHAR(30)). */
+    @Column(name = "phone", length = 30)
+    private String phone;
+
     /** Adresse optionnelle. */
     @Column(name = "address", length = 500)
     private String address;
@@ -112,6 +116,9 @@ public class ThirdParty extends TenantAwareEntity {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }

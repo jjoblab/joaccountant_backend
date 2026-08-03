@@ -29,6 +29,20 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
  /** Lignes d'une écriture, triées par numéro de ligne. */
  List<JournalLine> findByJournalEntryIdOrderByLineNumber(UUID journalEntryId);
 
+ /**
+  * Vérifie s'il existe au moins une ligne d'écriture référençant ce tiers dans l'entreprise.
+  *
+  * <p>Utilisé par {@code ThirdPartiesService.deleteThirdParty} pour refuser la suppression
+  * d'un tiers qui a des écritures comptables liées (toutes statuts d'écriture confondus —
+  * DRAFT, PENDING_APPROVAL, POSTED — car supprimer un tiers avec des écritures même brouillons
+  * casserait l'intégrité référentielle logique).
+  *
+  * @param companyId identifiant du tenant
+  * @param thirdPartyId identifiant du tiers
+  * @return {@code true} si au moins une ligne référence ce tiers, {@code false} sinon
+  */
+ boolean existsByCompanyIdAndThirdPartyId(UUID companyId, UUID thirdPartyId);
+
  /** Somme des débits pour un compte (uniquement les écritures POSTED) — utilisé par
  * AccountBalanceGuard. Les écritures DRAFT/PENDING_APPROVAL ne sont pas comptabilisées. */
  @Query("select coalesce(sum(l.debit), 0) from JournalLine l " +
