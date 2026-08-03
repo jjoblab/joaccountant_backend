@@ -49,7 +49,6 @@ COPY funds-grants/build.gradle.kts ./funds-grants/build.gradle.kts
 COPY notifications/build.gradle.kts ./notifications/build.gradle.kts
 COPY tax/build.gradle.kts ./tax/build.gradle.kts
 COPY reporting/build.gradle.kts ./reporting/build.gradle.kts
-COPY purchasing/build.gradle.kts ./purchasing/build.gradle.kts
 COPY expenses/build.gradle.kts ./expenses/build.gradle.kts
 COPY employees/build.gradle.kts ./employees/build.gradle.kts
 COPY payroll/build.gradle.kts ./payroll/build.gradle.kts
@@ -84,7 +83,6 @@ COPY funds-grants ./funds-grants
 COPY notifications ./notifications
 COPY tax ./tax
 COPY reporting ./reporting
-COPY purchasing ./purchasing
 COPY expenses ./expenses
 COPY employees ./employees
 COPY payroll ./payroll
