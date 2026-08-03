@@ -458,6 +458,13 @@ public class FinancialStatementsController {
  variables.put("assets", bs.assets() != null ? bs.assets() : List.of());
  variables.put("liabilities", bs.liabilities() != null ? bs.liabilities() : List.of());
  variables.put("equity", bs.equity() != null ? bs.equity() : List.of());
+ // v9.4 fix — Versions aplaties (List<Line>) pour les templates v9.4 "Corporate sobre"
+ // qui itèrent directement sur des lignes (assetsLines/liabilitiesLines/equityLines).
+ // Sans cela, le template BILAN V14_008 essaie d'accéder à line.accountLabel sur
+ // une Section (qui n'a pas accountLabel — seul Line l'a) → ognl.NoSuchPropertyException.
+ variables.put("assetsLines", flattenSections(bs.assets()));
+ variables.put("liabilitiesLines", flattenSections(bs.liabilities()));
+ variables.put("equityLines", flattenSections(bs.equity()));
 
  String period = bs.asOf() != null ? bs.asOf().toString() : "now";
  String filename = "bilan-" + companyId + "-" + period + ".pdf";

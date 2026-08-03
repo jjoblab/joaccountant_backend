@@ -53,13 +53,13 @@ UPDATE document_template SET html_template = $TPL$
 <h2>TVA collectée</h2>
 <table class="avoid-break">
     <thead><tr><th>Taux</th><th>Base HT</th><th class="text-right">TVA</th></tr></thead>
-    <tbody><tr th:each="line : ${collectedLines}"><td th:text="${line.label}">TVA 10%</td><td class="amount" th:text="${line.base}">0</td><td class="amount" th:text="${line.tax}">0</td></tr></tbody>
+    <tbody><tr th:each="line : ${collectedLines}"><td th:text="${line.taxLabel}">TVA 10%</td><td class="amount" th:text="${line.taxableBase}">0</td><td class="amount" th:text="${line.taxAmount}">0</td></tr></tbody>
     <tfoot><tr class="totals-row"><td colspan="2" class="text-right">Total collecté</td><td class="amount" th:text="${totalTaxCollected}">0</td></tr></tfoot>
 </table>
 <h2>TVA déductible</h2>
 <table class="avoid-break">
     <thead><tr><th>Taux</th><th>Base HT</th><th class="text-right">TVA</th></tr></thead>
-    <tbody><tr th:each="line : ${deductibleLines}"><td th:text="${line.label}">TVA 10%</td><td class="amount" th:text="${line.base}">0</td><td class="amount" th:text="${line.tax}">0</td></tr></tbody>
+    <tbody><tr th:each="line : ${deductibleLines}"><td th:text="${line.taxLabel}">TVA 10%</td><td class="amount" th:text="${line.taxableBase}">0</td><td class="amount" th:text="${line.taxAmount}">0</td></tr></tbody>
     <tfoot><tr class="totals-row"><td colspan="2" class="text-right">Total déductible</td><td class="amount" th:text="${totalTaxDeductible}">0</td></tr></tfoot>
 </table>
 <div class="info-box info-box-primary">
@@ -85,7 +85,7 @@ UPDATE document_template SET html_template = $TPL$
 <h2>TCA collectée par taux</h2>
 <table class="avoid-break">
     <thead><tr><th>Taux</th><th>Base HT</th><th class="text-right">TCA</th></tr></thead>
-    <tbody><tr th:each="line : ${collectedLines}"><td th:text="${line.label}">TCA 2% banque</td><td class="amount" th:text="${line.base}">0</td><td class="amount" th:text="${line.tax}">0</td></tr></tbody>
+    <tbody><tr th:each="line : ${collectedLines}"><td th:text="${line.taxLabel}">TCA 2% banque</td><td class="amount" th:text="${line.taxableBase}">0</td><td class="amount" th:text="${line.taxAmount}">0</td></tr></tbody>
     <tfoot><tr class="totals-row"><td colspan="2" class="text-right">Total TCA due</td><td class="amount" th:text="${taxDue}">0</td></tr></tfoot>
 </table>
 <div class="mention-legal">Déclaration TCA — Code Fiscal Haïti art. 196/197 (TCA 2% banque, 5% telecom, 10% services). La TCA est cumulative avec la TVA sur une même opération.</div>

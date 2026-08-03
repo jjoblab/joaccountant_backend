@@ -200,13 +200,25 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
                 ecrPrefix + "-" + journalCode + "-" + year + "-", year);
         }
 
-        count += safeCreateSequence(companyId, DocumentType.SALES_INVOICE, "",
+        // ── v9.4 fix — scopeKey alignés sur les consommateurs ──────────────────────
+        // Les services consommateurs n'utilisent PAS scopeKey="" (contrairement à ce que dit
+        // l'ancien README). Ils utilisent un scopeKey = code journal :
+        //   - SALES_INVOICE  → scopeKey="VT" (journal Ventes) — InvoicingService.issueInvoice
+        //   - PURCHASE_INVOICE → scopeKey="AC" (journal Achats) — InvoiceDirection.java
+        //   - PAYSLIP → scopeKey="PA" (journal Paie) — Payslip.java
+        //   - CREDIT_NOTE → scopeKey="VT" (même journal que SALES_INVOICE) — InvoicingService
+        //   - DONATION_RECEIPT → scopeKey="" (FundsGrantsService utilise "")
+        //
+        // Avant ce fix, le provisioning créait toutes les séquences avec scopeKey="" →
+        // SEQUENCE_CONFIG_NOT_FOUND à l'émission de facture (HTTP 404) car le lookup
+        // utilisait "VT" mais la config était enregistrée avec "".
+        count += safeCreateSequence(companyId, DocumentType.SALES_INVOICE, "VT",
             getPrefix(prefixes, "SALES_INVOICE", "INV"), year);
-        count += safeCreateSequence(companyId, DocumentType.PURCHASE_INVOICE, "",
+        count += safeCreateSequence(companyId, DocumentType.PURCHASE_INVOICE, "AC",
             getPrefix(prefixes, "PURCHASE_INVOICE", "ACH"), year);
-        count += safeCreateSequence(companyId, DocumentType.PAYSLIP, "",
+        count += safeCreateSequence(companyId, DocumentType.PAYSLIP, "PA",
             getPrefix(prefixes, "PAYSLIP", "PAY"), year);
-        count += safeCreateSequence(companyId, DocumentType.CREDIT_NOTE, "",
+        count += safeCreateSequence(companyId, DocumentType.CREDIT_NOTE, "VT",
             getPrefix(prefixes, "CREDIT_NOTE", "AVO"), year);
         count += safeCreateSequence(companyId, DocumentType.DONATION_RECEIPT, "",
             getPrefix(prefixes, "DONATION_RECEIPT", "DON"), year);

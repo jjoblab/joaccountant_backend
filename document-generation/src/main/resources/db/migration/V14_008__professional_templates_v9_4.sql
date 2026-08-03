@@ -103,10 +103,10 @@ UPDATE document_template SET
 <!-- Mentions légales DGI art. 196 -->
 <div class="mention-legal">
     <strong>Mentions légales (Code Fiscal art. 196) :</strong><br/>
-    • NIF émetteur: <span th:text="${companyNif ?: 'Non communiqué'}"></span><br/>
+    • NIF émetteur: <span th:text="${companyNif != null ? companyNif : 'Non communiqué'}"></span><br/>
     • Pénalités de retard: 1,5% par mois (art. 196 al. 3)<br/>
     • Indemnité de recouvrement: 5 000 HTG (art. 196 al. 4)<br/>
-    • Escompte pour paiement anticipé: <span th:text="${escompte ?: 'Aucun'}"></span><br/>
+    • Escompte pour paiement anticipé: <span th:text="${escompte != null ? escompte : 'Aucun'}"></span><br/>
     <span th:if="${isReverseCharge}">
         <strong>Autoliquidation :</strong> <span th:text="${reverseChargeMention}"></span>
     </span>
@@ -294,7 +294,7 @@ UPDATE document_template SET
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="line : ${assets}">
+                <tr th:each="line : ${assetsLines}">
                     <td th:text="${line.accountLabel}">Compte</td>
                     <td class="amount" th:text="${line.amount}">0.00</td>
                 </tr>
@@ -319,11 +319,11 @@ UPDATE document_template SET
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="line : ${liabilities}">
+                <tr th:each="line : ${liabilitiesLines}">
                     <td th:text="${line.accountLabel}">Compte</td>
                     <td class="amount" th:text="${line.amount}">0.00</td>
                 </tr>
-                <tr th:each="line : ${equity}">
+                <tr th:each="line : ${equityLines}">
                     <td th:text="${line.accountLabel}">Compte</td>
                     <td class="amount" th:text="${line.amount}">0.00</td>
                 </tr>
@@ -394,7 +394,7 @@ UPDATE document_template SET
     </thead>
     <tbody>
         <tr>
-            <td>Don reçu en <span th:text="${currency ?: 'HTG'}">HTG</span></td>
+            <td>Don reçu en <span th:text="${currency != null ? currency : 'HTG'}">HTG</span></td>
             <td class="amount totals-row" th:text="${amount}">0.00</td>
         </tr>
     </tbody>
