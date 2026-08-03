@@ -617,6 +617,19 @@ public class FinancialStatementsService {
  UUID companyId, LocalDate from, LocalDate to,
  jo.accountant.financialstatements.dto.PresentationCurrencyRequest presentation) {
 
+ // v9.4 fix — Si from/to sont null, utiliser les dates de l'exercice fiscal actif
+ // (même pattern que getIncomeStatement). Sans ce fix, from.minusDays(1) lance un NPE.
+ if (from == null || to == null) {
+ var fy = accountingEngineService.resolveFiscalYear(companyId, null);
+ if (fy.isPresent()) {
+ if (from == null) from = fy.get().getStartDate();
+ if (to == null) to = fy.get().getEndDate();
+ } else {
+ throw new ValidationException("DATES_REQUIRED",
+ "from et to sont requis (aucun exercice fiscal disponible pour défaut)");
+ }
+ }
+
  jo.accountant.financialstatements.dto.CashFlowStatement functional =
  computeCashFlowStatementFunctional(companyId, from, to);
 

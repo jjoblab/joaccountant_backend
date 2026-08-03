@@ -106,6 +106,7 @@ public class CompanyService {
     private final JwtService jwtService;
     private final ApplicationEventPublisher events;
     private final FileStoragePort fileStorage;
+    private final jo.accountant.auth.repository.UserRepository userRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -123,7 +124,8 @@ public class CompanyService {
                           AccountingProvisioningPort accountingProvisioningPort,
                           JwtService jwtService,
                           ApplicationEventPublisher events,
-                          FileStoragePort fileStorage) {
+                          FileStoragePort fileStorage,
+                          jo.accountant.auth.repository.UserRepository userRepository) {
         this.companyRepository = companyRepository;
         this.frameworkRepository = frameworkRepository;
         this.businessTypeRepository = businessTypeRepository;
@@ -138,6 +140,7 @@ public class CompanyService {
         this.jwtService = jwtService;
         this.events = events;
         this.fileStorage = fileStorage;
+        this.userRepository = userRepository;
     }
 
     // ── Étape 1 — Identité (création) ──────────────────────────────────────────
@@ -242,13 +245,16 @@ public class CompanyService {
 
     /**
      * Récupère l'email de l'utilisateur — nécessaire pour issueAccessToken.
-     * Utilise le TenantContext ou un lookup DB.
+     *
+     * <p>v9.4 fix — Avant cette correction, la méthode retournait une chaîne vide ("").
+     * Cela fonctionnait en dev mais causait un HTTP 500 sur certains déploiements (Render)
+     * car le JwtService ou le downstream pipeline attendait un email non-vide.
+     * On fait maintenant un lookup DB via UserRepository pour récupérer le vrai email.
      */
     private String getUserEmail(UUID userId) {
-        // L'email n'est pas stocké dans :company, mais le JwtService a juste besoin d'une string.
-        // On utilise le TenantContext si disponible, sinon une string vide (le claim email sera
-        // mis à jour au prochain login).
-        return ""; // Le claim email est cosmétique dans le JWT — l'auth se fait via sub (userId)
+        return userRepository.findById(userId)
+            .map(jo.accountant.auth.entity.User::getEmail)
+            .orElse("");
     }
 
     @Transactional(readOnly = true)

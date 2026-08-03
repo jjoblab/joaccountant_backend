@@ -312,7 +312,7 @@ public class TaxService {
  List<InvoiceStatus> purchaseStatuses = List.of(
  InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
  List<InvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
- invoiceLineRepository.aggregateByTaxRate(companyId, "PURCHASE", from, to, purchaseStatuses);
+ invoiceLineRepository.aggregateByTaxRate(companyId, jo.accountant.invoicing.entity.InvoiceDirection.PURCHASE, from, to, purchaseStatuses);
  for (InvoiceLineRepository.TaxRateAggregate agg : purchaseAggregates) {
  BigDecimal rate = agg.getTaxRate() != null ? agg.getTaxRate() : BigDecimal.ZERO;
  if (rate.compareTo(BigDecimal.ZERO) == 0) continue; // TVA 0% non déductible
@@ -376,7 +376,7 @@ public class TaxService {
  List<InvoiceStatus> salesStatuses = List.of(
  InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
  List<InvoiceLineRepository.TaxRateAggregate> salesAggregates =
- invoiceLineRepository.aggregateByTaxRate(companyId, "SALES", from, to, salesStatuses);
+ invoiceLineRepository.aggregateByTaxRate(companyId, jo.accountant.invoicing.entity.InvoiceDirection.SALES, from, to, salesStatuses);
 
  List<TaxDeclaration.TaxLine> collectedLines = new ArrayList<>();
  BigDecimal totalTaxCollected = BigDecimal.ZERO;
@@ -396,7 +396,7 @@ public class TaxService {
  List<InvoiceStatus> purchaseStatuses = List.of(
  InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
  List<InvoiceLineRepository.TaxRateAggregate> purchaseAggregates =
- invoiceLineRepository.aggregateByTaxRate(companyId, "PURCHASE", from, to, purchaseStatuses);
+ invoiceLineRepository.aggregateByTaxRate(companyId, jo.accountant.invoicing.entity.InvoiceDirection.PURCHASE, from, to, purchaseStatuses);
 
  List<TaxDeclaration.TaxLine> deductibleLines = new ArrayList<>();
  BigDecimal totalTaxDeductible = BigDecimal.ZERO;

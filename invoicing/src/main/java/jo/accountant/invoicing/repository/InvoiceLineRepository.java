@@ -59,7 +59,7 @@ public interface InvoiceLineRepository extends JpaRepository<InvoiceLine, UUID> 
  "group by l.taxRate " +
  "order by l.taxRate")
  List<TaxRateAggregate> aggregateByTaxRate(@Param("companyId") UUID companyId,
- @Param("direction") String direction,
+ @Param("direction") jo.accountant.invoicing.entity.InvoiceDirection direction,
  @Param("from") LocalDate from,
  @Param("to") LocalDate to,
  @Param("statuses") List<jo.accountant.invoicing.entity.InvoiceStatus> statuses);

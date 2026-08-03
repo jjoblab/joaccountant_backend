@@ -143,8 +143,8 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
  "and l.thirdPartyId = :thirdPartyId " +
  "and l.journalEntryId in (" +
  " select e.id from JournalEntry e where e.status = jo.accountant.accountingengine.entity.JournalEntryStatus.POSTED" +
- " and (:from is null or e.entryDate >= :from)" +
- " and (:to is null or e.entryDate <= :to)" +
+ " and (cast(:from as date) is null or e.entryDate >= :from)" +
+ " and (cast(:to as date) is null or e.entryDate <= :to)" +
  ") order by l.journalEntryId, l.lineNumber")
  List<JournalLine> findPostedByThirdParty(@Param("companyId") UUID companyId,
  @Param("thirdPartyId") UUID thirdPartyId,
