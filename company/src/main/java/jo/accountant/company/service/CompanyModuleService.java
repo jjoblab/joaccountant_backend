@@ -10,6 +10,7 @@ import jo.accountant.company.mapping.BusinessTypeModuleService;
 import jo.accountant.company.repository.CompanyModuleRepository;
 import jo.accountant.core.exception.ConflictException;
 import jo.accountant.core.exception.ValidationException;
+import jo.accountant.core.port.ModuleActiveDataPort;
 import jo.accountant.core.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,11 +39,14 @@ public class CompanyModuleService {
 
     private final CompanyModuleRepository repository;
     private final BusinessTypeModuleService businessTypeModuleService;
+    private final ModuleActiveDataPort moduleActiveDataPort;
 
     public CompanyModuleService(CompanyModuleRepository repository,
-                                  BusinessTypeModuleService businessTypeModuleService) {
+                                  BusinessTypeModuleService businessTypeModuleService,
+                                  ModuleActiveDataPort moduleActiveDataPort) {
         this.repository = repository;
         this.businessTypeModuleService = businessTypeModuleService;
+        this.moduleActiveDataPort = moduleActiveDataPort;
     }
 
     @Transactional
@@ -85,6 +89,21 @@ public class CompanyModuleService {
                 "désactivé. Les modules always-on sont nécessaires au fonctionnement transverse " +
                 "du système (ex. ACCOUNTING_ENGINE est requis par tous les modules qui génèrent " +
                 "des écritures comptables).");
+        }
+
+        // Fix Dim 2 H4 (audit v9.4) — Garde-fou contre données orphelines.
+        // Avant ce fix, disable() mettait enabled=false sans vérifier s'il existait des
+        // données dépendantes. Les données existaient toujours en DB mais devenaient
+        // invisibles/inaccessibles via l'API (403 MODULE_NOT_ENABLED). Exemples :
+        // - désactiver INVENTORY alors que des stocks ont un solde non nul → bilan faussé
+        // - désactiver FUNDS_GRANTS alors qu'un Grant est ouvert → clôture bailleur impossible
+        // - désactiver FIXED_ASSETS alors qu'un Asset a un plan d'amortissement en cours
+        if (moduleActiveDataPort.hasActiveData(companyId, code.name())) {
+            throw new ConflictException("MODULE_HAS_ACTIVE_DATA",
+                "Le module " + code + " contient des données actives (immobilisations non cédées, " +
+                "grants ouverts, stocks non nuls, etc.) et ne peut pas être désactivé. " +
+                "Veuillez clôturer ou céder ces données avant désactivation, ou contacter " +
+                "l'administrateur pour une procédure d'archive.");
         }
 
         CompanyModule cm = repository.findByCompanyIdAndModuleCode(companyId, code)

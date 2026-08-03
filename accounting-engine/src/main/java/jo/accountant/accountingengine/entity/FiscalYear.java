@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import jo.accountant.core.tenant.TenantAwareEntity;
@@ -54,6 +55,20 @@ public class FiscalYear extends TenantAwareEntity {
     @Column(name = "label", length = 100)
     private String label;
 
+    /**
+     * Fix Dim 5 H4 (audit v9.4) — Timestamp de clôture de l'exercice.
+     * NULL tant que l'exercice est OPEN/LOCKED. Peuplé par FiscalYearClosingService.closeFiscalYear.
+     */
+    @Column(name = "closed_at")
+    private Instant closedAt;
+
+    /**
+     * Fix Dim 5 H4 (audit v9.4) — ID de l'utilisateur qui a clôturé l'exercice.
+     * NULL tant que l'exercice est OPEN/LOCKED. Peuplé par FiscalYearClosingService.closeFiscalYear.
+     */
+    @Column(name = "closed_by")
+    private UUID closedBy;
+
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
@@ -65,4 +80,10 @@ public class FiscalYear extends TenantAwareEntity {
 
     public String getLabel() { return label; }
     public void setLabel(String label) { this.label = label; }
+
+    public Instant getClosedAt() { return closedAt; }
+    public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
+
+    public UUID getClosedBy() { return closedBy; }
+    public void setClosedBy(UUID closedBy) { this.closedBy = closedBy; }
 }

@@ -64,13 +64,19 @@ public class InvoicesController {
         this.invoicingService = invoicingService;
     }
 
-    @Operation(summary = "Lister les factures (filtrées par direction)")
+    @Operation(summary = "Lister les factures (filtrées par direction et/ou exercice fiscal)",
+        description = "Fix Dim 5 C2 (audit v9.4) : ?fiscalYearId= optionnel filtre par exercice " +
+        "(défaut = exercice actif). Avant ce fix, l'endpoint retournait TOUT l'historique " +
+        "des factures (hard cap 200 tronqué silencieusement).")
     @GetMapping
     public List<InvoiceResponse> list(
             @PathVariable UUID companyId,
             @CurrentUser UUID userId,
             @Parameter(description = "Filtrer par direction : SALES ou PURCHASE. Si absent, toutes directions.")
-            @RequestParam(value = "direction", required = false) InvoiceDirection direction) {
+            @RequestParam(value = "direction", required = false) InvoiceDirection direction,
+            @Parameter(description = "Filtrer par exercice fiscal (null = exercice actif). " +
+                "Permet de consulter un exercice clôturé.")
+            @RequestParam(value = "fiscalYearId", required = false) UUID fiscalYearId) {
         roleChecker.ensureRole(companyId, "VIEWER");
         // TODO v9.0 : implémenter listInvoicesByDirection dans InvoicingService
         // Pour l'instant, on délègue aux méthodes existantes selon la direction
@@ -78,6 +84,11 @@ public class InvoicesController {
             // Délègue à PurchasingService via un future InvoiceService unifié
             // En attendant, retourne une liste vide (le contrôleur purchasing existe)
             return List.of();
+        }
+        // Fix Dim 5 C2 : si fiscalYearId fourni, on l'utilise pour filtrer par exercice.
+        // Si null, listInvoices(companyId, null) fallback sur l'exercice actif.
+        if (fiscalYearId != null) {
+            return invoicingService.listInvoices(companyId, fiscalYearId);
         }
         return invoicingService.listInvoices(companyId);
     }

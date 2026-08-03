@@ -267,7 +267,12 @@ public class FiscalYearClosingService {
  generateOpeningEntryNextYear(companyId, fy, postedLines, accountCache, journalCode);
 
  // R1 (Vague fix) : marquer l'exercice comme CLOSED après clôture
+ // Fix Dim 5 H4 (audit v9.4) — Peupler closed_at / closed_by pour traçabilité fiscale.
+ // Avant ce fix, impossible de répondre à "qui a clôturé l'exercice 2024 et quand ?"
+ // sans requêter l'audit_log global (qui peut avoir été purgé).
  fy.setStatus(jo.accountant.accountingengine.entity.FiscalYearStatus.CLOSED);
+ fy.setClosedAt(java.time.Instant.now());
+ fy.setClosedBy(jo.accountant.core.tenant.TenantContext.getUserId());
  fiscalYearRepository.save(fy);
  // Verrouiller toutes les périodes de l'exercice
  fiscalPeriodRepository.findByFiscalYearIdOrderByStartDateAsc(fy.getId())

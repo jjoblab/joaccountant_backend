@@ -432,11 +432,23 @@ public class FundsGrantsService {
         }
 
         // Vague 2, item 2.6 : calcul exact par tag analytique
-        // Produits = total reçu (donations)
-        BigDecimal products = receiptRepository.findByGrantId(grant.getId()).stream()
-            .map(DonationReceipt::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Charges = somme des débits des JournalLine POSTED taguées avec l'analyticalValueId du grant
+        // Fix Dim 3 H4 (audit v9.4) — Utiliser calculateProductsByAnalyticalTag (depuis les
+        // JournalLine taguées analytiquement) au lieu de sommer les DonationReceipt.amount
+        // bruts. Cela aligne closeFiscalYear sur la logique de getDonorReport (lignes 380-395)
+        // qui calcule totalReceived depuis les JournalLine. Avant ce fix, les deux méthodes
+        // pouvaient retourner des montants différents — fonds dédiés calculés sur une base
+        // différente du rapport bailleur affiché.
+        BigDecimal products = calculateProductsByAnalyticalTag(companyId, grant);
+        // Fallback : si calculateProductsByAnalyticalTag retourne 0 (pas de JournalLine
+        // taguée, par ex. don manuel sans écriture générée), on fallback sur les
+        // DonationReceipt.amount pour rétro-compat.
+        if (products.compareTo(BigDecimal.ZERO) == 0) {
+            products = receiptRepository.findByGrantId(grant.getId()).stream()
+                .map(DonationReceipt::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        // Charges = somme des débits - crédits des JournalLine POSTED taguées avec l'analyticalValueId du grant
+        // (H3 déjà corrigé dans calculateChargesByAnalyticalTag)
         BigDecimal charges = calculateChargesByAnalyticalTag(companyId, grant);
         BigDecimal balance = products.subtract(charges);
 
@@ -553,8 +565,12 @@ public class FundsGrantsService {
             if (account == null) continue;
             if (account.getReportingClass() != jo.accountant.core.framework.ReportingClass.CHARGES) continue;
 
-            // Sommer les débits (charges = débit sur compte de charge)
-            charges = charges.add(line.getDebit());
+            // Sommer les débits et soustraire les crédits (avoirs / RRR / retours achats).
+            // Fix Dim 3 H3 (audit v9.4) — Avant ce fix, on ne sommait que les débits (brut),
+            // sans soustraire les crédits. Or un avoir sur un compte de charge (60x) crédite
+            // le compte — il doit réduire les charges. Sur un projet ONG avec 10% d'avoirs,
+            // le rapport surestimait les dépenses de 10%. Risque de refus de reddition USAID/EU.
+            charges = charges.add(line.getDebit()).subtract(line.getCredit());
         }
 
         LOG.debug("Grant {} : charges calculées par tag analytique = {}", grant.getCode(), charges);

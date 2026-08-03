@@ -238,11 +238,17 @@ public class AccountingEngineController {
 
  @Operation(summary = "Lister les écritures de l'entreprise",
  description = "Endpoint historique non paginé — conserve pour rétro-compat. " +
- "Préférer GET /journal-entries/paged qui supporte la pagination (audit M8).")
+ "Préférer GET /journal-entries/paged qui supporte la pagination (audit M8). " +
+ "Fix Dim 5 C1 (audit v9.4) : ?fiscalYearId= optionnel filtre par exercice " +
+ "(défaut = exercice actif). Avant ce fix, l'endpoint retournait TOUT l'historique.")
  @GetMapping("/journal-entries")
  public List<JournalEntryResponse> listJournalEntries(@PathVariable UUID companyId,
- @CurrentUser UUID userId) {
+ @CurrentUser UUID userId,
+ @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId) {
  roleChecker.ensureRole(companyId, "VIEWER");
+ if (fiscalYearId != null) {
+ return service.listJournalEntries(companyId, fiscalYearId);
+ }
  return service.listJournalEntries(companyId);
  }
 
@@ -311,9 +317,17 @@ public class AccountingEngineController {
  @PathVariable UUID companyId,
  @CurrentUser UUID userId,
  @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
- @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int size) {
+ @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int size,
+ @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId) {
  roleChecker.ensureRole(companyId, "VIEWER");
  if (size > 200) size = 200; // hard cap
+ // Fix Dim 5 C1 (audit v9.4) : si fiscalYearId fourni, on délègue à searchJournalEntries
+ // qui filtre par les dates de l'exercice. Sinon, comportement historique (tout).
+ if (fiscalYearId != null) {
+ return service.searchJournalEntries(companyId, null, null, null, null, null,
+ fiscalYearId,
+ org.springframework.data.domain.PageRequest.of(page, size));
+ }
  return service.listJournalEntries(companyId,
  org.springframework.data.domain.PageRequest.of(page, size));
  }

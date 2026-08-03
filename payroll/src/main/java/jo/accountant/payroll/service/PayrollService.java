@@ -523,17 +523,50 @@ public class PayrollService {
  "433000", "433");
  }
 
- // État — retenues fiscalesFinding MOYENNE — FIX : ne plus réutiliser
- // VAT_COLLECTED qui mélange natures TVA + retenues salariales. Désormais on cherche un
- // compte dédié taxMappingCode="PAYROLL_TAX_PAYABLE" (442 en PCG = "Etat, impôts et taxes
- // à payer"), fallback 442000 puis 442, puis 443000/443 pour rétro-compat SYSCOHADA).
- BigDecimal totalTaxDeductions = BigDecimal.ZERO;
+ // Fix Dim 3 H1 (audit v9.4) — Ventiler les deductions entre cotisations sociales (433)
+ // et retenues fiscales (442). Avant ce fix, TOUTES les deductions (CNSS+OFATMA+AST+ITS)
+ // étaient créditées au 442 (État), ce qui mélangeait natures sociale et fiscale.
+ // Pour 100 employés × 50000 HTG × 8% de cotisations salariales = ~400000 HTG/mois
+ // mal classés en « dettes fiscales » au lieu de « dettes sociales ».
+ //
+ // Règle de classification :
+ // - Préfixes CNSS_HT*, OFATMA_HT*, AST_HT* (définis dans SOCIAL_CONTRIBUTION_PREFIXES)
+ // → cotisations sociales → crédit 433 (organismes sociaux)
+ // - Tout autre code (ITS*, IMPOT-SAL-*, etc.) → retenue fiscale → crédit 442 (État)
+ //
+ // Note : si socialSecurityAccount est null (pas de charges patronales), on le résout
+ // quand même si on a des cotisations salariales à ventiler.
+ BigDecimal totalSocialDeductions = BigDecimal.ZERO; // cotisations salariales (433)
+ BigDecimal totalTaxDeductions = BigDecimal.ZERO; // retenues fiscales (442)
  for (Payslip ps : payslips) {
  List<Map<String, Object>> deductions = fromJson(ps.getDeductions());
  for (Map<String, Object> ded : deductions) {
  BigDecimal amount = new BigDecimal(ded.get("amount").toString());
+ String code = ded.get("code") != null ? ded.get("code").toString() : "";
+ boolean isSocial = false;
+ for (String prefix : SOCIAL_CONTRIBUTION_PREFIXES) {
+ if (code.startsWith(prefix)) {
+ isSocial = true;
+ break;
+ }
+ }
+ if (isSocial) {
+ totalSocialDeductions = totalSocialDeductions.add(amount);
+ } else {
  totalTaxDeductions = totalTaxDeductions.add(amount);
  }
+ }
+ }
+
+ // Si on a des cotisations salariales mais pas de socialSecurityAccount (pas de charges
+ // patronales), on résout le compte 433 maintenant.
+ if (totalSocialDeductions.compareTo(BigDecimal.ZERO) > 0 && socialSecurityAccount == null) {
+ socialSecurityAccount = accountResolver.resolveOrThrow(
+ companyId, ReportingClass.PASSIF, "SOCIAL_SECURITY_PAYABLE",
+ "SOCIAL_SECURITY_ACCOUNT_NOT_FOUND",
+ "Aucun compte d'organismes sociaux à payer trouvé. Configurer un compte " +
+ "PASSIF marqué taxMappingCode=\"SOCIAL_SECURITY_PAYABLE\".",
+ "433000", "433");
  }
 
  Account stateAccount = null;
@@ -586,15 +619,21 @@ public class PayrollService {
  List.of()));
  }
 
- // Crédit Organismes sociaux (charges patronales)
+ // Crédit Organismes sociaux (charges patronales + cotisations salariales)
+ // Fix Dim 3 H1 — on inclut maintenant aussi les cotisations salariales (CNSS/OFATMA/AST)
+ // qui étaient auparavant créditées au 442 (État) à tort.
  if (socialSecurityAccount != null) {
+ BigDecimal totalSocialCredit = run.getTotalEmployerContributions()
+ .add(totalSocialDeductions);
+ if (totalSocialCredit.compareTo(BigDecimal.ZERO) > 0) {
  lines.add(new LineDto(socialSecurityAccount.getCode(), null,
- null, run.getTotalEmployerContributions(),
- "Charges patronales — " + run.getPeriodMonth() + "/" + run.getPeriodYear(),
+ null, totalSocialCredit,
+ "Charges sociales (patronales + salariales) — " + run.getPeriodMonth() + "/" + run.getPeriodYear(),
  List.of()));
  }
+ }
 
- // Crédit État (retenues fiscales)
+ // Crédit État (retenues fiscales salariales uniquement — ITS, etc.)
  if (stateAccount != null) {
  lines.add(new LineDto(stateAccount.getCode(), null,
  null, totalTaxDeductions,

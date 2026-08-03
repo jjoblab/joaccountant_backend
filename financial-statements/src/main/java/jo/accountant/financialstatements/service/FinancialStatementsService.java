@@ -713,9 +713,14 @@ public class FinancialStatementsService {
 
  // Convention : pour les actifs (clients, stocks), une augmentation = sortie de trésorerie (flux négatif)
  // Pour les passifs (fournisseurs), une augmentation = entrée de trésorerie (flux positif)
+ // Fix Dim 3 C2 (audit v9.4) : apFlux était accountsPayableVar sans negate, ce qui inversait le signe.
+ // accountsPayableVar = closing − opening, où chaque solde = totalDebit − totalCredit.
+ // Pour un compte de passif (401, crédit normal), une augmentation de dette se traduit par
+ // totalDebit − totalCredit négatif, donc accountsPayableVar négatif. Or une augmentation de
+ // dette fournisseur = entrée de trésorerie (flux positif). Il faut donc negate().
  BigDecimal arFlux = accountsReceivableVar.negate(); // +créance → -trésorerie
  BigDecimal invFlux = inventoryVar.negate();
- BigDecimal apFlux = accountsPayableVar; // +dette fournisseur → +trésorerie
+ BigDecimal apFlux = accountsPayableVar.negate(); // +dette fournisseur → +trésorerie (fix v9.4)
 
  BigDecimal operatingNetCashFlow = netIncome
  .add(depreciationAmortization)

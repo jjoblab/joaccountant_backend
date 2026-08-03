@@ -104,6 +104,17 @@ dependencies {
     testImplementation("org.springframework.modulith:spring-modulith-starter-test:1.4.0")
 }
 
+// Fix Dim 1 H1 (audit v9.4) — bootJar dépend de test pour empêcher la publication d'un
+// JAR avec des tests en échec. Avant ce fix, le pipeline de release ./gradlew :app:bootJar
+// -x test réussissait même si 45 classes IT étaient en ERREUR (context load failure),
+// permettant à des bugs de migration Flyway (ex: vat_mode) de partir en production.
+//
+// Pour bypass en dev local : ./gradlew bootJar -x test
+// (l'utilisateur doit explicitement demander de skipper les tests)
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    dependsOn("test")
+}
+
 // Tâche `devRun` : démarre le backend avec PostgreSQL embarqué (Zonky) via DevLauncher.
 // Usage : ./gradlew :app:devRun
 tasks.register<JavaExec>("devRun") {

@@ -171,6 +171,19 @@ public class AccountingEngineService {
  throw new ValidationException("INVALID_DATE_RANGE", "endDate doit être après startDate");
  }
 
+ // Fix Dim 5 H2 (audit v9.4) — Garde-fou applicatif : 1 entreprise = 1 exercice OPEN maximum.
+ // Complète la contrainte DB uc_one_open_per_company (V8_009) avec un message d'erreur explicite.
+ // Sans ce guard, l'utilisateur obtiendrait une DataIntegrityViolationException générique
+ // (difficile à comprendre côté frontend).
+ long openCount = fiscalYearRepository.findByCompanyIdOrderByStartDateAsc(companyId).stream()
+ .filter(f -> f.getStatus() == FiscalYearStatus.OPEN)
+ .count();
+ if (openCount > 0) {
+ throw new jo.accountant.core.exception.ConflictException("OPEN_FISCAL_YEAR_ALREADY_EXISTS",
+ "L'entreprise a déjà un exercice OPEN. Clôturer l'exercice courant avant d'en créer un nouveau. " +
+ "Cette contrainte garantit la cohérence comptable (1 exercice actif à la fois).");
+ }
+
  FiscalYear fy = new FiscalYear();
  fy.setCompanyId(companyId);
  fy.setStartDate(req.startDate());
@@ -255,6 +268,19 @@ public class AccountingEngineService {
  return java.util.Optional.of(loadFiscalYear(companyId, fiscalYearId));
  } catch (NotFoundException e) {
  return java.util.Optional.empty();
+ }
+ }
+ // Fix Dim 5 C3 (audit v9.4) — Consulter FiscalYearContext (header X-Fiscal-Year)
+ // avant de fallback sur l'exercice actif. Permet au frontend de "poser" l'exercice
+ // sélectionné une fois pour toutes dans le header, sans propager ?fiscalYearId= partout.
+ java.util.UUID contextFyId = jo.accountant.core.fiscal.FiscalYearContext.getFiscalYearId();
+ if (contextFyId != null) {
+ try {
+ return java.util.Optional.of(loadFiscalYear(companyId, contextFyId));
+ } catch (NotFoundException e) {
+ LOG.warn("Header X-Fiscal-Year={} ne correspond à aucun exercice de la company {} — fallback sur exercice actif",
+ contextFyId, companyId);
+ // On continue vers la résolution par défaut
  }
  }
  // No explicit FY → find the OPEN year containing today
@@ -826,6 +852,39 @@ public class AccountingEngineService {
  }
 
  /**
+ * Fix Dim 5 C1 (audit v9.4) — Liste des écritures filtrée par exercice fiscal.
+ *
+ * <p>Si {@code fiscalYearId} est fourni, on filtre par les dates [start, end] de cet
+ * exercice (permet de consulter un exercice clôturé). Sinon, on résout l'exercice actif
+ * (OPEN contenant aujourd'hui) et on filtre par ses dates.
+ *
+ * <p>Avant ce fix, {@code GET /journal-entries} retournait TOUT l'historique de l'entreprise
+ * mélangé — inutilisable pour un comptable sur une entreprise mature (5 ans × 10K écritures).
+ *
+ * @param companyId identifiant du tenant
+ * @param fiscalYearId identifiant de l'exercice à consulter (null = exercice actif)
+ * @return la liste des écritures de l'exercice, triées par date décroissante
+ */
+ @Transactional(readOnly = true)
+ public List<JournalEntryResponse> listJournalEntries(UUID companyId, java.util.UUID fiscalYearId) {
+ java.util.Optional<FiscalYear> fy = resolveFiscalYear(companyId, fiscalYearId);
+ if (fy.isEmpty()) {
+ // Pas d'exercice trouvé — retourner liste vide plutôt que tout l'historique
+ LOG.warn("listJournalEntries: aucun exercice trouvé pour company {} (fiscalYearId={}) — retour vide",
+ companyId, fiscalYearId);
+ return List.of();
+ }
+ LocalDate from = fy.get().getStartDate();
+ LocalDate to = fy.get().getEndDate();
+ return journalEntryRepository
+ .searchEntries(companyId, from, to, null, null, null,
+ org.springframework.data.domain.PageRequest.of(0, 200))
+ .stream()
+ .map(e -> loadJournalEntryResponse(companyId, e.getId()))
+ .toList();
+ }
+
+ /**
  * Récupère une écriture par son ID — correction 2026-07-26.
  *
  * <p>Avant, le mobile ne pouvait pas récupérer une écriture par ID (uniquement via la
@@ -885,6 +944,45 @@ public class AccountingEngineService {
  }
  return journalEntryRepository
  .searchEntries(companyId, from, to, journalCode, sourceModule, status, pageable)
+ .map(e -> loadJournalEntryResponse(companyId, e.getId()));
+ }
+
+ /**
+ * Fix Dim 5 C1 (audit v9.4) — Surcharge avec fiscalYearId explicite.
+ *
+ * <p>Si {@code fiscalYearId} est fourni, on filtre par les dates [start, end] de cet
+ * exercice (permet de consulter un exercice clôturé). Les autres filtres (from/to,
+ * journalCode, sourceModule, status) sont combinés par AND avec les dates de l'exercice.
+ *
+ * <p>Si {@code fiscalYearId} est null, on délègue à la méthode historique
+ * {@link #searchJournalEntries(UUID, LocalDate, LocalDate, String, JournalEntrySourceModule, JournalEntryStatus, Pageable)}.
+ */
+ @Transactional(readOnly = true)
+ public org.springframework.data.domain.Page<JournalEntryResponse> searchJournalEntries(
+ UUID companyId, LocalDate from, LocalDate to, String journalCode,
+ JournalEntrySourceModule sourceModule, JournalEntryStatus status,
+ java.util.UUID fiscalYearId,
+ org.springframework.data.domain.Pageable pageable) {
+ if (fiscalYearId == null) {
+ return searchJournalEntries(companyId, from, to, journalCode, sourceModule, status, pageable);
+ }
+ // Résoudre l'exercice et fusionner les dates
+ java.util.Optional<FiscalYear> fy = resolveFiscalYear(companyId, fiscalYearId);
+ if (fy.isEmpty()) {
+ LOG.warn("searchJournalEntries: exercice {} introuvable pour company {} — retour vide",
+ fiscalYearId, companyId);
+ return org.springframework.data.domain.Page.empty(pageable);
+ }
+ LocalDate fyFrom = fy.get().getStartDate();
+ LocalDate fyTo = fy.get().getEndDate();
+ // Si from/to fournis en plus, on intersecte (prend le plus restrictif)
+ LocalDate effectiveFrom = from != null ? from : fyFrom;
+ LocalDate effectiveTo = to != null ? to : fyTo;
+ // Garantir qu'on ne dépasse pas les bornes de l'exercice
+ if (effectiveFrom.isBefore(fyFrom)) effectiveFrom = fyFrom;
+ if (effectiveTo.isAfter(fyTo)) effectiveTo = fyTo;
+ return journalEntryRepository
+ .searchEntries(companyId, effectiveFrom, effectiveTo, journalCode, sourceModule, status, pageable)
  .map(e -> loadJournalEntryResponse(companyId, e.getId()));
  }
 

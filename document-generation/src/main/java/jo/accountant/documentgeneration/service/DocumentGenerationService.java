@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import jo.accountant.core.exception.NotFoundException;
 import jo.accountant.core.exception.ValidationException;
+import jo.accountant.core.port.CompanyCountryPort;
 import jo.accountant.core.port.FileStoragePort;
 import jo.accountant.core.tenant.TenantContext;
 import jo.accountant.documentgeneration.dto.CreateTemplateRequest;
@@ -61,16 +62,19 @@ public class DocumentGenerationService {
     private final DocumentTemplateRepository templateRepository;
     private final GeneratedDocumentRepository documentRepository;
     private final FileStoragePort fileStorage;
+    private final CompanyCountryPort companyCountryPort;
     private final ApplicationEventPublisher events;
     private final TemplateEngine stringTemplateEngine;
 
     public DocumentGenerationService(DocumentTemplateRepository templateRepository,
                                      GeneratedDocumentRepository documentRepository,
                                      FileStoragePort fileStorage,
+                                     CompanyCountryPort companyCountryPort,
                                      ApplicationEventPublisher events) {
         this.templateRepository = templateRepository;
         this.documentRepository = documentRepository;
         this.fileStorage = fileStorage;
+        this.companyCountryPort = companyCountryPort;
         this.events = events;
 
         // Configurer un TemplateEngine avec StringTemplateResolver pour les templates stockés en DB
@@ -133,14 +137,38 @@ public class DocumentGenerationService {
             return toResponse(existing.get());
         }
 
-        // Trouver le gabarit : d'abord spécifique à l'entreprise, sinon global
+        // Trouver le gabarit : d'abord spécifique à l'entreprise, sinon global.
+        // Fix Dim 3 C1 (audit v9.4) : prise en compte du country_code pour sélectionner
+        // les templates Haïti (country_code='HT', mentions Code Fiscal art. 196) au lieu
+        // de toujours tomber sur les templates France (country_code IS NULL).
+        //
+        // Ordre de résolution :
+        //   1. Template spécifique à l'entreprise (companyId match)
+        //   2. Template global pour le pays de l'entreprise (companyId IS NULL, country_code = pays)
+        //   3. Template global historique (companyId IS NULL, country_code IS NULL = France)
         DocumentTemplate template = templateRepository
             .findByCompanyIdAndDocumentTypeAndIsDefaultTrueAndActiveTrue(companyId, documentType)
-            .orElseGet(() -> templateRepository
-                .findByCompanyIdIsNullAndDocumentTypeAndIsDefaultTrueAndActiveTrue(documentType)
-                .orElseThrow(() -> new ValidationException("TEMPLATE_NOT_FOUND",
-                    "Aucun gabarit actif pour documentType=" + documentType
-                    + " (ni spécifique à l'entreprise ni global par défaut)")));
+            .orElseGet(() -> {
+                // Résoudre le pays de l'entreprise via le port (sans dépendre de :company)
+                String countryCode = companyCountryPort.resolveCountryCode(companyId).orElse(null);
+                // Étape 2 : template global pour le pays (ex. HT)
+                if (countryCode != null) {
+                    Optional<DocumentTemplate> byCountry = templateRepository
+                        .findByCompanyIdIsNullAndDocumentTypeAndCountryCodeAndIsDefaultTrueAndActiveTrue(
+                            documentType, countryCode);
+                    if (byCountry.isPresent()) {
+                        return byCountry.get();
+                    }
+                }
+                // Étape 3 : fallback sur le template global historique (country_code IS NULL)
+                return templateRepository
+                    .findByCompanyIdIsNullAndDocumentTypeAndIsDefaultTrueAndActiveTrue(documentType)
+                    .orElseThrow(() -> new ValidationException("TEMPLATE_NOT_FOUND",
+                        "Aucun gabarit actif pour documentType=" + documentType
+                        + " (ni spécifique à l'entreprise ni global par défaut"
+                        + (countryCode != null ? " pour country=" + countryCode : "")
+                        + ")"));
+            });
 
         // Rendre le HTML avec Thymeleaf
         Context context = new Context();

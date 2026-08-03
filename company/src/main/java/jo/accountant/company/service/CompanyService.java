@@ -25,6 +25,7 @@ import jo.accountant.company.entity.LegalForm;
 import jo.accountant.company.entity.ModuleCode;
 import jo.accountant.company.entity.OrganizationNature;
 import jo.accountant.company.entity.Sector;
+import jo.accountant.company.entity.TaxExemptionStatus;
 import jo.accountant.company.event.CompanyCreatedEvent;
 import jo.accountant.company.event.CompanyLegalFieldsUpdatedEvent;
 import jo.accountant.company.event.CompanyWizardCompletedEvent;
@@ -41,6 +42,8 @@ import jo.accountant.core.framework.AccountingFramework;
 import jo.accountant.core.framework.AccountingFrameworkRepository;
 import jo.accountant.core.json.JsonUtil;
 import jo.accountant.core.tenant.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,6 +88,8 @@ import jakarta.persistence.PersistenceContext;
 */
 @Service
 public class CompanyService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CompanyService.class);
 
     private final CompanyRepository companyRepository;
     private final AccountingFrameworkRepository frameworkRepository;
@@ -311,6 +316,44 @@ public class CompanyService {
                 changed = true;
             }
         }
+        // Fix Dim 2 C2 (audit v9.4) — Prise en compte de taxExemptionStatus et isFreeZone
+        // dans la mise à jour des champs légaux. Permet de corriger post-wizard le statut
+        // fiscal d'une entreprise (ex: ONG mal catégorisée, entreprise en Zone Franche).
+        if (req.taxExemptionStatus() != null && !req.taxExemptionStatus().isBlank()) {
+            try {
+                TaxExemptionStatus newStatus = TaxExemptionStatus.valueOf(req.taxExemptionStatus().trim().toUpperCase());
+                if (company.getTaxExemptionStatus() != newStatus) {
+                    company.setTaxExemptionStatus(newStatus);
+                    changed = true;
+                    LOG.info("Company {} taxExemptionStatus mis à jour → {} (par user {})",
+                        companyId, newStatus, userId);
+                }
+            } catch (IllegalArgumentException e) {
+                throw new ValidationException("TAX_EXEMPTION_STATUS_INVALID",
+                    "taxExemptionStatus invalide : " + req.taxExemptionStatus()
+                    + ". Valeurs acceptées : STANDARD, FREE_ZONE, NGO_EXEMPT.");
+            }
+        }
+        if (req.isFreeZone() != null) {
+            if (company.isFreeZone() != req.isFreeZone()) {
+                company.setFreeZone(req.isFreeZone());
+                changed = true;
+                LOG.info("Company {} isFreeZone mis à jour → {} (par user {})",
+                    companyId, req.isFreeZone(), userId);
+                // Si on active isFreeZone, on s'assure que taxExemptionStatus est cohérent
+                // (FREE_ZONE implique IS 15%). Si l'utilisateur n'a pas aussi explicitement
+                // changé taxExemptionStatus, on le propage automatiquement.
+                if (req.isFreeZone() && company.getTaxExemptionStatus() != TaxExemptionStatus.FREE_ZONE) {
+                    company.setTaxExemptionStatus(TaxExemptionStatus.FREE_ZONE);
+                    LOG.info("Company {} isFreeZone=true → taxExemptionStatus auto → FREE_ZONE", companyId);
+                } else if (!req.isFreeZone() && company.getTaxExemptionStatus() == TaxExemptionStatus.FREE_ZONE) {
+                    // Si on désactive isFreeZone alors que taxExemptionStatus était FREE_ZONE,
+                    // on reset vers STANDARD (cohérence).
+                    company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD);
+                    LOG.info("Company {} isFreeZone=false → taxExemptionStatus auto → STANDARD", companyId);
+                }
+            }
+        }
 
         if (changed) {
             company.setUpdatedAt(Instant.now());
@@ -331,6 +374,9 @@ public class CompanyService {
         snap.put("vatNumber", c.getVatNumber());
         snap.put("nif", c.getNif());
         snap.put("address", c.getAddress());
+        // Fix Dim 2 C2 — Inclure les champs fiscaux dans le snapshot d'audit
+        snap.put("taxExemptionStatus", c.getTaxExemptionStatus());
+        snap.put("isFreeZone", c.isFreeZone());
         return snap;
     }
 
@@ -397,6 +443,32 @@ public class CompanyService {
         // 1. Valider businessTypeCode existe et est actif
         BusinessType bt = businessTypeModuleService.getActiveByCode(req.businessTypeCode());
         company.setBusinessTypeCode(bt.getCode());
+
+        // Fix Dim 2 C1 (audit v9.4) — Propagation automatique du taxExemptionStatus
+        // selon le businessTypeCode. Avant ce fix, une ONG créée via le wizard gardait
+        // taxExemptionStatus=STANDARD → IS calculé à 30% au lieu de 0% (Code Fiscal art. 195).
+        // La Javadoc de TaxExemptionStatus prétendait que ce champ était "alimenté par le
+        // wizard en fonction de la OrganizationNature et du BusinessType" — c'était faux.
+        //
+        // Règles de propagation :
+        //   - NGO_HUMANITARIAN → NGO_EXEMPT (IS = 0%)
+        //   - (Future) FREE_ZONE_MANUFACTURING → FREE_ZONE (IS = 15%) — non implémenté car
+        //     le type métier n'existe pas encore dans le catalogue (recommandation Dim 2 R5).
+        //   - Tout autre type → STANDARD (comportement historique, IS au taux normal)
+        // L'utilisateur peut surcharger cette valeur via PATCH /companies/{id}/legal
+        // (endpoint étendu par le fix Dim 2 C2 ci-dessous).
+        if ("NGO_HUMANITARIAN".equals(bt.getCode())) {
+            company.setTaxExemptionStatus(TaxExemptionStatus.NGO_EXEMPT);
+            LOG.info("Wizard step 2 — company {} businessType=NGO_HUMANITARIAN → "
+                + "taxExemptionStatus=NGO_EXEMPT (IS 0%, CF art. 195)", companyId);
+        } else if (company.getTaxExemptionStatus() == TaxExemptionStatus.NGO_EXEMPT
+                && !"NGO_HUMANITARIAN".equals(bt.getCode())) {
+            // Si l'utilisateur change de businessType après coup (reprise wizard), on reset
+            // vers STANDARD sauf s'il re-sélectionne NGO_HUMANITARIAN.
+            company.setTaxExemptionStatus(TaxExemptionStatus.STANDARD);
+            LOG.info("Wizard step 2 — company {} businessType={} → "
+                + "taxExemptionStatus reset to STANDARD", companyId, bt.getCode());
+        }
 
         // 2. Auto-populate organizationNature + sector si non déjà saisis (defaults du type métier)
         if (company.getOrganizationNature() == null

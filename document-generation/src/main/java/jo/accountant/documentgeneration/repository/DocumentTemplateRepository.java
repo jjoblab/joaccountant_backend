@@ -25,6 +25,14 @@ public interface DocumentTemplateRepository extends JpaRepository<DocumentTempla
     Optional<DocumentTemplate> findByCompanyIdIsNullAndDocumentTypeAndIsDefaultTrueAndActiveTrue(
         GeneratedDocumentType documentType);
 
+    /**
+     * Gabarit global par défaut (companyId=null) pour un (documentType, countryCode).
+     * Fix Dim 3 C1 (audit v9.4) — permet de sélectionner les templates Haïti (country_code='HT')
+     * au lieu de toujours tomber sur les templates France (country_code IS NULL).
+     */
+    Optional<DocumentTemplate> findByCompanyIdIsNullAndDocumentTypeAndCountryCodeAndIsDefaultTrueAndActiveTrue(
+        GeneratedDocumentType documentType, String countryCode);
+
     /** Tous les gabarits d'une entreprise. */
     List<DocumentTemplate> findByCompanyIdOrderByDocumentType(UUID companyId);
 }

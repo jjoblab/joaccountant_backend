@@ -45,5 +45,17 @@ public record UpdateCompanyLegalFieldsRequest(
     String nif,
 
     @Size(max = 500, message = "L'adresse ne peut pas dépasser 500 caractères")
-    String address
+    String address,
+
+    // Fix Dim 2 C2 (audit v9.4) — Permet de positionner taxExemptionStatus et isFreeZone
+    // post-wizard via PATCH /companies/{id}/legal. Avant ce fix, aucun endpoint API ne
+    // permettait de le faire — seul le module :demo-data (NgoHumanitarianSeeder) ou une
+    // intervention SQL directe pouvait positionner ces flags. Une entreprise en Zone Franche
+    // ou une ONG mal catégorisée lors du wizard n'avait aucun moyen de corriger son statut
+    // fiscal → IS calculé à 30% au lieu de 15% (ZF) ou 0% (ONG), CF art. 195.
+    /** Statut d'exonération fiscale (STANDARD, FREE_ZONE, NGO_EXEMPT). Null = pas de mise à jour. */
+    String taxExemptionStatus,
+
+    /** Positionne le flag is_free_zone. Null = pas de mise à jour. */
+    Boolean isFreeZone
 ) {}

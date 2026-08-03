@@ -75,6 +75,9 @@ public final class SectorAccountTemplate {
         return switch (businessTypeCode) {
             case "RETAIL_COMMERCE", "WHOLESALE_COMMERCE", "MIXED_COMMERCE", "ECOMMERCE" -> commerce();
             case "PROFESSIONAL_SERVICES" -> professionalServices();
+            case "IT_CONSULTING" -> itConsulting();
+            case "CREATIVE_AGENCY" -> creativeAgency();
+            case "MAINTENANCE_SERVICES" -> maintenanceServices();
             case "NGO_HUMANITARIAN" -> ngoHumanitarian();
             case "ACCOUNTING_FIRM" -> accountingFirm();
             case "SCHOOL" -> school();
@@ -179,6 +182,149 @@ public final class SectorAccountTemplate {
             new AccountSeed("24", "2455", "Matériel informatique", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
             new AccountSeed("2", "28", "Amortissements", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null),
             new AccountSeed("28", "2845", "Amort. matériel de bureau", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null)
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Fix Dim 2 H3 (audit v9.4) — 3 types métier SERVICE sans seed sectoriel
+    // IT_CONSULTING, CREATIVE_AGENCY, MAINTENANCE_SERVICES tombaient avant sur generic()
+    // (banque/caisse/capital/ventes/achats — pas de compte 706 « Prestations de services »,
+    // pas de 625 « Honoraires sous-traitants », pas de 2455 « Matériel informatique »).
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Plan comptable pour IT_CONSULTING (conseil & services IT).
+     *
+     * <p>Ajoute vs professionalServices : comptes spécifiques IT (2455 Matériel informatique,
+     * 2805 Logiciels, 626 Logiciels et abonnements, 7065 Prestations informatiques).
+     */
+    private static List<AccountSeed> itConsulting() {
+        return List.of(
+            new AccountSeed("4", "40", "Fournisseurs", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("40", "401", "Fournisseurs locaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("4", "41", "Clients", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("41", "411", "Clients locaux", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("4", "42", "Personnel", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("42", "421", "Personnel - rémunérations dues", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SALARIES_PAYABLE"),
+            new AccountSeed("4", "43", "Organismes sociaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("43", "433", "Sécurité sociale", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("4", "44", "État", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("44", "443", "TVA collectée", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "VAT_COLLECTED"),
+            new AccountSeed("44", "445", "TVA déductible", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "VAT_DEDUCTIBLE"),
+            new AccountSeed("5", "52", "Banques", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("52", "521", "Banque Nationale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("5", "57", "Caisse", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("57", "571", "Caisse principale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("6", "61", "Transports", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("6", "62", "Services extérieurs", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "OPERATING_EXPENSE"),
+            new AccountSeed("62", "621", "Loyer bureau", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("62", "622", "Électricité et eau", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("62", "625", "Honoraires sous-traitants", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("62", "626", "Logiciels et abonnements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("6", "63", "Charges de personnel", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("63", "631", "Salaires et appointements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("6", "68", "Dotations aux amortissements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("7", "70", "Ventes de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "706", "Prestations de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "7065", "Prestations informatiques", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("7", "75", "Autres produits", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, null),
+            new AccountSeed("1", "10", "Capital", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("10", "101", "Capital social", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("2", "24", "Matériel", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("24", "2455", "Matériel informatique", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("2", "28", "Amortissements", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null),
+            new AccountSeed("28", "2845", "Amort. matériel de bureau", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null),
+            new AccountSeed("28", "2805", "Amort. logiciels", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null)
+        );
+    }
+
+    /**
+     * Plan comptable pour CREATIVE_AGENCY (agence créative).
+     *
+     * <p>Ajoute vs professionalServices : comptes spécifiques création (2456 Matériel audiovisuel,
+     * 605 Achats de fournitures créatives, 7066 Prestations créatives).
+     */
+    private static List<AccountSeed> creativeAgency() {
+        return List.of(
+            new AccountSeed("4", "40", "Fournisseurs", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("40", "401", "Fournisseurs locaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("4", "41", "Clients", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("41", "411", "Clients locaux", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("4", "42", "Personnel", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("42", "421", "Personnel - rémunérations dues", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SALARIES_PAYABLE"),
+            new AccountSeed("4", "43", "Organismes sociaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("43", "433", "Sécurité sociale", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("4", "44", "État", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("44", "443", "TVA collectée", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "VAT_COLLECTED"),
+            new AccountSeed("44", "445", "TVA déductible", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "VAT_DEDUCTIBLE"),
+            new AccountSeed("5", "52", "Banques", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("52", "521", "Banque Nationale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("5", "57", "Caisse", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("57", "571", "Caisse principale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("6", "60", "Achats", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("60", "605", "Achats de fournitures créatives", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("6", "61", "Transports", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("6", "62", "Services extérieurs", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "OPERATING_EXPENSE"),
+            new AccountSeed("62", "621", "Loyer studio/bureau", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("62", "625", "Honoraires sous-traitants", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("6", "63", "Charges de personnel", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("63", "631", "Salaires et appointements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("6", "68", "Dotations aux amortissements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("7", "70", "Ventes de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "706", "Prestations de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "7066", "Prestations créatives", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("7", "75", "Autres produits", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, null),
+            new AccountSeed("1", "10", "Capital", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("10", "101", "Capital social", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("2", "24", "Matériel", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("24", "2456", "Matériel audiovisuel", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("2", "28", "Amortissements", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null),
+            new AccountSeed("28", "28456", "Amort. matériel audiovisuel", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null)
+        );
+    }
+
+    /**
+     * Plan comptable pour MAINTENANCE_SERVICES (maintenance & réparation).
+     *
+     * <p>Ajoute vs professionalServices : comptes spécifiques maintenance (2457 Outillage,
+     * 606 Achats de pièces détachées, 7067 Prestations de maintenance).
+     */
+    private static List<AccountSeed> maintenanceServices() {
+        return List.of(
+            new AccountSeed("4", "40", "Fournisseurs", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("40", "401", "Fournisseurs locaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "ACCOUNTS_PAYABLE"),
+            new AccountSeed("4", "41", "Clients", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("41", "411", "Clients locaux", ReportingClass.ACTIF, "COURANT", "DEBIT", true, "ACCOUNTS_RECEIVABLE"),
+            new AccountSeed("4", "42", "Personnel", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("42", "421", "Personnel - rémunérations dues", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SALARIES_PAYABLE"),
+            new AccountSeed("4", "43", "Organismes sociaux", ReportingClass.PASSIF, "COURANT", "CREDIT", true, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("43", "433", "Sécurité sociale", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "SOCIAL_SECURITY_PAYABLE"),
+            new AccountSeed("4", "44", "État", ReportingClass.PASSIF, "COURANT", "CREDIT", true, null),
+            new AccountSeed("44", "443", "TVA collectée", ReportingClass.PASSIF, "COURANT", "CREDIT", false, "VAT_COLLECTED"),
+            new AccountSeed("44", "445", "TVA déductible", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "VAT_DEDUCTIBLE"),
+            new AccountSeed("5", "52", "Banques", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("52", "521", "Banque Nationale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("5", "57", "Caisse", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("57", "571", "Caisse principale", ReportingClass.ACTIF, "COURANT", "DEBIT", false, "CASH"),
+            new AccountSeed("6", "60", "Achats", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("60", "606", "Achats de pièces détachées", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("6", "61", "Transports", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("6", "62", "Services extérieurs", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "OPERATING_EXPENSE"),
+            new AccountSeed("62", "621", "Loyer atelier", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("62", "625", "Honoraires sous-traitants", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PURCHASES"),
+            new AccountSeed("6", "63", "Charges de personnel", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("63", "631", "Salaires et appointements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, "PERSONNEL_EXPENSE"),
+            new AccountSeed("6", "68", "Dotations aux amortissements", ReportingClass.CHARGES, "COURANT", "DEBIT", false, null),
+            new AccountSeed("7", "70", "Ventes de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "706", "Prestations de services", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("70", "7067", "Prestations de maintenance", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, "SALES_REVENUE"),
+            new AccountSeed("7", "75", "Autres produits", ReportingClass.PRODUITS, "COURANT", "CREDIT", false, null),
+            new AccountSeed("1", "10", "Capital", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("10", "101", "Capital social", ReportingClass.CAPITAUX_PROPRES, "EQUITY", "CREDIT", false, null),
+            new AccountSeed("2", "24", "Matériel", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("24", "2457", "Outillage", ReportingClass.ACTIF, "NON_COURANT", "DEBIT", false, null),
+            new AccountSeed("2", "28", "Amortissements", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null),
+            new AccountSeed("28", "28457", "Amort. outillage", ReportingClass.ACTIF, "NON_COURANT", "CREDIT", false, null)
         );
     }
 

@@ -263,10 +263,27 @@ public class TaxService {
  BigDecimal.ZERO, BigDecimal.ZERO);
  }
 
- // ── TVA / TCA / autres COLLECTÉE (factures de ventes ISSUED + PARTIALLY_PAID + PAID) ──
+ // ── TVA / TCA / autres COLLECTÉE (factures de ventes) ──
  // Agrégation SQL filtrée par taxType — 1 seule requête.
- List<InvoiceStatus> salesStatuses = List.of(
- InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
+ //
+ // Fix Dim 3 C3 (audit v9.4) — respect du vatMode (DEBIT vs ENCAISSEMENT).
+ // En mode DEBIT (régime des débits, défaut), la TVA est exigible dès l'émission de la
+ // facture → on inclut ISSUED + PARTIALLY_PAID + PAID (comportement historique).
+ // En mode ENCAISSEMENT (régime des encaissements, art. 289 II CGI), la TVA n'est exigible
+ // qu'au paiement effectif → on n'inclut que PARTIALLY_PAID + PAID.
+ //
+ // Note : on regarde les TaxRule actives de l'entreprise pour la période. Si AU MOINS UNE
+ // règle de TVA est en mode ENCAISSEMENT, on bascule toute la déclaration en mode
+ // ENCAISSEMENT (postulat : une entreprise a un seul régime d'exigibilité à un instant t).
+ // Ce postulat est conforme à la pratique comptable (option globale pour le régime).
+ boolean encashmentMode = isEncashmentMode(companyId, from, to);
+ List<InvoiceStatus> salesStatuses = encashmentMode
+ ? List.of(InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID)
+ : List.of(InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID);
+ if (encashmentMode) {
+ LOG.info("Déclaration TVA mode ENCAISSEMENT pour company {} [{} à {}] — ISSUED exclu",
+ companyId, from, to);
+ }
  List<InvoiceLineTaxRepository.TaxTypeRateAggregate> salesAggregates =
  invoiceLineTaxRepository.aggregateByTaxType(companyId, from, to, salesStatuses, lineTaxType);
 
@@ -431,6 +448,40 @@ public class TaxService {
 
  return new TaxDeclaration(companyId, from, to, collectedLines, deductibleLines,
  totalTaxCollected, totalTaxDeductible, taxCreditCarriedForward, taxDue, taxCreditToCarryForward);
+ }
+
+ /**
+ * Fix Dim 3 C3 (audit v9.4) — Détermine si l'entreprise est en mode TVA sur encaissement
+ * pour la période donnée.
+ *
+ * <p>Regarde les TaxRule actives et valides à la date de début de période. Si AU MOINS UNE
+ * règle est en mode {@link jo.accountant.core.tax.VatMode#ENCAISSEMENT}, on considère que
+ * l'entreprise est en mode encaissement pour toute la déclaration.
+ *
+ * <p>Postulat : une entreprise a un seul régime d'exigibilité à un instant t (option globale
+ * pour le régime des encaissements, art. 289 II CGI). Ce postulat est conforme à la pratique
+ * comptable — l'option pour le régime des encaissements est globale et annuelle.
+ *
+ * @param companyId identifiant du tenant
+ * @param from date de début de la période de déclaration
+ * @param to date de fin de la période de déclaration
+ * @return {@code true} si l'entreprise est en mode ENCAISSEMENT, {@code false} sinon (DEBIT)
+ */
+ private boolean isEncashmentMode(UUID companyId, LocalDate from, LocalDate to) {
+ // On prend la date de début comme référence pour la résolution des règles actives.
+ // (Une règle active au 1er jour de la période est considérée comme applicable pour
+ // toute la période — postulat raisonnable pour une déclaration mensuelle/trimestrielle.)
+ LocalDate refDate = from != null ? from : LocalDate.now();
+ try {
+ List<TaxRule> activeRules = taxRuleRepository.findActiveRulesValidAt(companyId, refDate);
+ return activeRules.stream()
+ .anyMatch(r -> r.getVatMode() == jo.accountant.core.tax.VatMode.ENCAISSEMENT);
+ } catch (Exception e) {
+ // En cas d'erreur (ex: tests sans repository), on fallback sur DEBIT (comportement historique).
+ LOG.warn("Erreur lors de la résolution du vatMode pour company {} — fallback DEBIT : {}",
+ companyId, e.getMessage());
+ return false;
+ }
  }
 
  /**
@@ -624,19 +675,55 @@ public class TaxService {
  BigDecimal taxCredits = BigDecimal.ZERO;
  BigDecimal corporateTaxNet = corporateTaxBrut.subtract(taxCredits);
 
- // 7. Acomptes (4 par an en France : 15 mars, 15 juin, 15 septembre, 15 décembre)
- // Chaque acompte = 25% de l'IS N-1 (ici, par défaut, 25% de l'IS net de l'exercice courant)
- BigDecimal installmentAmount = corporateTaxNet.divide(new BigDecimal("4"), 2, java.math.RoundingMode.HALF_UP);
+ // 7. Acomptes
+ // Fix Dim 3 H2 (audit v9.4) — Pour country=HT, générer 12 acomptes mensuels (1% sur
+ // encaissements bruts, Code Fiscal art. 5) au lieu de 4 acomptes trimestriels français
+ // (15 mars/juin/sept/déc). computeMonthlyInstallmentHT existait déjà mais n'était pas
+ // appelé par projectCorporateTax.
  int year = from.getYear();
- List<CorporateTaxProjection.Installment> installments = List.of(
+ List<CorporateTaxProjection.Installment> installments;
+ if ("HT".equals(countryCode)) {
+ // Haïti : 12 acomptes mensuels à 1% sur encaissements bruts (CF art. 5)
+ installments = new ArrayList<>();
+ for (int month = 1; month <= 12; month++) {
+ try {
+ MonthlyInstallmentHT monthly = computeMonthlyInstallmentHT(companyId, year, month);
+ if (monthly.installmentAmount() != null
+ && monthly.installmentAmount().compareTo(BigDecimal.ZERO) > 0) {
+ installments.add(new CorporateTaxProjection.Installment(
+ monthly.dueDate(), monthly.installmentAmount(),
+ "Acompte IS 1% " + year + "-" + String.format("%02d", month)
+ + " (CF art. 5)"));
+ }
+ } catch (Exception e) {
+ LOG.warn("Erreur calcul acompte IS 1% pour {}-{} (company {}) — skip : {}",
+ year, month, companyId, e.getMessage());
+ }
+ }
+ LOG.info("projectCorporateTax HT — {} acomptes mensuels générés pour company {}",
+ installments.size(), companyId);
+ } else {
+ // France / autres : 4 acomptes trimestriels (comportement historique)
+ BigDecimal installmentAmount = corporateTaxNet.divide(new BigDecimal("4"),
+ 2, java.math.RoundingMode.HALF_UP);
+ installments = List.of(
  new CorporateTaxProjection.Installment(LocalDate.of(year, 3, 15), installmentAmount, "Acompte 1er trimestre " + year),
  new CorporateTaxProjection.Installment(LocalDate.of(year, 6, 15), installmentAmount, "Acompte 2e trimestre " + year),
  new CorporateTaxProjection.Installment(LocalDate.of(year, 9, 15), installmentAmount, "Acompte 3e trimestre " + year),
  new CorporateTaxProjection.Installment(LocalDate.of(year, 12, 15), installmentAmount, "Acompte 4e trimestre " + year)
  );
+ }
 
- // 8. Solde à verser au 15 mai N+1 = IS net − somme acomptes
- BigDecimal balanceDue = corporateTaxNet.subtract(installmentAmount.multiply(new BigDecimal("4")));
+ // 8. Solde à verser au 15 mai N+1 = IS net − somme acomptes versés
+ // Fix Dim 3 H2 — Calcul dynamique de la somme des acomptes (au lieu de installmentAmount × 4
+ // qui n'est valable qu'en mode trimestriel français).
+ BigDecimal totalInstallments = BigDecimal.ZERO;
+ for (CorporateTaxProjection.Installment inst : installments) {
+ if (inst.amount() != null) {
+ totalInstallments = totalInstallments.add(inst.amount());
+ }
+ }
+ BigDecimal balanceDue = corporateTaxNet.subtract(totalInstallments);
 
  CorporateTaxProjection.CorporateTaxRuleSummary ruleSummary =
  new CorporateTaxProjection.CorporateTaxRuleSummary(
