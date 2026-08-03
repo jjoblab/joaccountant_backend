@@ -42,7 +42,7 @@ nimbusJoseJwt = "9.40"
 bouncyCastle = "1.79"
 
 # ----- API documentation (OpenAPI) -----
-swaggerAnnotations = "2.2.29"
+swaggerAnnotations = "2.2.52"
 springdocOpenapi = "2.8.6"
 
 # ----- AWS SDK (S3 / MinIO file storage) -----
