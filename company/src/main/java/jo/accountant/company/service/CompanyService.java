@@ -674,6 +674,26 @@ public class CompanyService {
                 step3.numberingPrefixes()
             );
 
+        // Fix Dim 4 P1 (audit v9.4) — Si initialCapital fourni, générer l'écriture de
+        // constitution du capital social (Débit 512 / Crédit 101). Avant ce fix, le wizard
+        // se terminait avec un exercice vierge (balance à zéro) même si l'utilisateur avait
+        // saisi un capital social — vide fonctionnel identifié par l'audit Dim 4.
+        java.util.UUID capitalEntryId = null;
+        if (req.initialCapital() != null
+                && req.initialCapital().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            try {
+                capitalEntryId = accountingProvisioningPort.postCapitalEntry(
+                    company.getId(), req.initialCapital());
+                LOG.info("Capital social initial créé pour company {} : amount={} entryId={}",
+                    company.getId(), req.initialCapital(), capitalEntryId);
+            } catch (Exception e) {
+                // Best-effort : si l'écriture de capital échoue (ex: compte manquant),
+                // on log en WARN mais on ne fait pas échouer le wizard complet.
+                LOG.warn("Écriture de capital social échouée pour company {} (best-effort skip) : {}",
+                    company.getId(), e.getMessage());
+            }
+        }
+
         // Recharger la company depuis la DB avant de la modifier — l'activation comptable
         // peut avoir modifié la colonne active_fiscal_year_id via JDBC direct (bypass Hibernate),
         // ce qui incrémente @Version en DB. Sans rechargement, le save qui suit lèverait

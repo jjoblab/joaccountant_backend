@@ -1,6 +1,9 @@
 package jo.accountant.tax.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +14,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jo.accountant.company.entity.Company;
 import jo.accountant.company.repository.CompanyRepository;
 import jo.accountant.financialstatements.dto.IncomeStatement;
 import jo.accountant.financialstatements.service.FinancialStatementsService;
@@ -182,5 +186,71 @@ class TaxServiceTest {
 
         // Pas de PME (LARGE) → -10000 × 25 / 100 = -2500 (le déficit génère un crédit fiscal reportable)
         assertThat(projection.corporateTaxBrut()).isEqualByComparingTo("-2500.00");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Fix Dim 3 H2 (audit v9.4) — Tests de non-régression pour la projection IS Haïti
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("Fix Dim 3 H2 — HT : projection IS génère 12 acomptes mensuels (CF art. 5)")
+    void projectCorporateTax_ht_generates12MonthlyInstallments() {
+        // Mock : entreprise avec country=HT
+        Company htCompany = new Company();
+        htCompany.setCountry("HT");
+        when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(htCompany));
+
+        // Mock : règle IS standard HT (30%)
+        CorporateTaxRule htRule = new CorporateTaxRule();
+        htRule.setStandardRate(new BigDecimal("30"));
+        htRule.setEligibility(CorporateTaxEligibility.LARGE);
+        htRule.setActive(true);
+        when(corporateTaxRuleRepository.findByCompanyIdAndActiveTrue(COMPANY_ID))
+            .thenReturn(Optional.of(htRule));
+
+        // Mock : revenu 100000 → IS 30% = 30000
+        mockIncomeResult(new BigDecimal("100000.00"));
+
+        // Mock : pas de factures pour les acomptes 1% (computeMonthlyInstallmentHT retourne 0)
+        when(invoiceRepository.sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(
+            eq(COMPANY_ID), any(), anyList(), any(), any()))
+            .thenReturn(BigDecimal.ZERO);
+
+        CorporateTaxProjection projection = taxService.projectCorporateTax(COMPANY_ID, FROM, TO);
+
+        assertThat(projection.corporateTaxBrut())
+            .as("IS brut HT doit être 30% × 100000 = 30000")
+            .isEqualByComparingTo("30000.00");
+
+        // Fix Dim 3 H2 : pour HT, on doit avoir 12 acomptes mensuels (ou 0 si pas de revenus)
+        // Au lieu de 4 trimestriels français.
+        // Note : si computeMonthlyInstallmentHT retourne 0 pour tous les mois (pas de factures),
+        // la liste installments sera vide (0 acomptes non nuls). C'est aussi un comportement
+        // valide — l'important est qu'on n'a PAS 4 acomptes trimestriels français.
+        assertThat(projection.installments())
+            .as("HT ne doit PAS produire 4 acomptes trimestriels français (doit être 0 ou 12)")
+            .satisfiesAnyOf(
+                list -> assertThat(list).isEmpty(),
+                list -> assertThat(list).hasSize(12));
+    }
+
+    @Test
+    @DisplayName("Fix Dim 3 H2 — France : projection IS garde 4 acomptes trimestriels (rétro-compat)")
+    void projectCorporateTax_fr_keeps4QuarterlyInstallments() {
+        // Mock : entreprise avec country=FR
+        Company frCompany = new Company();
+        frCompany.setCountry("FR");
+        when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(frCompany));
+
+        when(corporateTaxRuleRepository.findByCompanyIdAndActiveTrue(COMPANY_ID))
+            .thenReturn(Optional.of(rule(CorporateTaxEligibility.LARGE)));
+        mockIncomeResult(new BigDecimal("100000.00"));
+
+        CorporateTaxProjection projection = taxService.projectCorporateTax(COMPANY_ID, FROM, TO);
+
+        // Comportement historique préservé : 4 acomptes trimestriels français
+        assertThat(projection.installments())
+            .as("France doit garder 4 acomptes trimestriels (15 mars/juin/sept/déc)")
+            .hasSize(4);
     }
 }

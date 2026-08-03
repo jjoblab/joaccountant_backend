@@ -65,7 +65,7 @@ class FlywayMigrationIT extends jo.accountant.testsupport.EmbeddedPostgresSuppor
 
         // Vérifie qu'aucune migration n'est en état FAILED.
         long failedCount = java.util.Arrays.stream(flyway.info().all())
-            .filter(m -> m.getState() == org.flywaydb.core.api.output.MigrationState.FAILED)
+            .filter(m -> "FAILED".equalsIgnoreCase(String.valueOf(m.getState())))
             .count();
         assertThat(failedCount)
             .as("Aucune migration ne doit être en état FAILED")

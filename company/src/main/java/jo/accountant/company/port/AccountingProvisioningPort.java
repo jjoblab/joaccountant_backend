@@ -1,5 +1,6 @@
 package jo.accountant.company.port;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,6 +54,26 @@ public interface AccountingProvisioningPort {
                                   int fiscalYearStartYear,
                                   String fiscalYearLabel,
                                   Map<String, String> numberingPrefixes);
+
+    /**
+     * Fix Dim 4 P1 (audit v9.4) — Génère une écriture de capital social après provisioning.
+     *
+     * <p>Poste une écriture OD équilibrée :
+     * <pre>
+     *   Débit 512 (Banque) / Crédit 101 (Capital social)
+     * </pre>
+     *
+     * <p>Permet de démarrer l'exercice N avec le bon solde d'ouverture (avant, l'exercice
+     * démarrait à zéro — vide fonctionnel identifié par l'audit Dim 4).
+     *
+     * <p><b>Idempotence</b> : si une écriture avec la même idempotency-key existe déjà, ne fait
+     * rien (lève ConflictException catchée par l'appelant).
+     *
+     * @param companyId identifiant du tenant
+     * @param amount montant du capital social (> 0)
+     * @return l'ID de l'écriture créée, ou null si idempotent (déjà existante)
+     */
+    UUID postCapitalEntry(UUID companyId, BigDecimal amount);
 
     /**
      * Récapitulatif des objets créés (ou existants) par {@link #provision}.

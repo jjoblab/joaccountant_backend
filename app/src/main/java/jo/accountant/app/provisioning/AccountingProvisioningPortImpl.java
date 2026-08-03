@@ -6,8 +6,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import jo.accountant.accountingengine.dto.CreateFiscalYearRequest;
+import jo.accountant.accountingengine.dto.CreateJournalEntryRequest;
+import jo.accountant.accountingengine.dto.CreateJournalEntryRequest.LineDto;
+import jo.accountant.accountingengine.dto.JournalEntryResponse;
 import jo.accountant.accountingengine.entity.FiscalYear;
+import jo.accountant.accountingengine.entity.JournalEntrySourceModule;
 import jo.accountant.accountingengine.service.AccountingEngineService;
+import jo.accountant.chartofaccounts.entity.Account;
+import jo.accountant.core.framework.ReportingClass;
+import jo.accountant.chartofaccounts.service.AccountResolver;
 import jo.accountant.chartofaccounts.service.ChartOfAccountsService;
 import jo.accountant.company.entity.Company;
 import jo.accountant.company.port.AccountingProvisioningPort;
@@ -76,15 +83,18 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
     private final AccountingEngineService accountingEngineService;
     private final DocumentNumberingService documentNumberingService;
     private final TaxService taxService;
+    private final AccountResolver accountResolver;
 
     public AccountingProvisioningPortImpl(ChartOfAccountsService chartOfAccountsService,
                                           AccountingEngineService accountingEngineService,
                                           DocumentNumberingService documentNumberingService,
-                                          TaxService taxService) {
+                                          TaxService taxService,
+                                          AccountResolver accountResolver) {
         this.chartOfAccountsService = chartOfAccountsService;
         this.accountingEngineService = accountingEngineService;
         this.documentNumberingService = documentNumberingService;
         this.taxService = taxService;
+        this.accountResolver = accountResolver;
     }
 
     @Override
@@ -264,5 +274,69 @@ public class AccountingProvisioningPortImpl implements AccountingProvisioningPor
             LOG.debug("Tax rule TVA_FR_20 already exists for company {} — skipping", company.getId());
         }
         return count;
+    }
+
+    /**
+     * Fix Dim 4 P1 (audit v9.4) — Génère une écriture OD de capital social.
+     *
+     * <p>Poste une écriture équilibrée : Débit 512 (Banque) / Crédit 101 (Capital social).
+     * Idempotente via la clé "capital-formation-{companyId}".
+     */
+    @Override
+    @Transactional
+    public UUID postCapitalEntry(UUID companyId, java.math.BigDecimal amount) {
+        if (amount == null || amount.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            LOG.warn("postCapitalEntry ignoré pour company {} : montant null ou <= 0", companyId);
+            return null;
+        }
+
+        // Résoudre le journal OD (opérations diverses)
+        String journalCode = accountingEngineService.getOrCreateJournal(companyId,
+            jo.accountant.accountingengine.entity.JournalType.OD).getCode();
+
+        // Résoudre les comptes 512 (Banque, ACTIF, CASH) et 101 (Capital, CAPITAUX_PROPRES)
+        Account bankAccount = accountResolver.resolveOrThrow(
+            companyId, ReportingClass.ACTIF, "CASH",
+            "CASH_ACCOUNT_NOT_FOUND",
+            "Aucun compte de trésorerie (CASH) trouvé pour l'écriture de capital social. " +
+            "Configurer un compte ACTIF marqué taxMappingCode=\"CASH\" (ex: 512, 521).",
+            "521", "512", "57");
+
+        Account capitalAccount = accountResolver.resolveOrThrow(
+            companyId, ReportingClass.CAPITAUX_PROPRES, null,
+            "CAPITAL_ACCOUNT_NOT_FOUND",
+            "Aucun compte de capitaux propres trouvé pour l'écriture de capital social. " +
+            "Configurer un compte CAPITAUX_PROPRES (ex: 101, 10).",
+            "101", "10");
+
+        // Construire l'écriture : Débit 512 / Crédit 101
+        LocalDate entryDate = LocalDate.now();
+        List<LineDto> lines = List.of(
+            new LineDto(bankAccount.getCode(), null,
+                amount, null,
+                "Apport en capital social (constitution)", List.of()),
+            new LineDto(capitalAccount.getCode(), null,
+                null, amount,
+                "Capital social (constitution)", List.of()));
+
+        CreateJournalEntryRequest req = new CreateJournalEntryRequest(
+            journalCode, entryDate,
+            "Constitution du capital social",
+            lines, JournalEntrySourceModule.MANUAL);
+
+        try {
+            // Idempotency-key "capital-formation-{companyId}" — si déjà postée, ne fait rien
+            JournalEntryResponse response = accountingEngineService.createJournalEntry(
+                companyId, "capital-formation-" + companyId, req);
+            // Poster immédiatement (DRAFT → POSTED) — le capital social est définitif à la constitution
+            accountingEngineService.postJournalEntry(companyId, response.id(), List.of());
+            LOG.info("Écriture de capital social créée et postée : company={} amount={} entryId={}",
+                companyId, amount, response.id());
+            return response.id();
+        } catch (ConflictException ex) {
+            // Idempotent : l'écriture existe déjà (même idempotency-key)
+            LOG.info("Écriture de capital social déjà existante pour company {} — skip", companyId);
+            return null;
+        }
     }
 }
