@@ -26,6 +26,17 @@
 -- sont filtrables via listTaxRules (findByCompanyIdOrCompanyIdIsNull).
 
 
+-- Colonne vat_mode (VatMode : DEBIT | ENCAISSEMENT) — requise par l'entité TaxRule
+-- (@Column(name = "vat_mode", nullable = false, length = 15)) mais absente du CREATE TABLE
+-- initial V19_001. Ajoutée ici (idempotent) pour combler le gap avant l'INSERT ci-dessous.
+-- Default 'DEBIT' = régime des débits (rétro-compat : toutes les règles existantes sont
+-- considérées comme de la TVA sur débit, comportement historique).
+ALTER TABLE tax_rule
+    ADD COLUMN IF NOT EXISTS vat_mode VARCHAR(15) NOT NULL DEFAULT 'DEBIT';
+
+-- Backfill explicite (au cas où des lignes auraient une valeur NULL suite à un ALTER antérieur).
+UPDATE tax_rule SET vat_mode = 'DEBIT' WHERE vat_mode IS NULL;
+
 ALTER TABLE tax_rule
     ADD COLUMN IF NOT EXISTS tax_type VARCHAR(20) NOT NULL DEFAULT 'VAT';
 
@@ -33,10 +44,17 @@ ALTER TABLE tax_rule
 UPDATE tax_rule SET tax_type = 'VAT' WHERE tax_type IS NULL;
 
 ALTER TABLE tax_rule
+    DROP CONSTRAINT IF EXISTS chk_tax_rule_vat_mode;
+ALTER TABLE tax_rule
+    ADD CONSTRAINT chk_tax_rule_vat_mode CHECK (vat_mode IN ('DEBIT','ENCAISSEMENT'));
+
+ALTER TABLE tax_rule
     DROP CONSTRAINT IF EXISTS chk_tax_rule_tax_type;
 ALTER TABLE tax_rule
     ADD CONSTRAINT chk_tax_rule_tax_type CHECK (tax_type IN ('VAT','TCA','TURNOVER_TAX','EXCISE'));
 
+COMMENT ON COLUMN tax_rule.vat_mode IS
+    'Mode exigibilité TVA : DEBIT (régime des débits, défaut) | ENCAISSEMENT (régime des encaissements, art. 289 II CGI).';
 COMMENT ON COLUMN tax_rule.tax_type IS
     'V55 — Lot B R-07 : type de taxe. VAT=défaut (rétro-compat), TCA=Taxe Chiffre Affaires Haïti (art. 196/197), TURNOVER_TAX, EXCISE.';
 
