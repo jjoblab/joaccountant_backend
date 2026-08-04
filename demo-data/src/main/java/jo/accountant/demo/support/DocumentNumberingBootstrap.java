@@ -87,16 +87,26 @@ public class DocumentNumberingBootstrap {
   private static final List<SequenceDef> SEQUENCES =
       List.of(
           // --- Journaux comptables (JOURNAL_ENTRY avec scopeKey = code journal) ---
+          // v9.4 fix — Ajout de CA, DP, FX manquants. Sans DP, le seeder RetailCommerce
+          // échouait sur toutes les notes de frais avec :
+          // "No sequence config for documentType=JOURNAL_ENTRY scopeKey='DP'".
           new SequenceDef("AC", DocumentType.JOURNAL_ENTRY, "AC", ResetPolicy.YEARLY),
           new SequenceDef("BQ", DocumentType.JOURNAL_ENTRY, "BQ", ResetPolicy.YEARLY),
+          new SequenceDef("CA", DocumentType.JOURNAL_ENTRY, "CA", ResetPolicy.YEARLY),
+          new SequenceDef("DP", DocumentType.JOURNAL_ENTRY, "DP", ResetPolicy.YEARLY),
+          new SequenceDef("FX", DocumentType.JOURNAL_ENTRY, "FX", ResetPolicy.YEARLY),
           new SequenceDef("OD", DocumentType.JOURNAL_ENTRY, "OD", ResetPolicy.YEARLY),
           new SequenceDef("PA", DocumentType.JOURNAL_ENTRY, "PA", ResetPolicy.YEARLY),
           new SequenceDef("VT", DocumentType.JOURNAL_ENTRY, "VT", ResetPolicy.YEARLY),
-          // --- Documents commerciaux et RH (scopeKey vide = séquence unique par type) ---
-          new SequenceDef("AV", DocumentType.CREDIT_NOTE, "", ResetPolicy.YEARLY),
-          new SequenceDef("BS", DocumentType.PAYSLIP, "", ResetPolicy.NEVER),
-          new SequenceDef("FAC", DocumentType.SALES_INVOICE, "", ResetPolicy.YEARLY),
-          new SequenceDef("FF", DocumentType.PURCHASE_INVOICE, "", ResetPolicy.YEARLY),
+          // --- Documents commerciaux et RH ---
+          // v9.4 fix — scopeKey alignés sur les consommateurs (InvoicingService, PayrollService) :
+          //   SALES_INVOICE → "VT", PURCHASE_INVOICE → "AC", PAYSLIP → "PA", CREDIT_NOTE → "VT".
+          // Avant ce fix, scopeKey="" était utilisé → SEQUENCE_CONFIG_NOT_FOUND à l'émission
+          // de facture / création de payslip.
+          new SequenceDef("FAC", DocumentType.SALES_INVOICE, "VT", ResetPolicy.YEARLY),
+          new SequenceDef("FF", DocumentType.PURCHASE_INVOICE, "AC", ResetPolicy.YEARLY),
+          new SequenceDef("BS", DocumentType.PAYSLIP, "PA", ResetPolicy.NEVER),
+          new SequenceDef("AV", DocumentType.CREDIT_NOTE, "VT", ResetPolicy.YEARLY),
           new SequenceDef("RD", DocumentType.DONATION_RECEIPT, "", ResetPolicy.YEARLY));
 
   private final DocumentNumberingService numberingService;

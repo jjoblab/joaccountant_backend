@@ -257,12 +257,12 @@ public class RetailCommerceSeeder implements CompanySeeder {
  LOG.info("V9 — User owner créé/résolu (id={}, email={})", ownerId, OWNER_EMAIL);
 
  // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
- // La transaction @Transactional est ouverte par self.seedBusinessData() via le proxy Spring,
- // APRÈS que DemoTenantContext.of() ait positionné le ThreadLocal. Le
- // TenantRlsConnectionCustomizer intercepte setAutoCommit(false) au début de cette méthode
- // et applique SET LOCAL app.current_tenant = companyId.
+ // v9.4 fix — La méthode seedBusinessData n'est PLUS @Transactional. Avant ce fix,
+ // les nombreux catch (RuntimeException) à l'intérieur de la méthode @Transactional
+ // marquaient la transaction comme rollback-only → UnexpectedRollbackException à la sortie.
+ // Sans @Transactional, chaque service métier appelé ouvre sa PROPRE transaction.
  try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
- return self.seedBusinessData(companyId, ownerId);
+ return seedBusinessData(companyId, ownerId);
  } catch (RuntimeException ex) {
  // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
  // On logue ERROR mais on ne propage pas l'exception pour ne pas casser le démarrage.
@@ -291,7 +291,7 @@ public class RetailCommerceSeeder implements CompanySeeder {
  * utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
  * @return nombre d'enregistrements créés
  */
- @Transactional
+ // v9.4 fix — @Transactional retiré (voir commentaire dans seed()).
  public int seedBusinessData(UUID companyId, UUID ownerId) {
  // a, b, c — bootstraps (COA + journaux/exercices + séquences)
  coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());

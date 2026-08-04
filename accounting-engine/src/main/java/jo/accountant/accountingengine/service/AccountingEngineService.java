@@ -171,18 +171,13 @@ public class AccountingEngineService {
  throw new ValidationException("INVALID_DATE_RANGE", "endDate doit être après startDate");
  }
 
- // Fix Dim 5 H2 (audit v9.4) — Garde-fou applicatif : 1 entreprise = 1 exercice OPEN maximum.
- // Complète la contrainte DB uc_one_open_per_company (V8_009) avec un message d'erreur explicite.
- // Sans ce guard, l'utilisateur obtiendrait une DataIntegrityViolationException générique
- // (difficile à comprendre côté frontend).
- long openCount = fiscalYearRepository.findByCompanyIdOrderByStartDateAsc(companyId).stream()
- .filter(f -> f.getStatus() == FiscalYearStatus.OPEN)
- .count();
- if (openCount > 0) {
- throw new jo.accountant.core.exception.ConflictException("OPEN_FISCAL_YEAR_ALREADY_EXISTS",
- "L'entreprise a déjà un exercice OPEN. Clôturer l'exercice courant avant d'en créer un nouveau. " +
- "Cette contrainte garantit la cohérence comptable (1 exercice actif à la fois).");
- }
+ // v9.4 fix (V29_001) — La contrainte "1 exercice OPEN max" a été supprimée.
+ // Les ERP standards (Odoo, Sage, QuickBooks) autorisent plusieurs exercices OPEN
+ // simultanément : le comptable crée N+1 avant d'avoir clôturé N, et travaille
+ // dans N+1 pendant que les rapprochements de N se finalisent.
+ // Le champ companies.active_fiscal_year_id indique quel exercice est "actif"
+ // pour les nouvelles écritures. La clôture (closeFiscalYear) génère les écritures
+ // de clôture + ouverture N+1 + verrouille l'exercice.
 
  FiscalYear fy = new FiscalYear();
  fy.setCompanyId(companyId);

@@ -83,13 +83,18 @@ public class FinancialStatementsController {
  private final FinancialStatementsService service;
  private final RoleChecker roleChecker;
  private final DocumentGenerationService documentGenerationService;
+ // v9.4 fix — Injecté pour résoudre fiscalYearId → startDate/endDate sur les 3 endpoints
+ // d'états financiers. Permet au mobile de filtrer par exercice fiscal clôturé.
+ private final jo.accountant.accountingengine.service.AccountingEngineService accountingEngineService;
 
  public FinancialStatementsController(FinancialStatementsService service,
  RoleChecker roleChecker,
- DocumentGenerationService documentGenerationService) {
+ DocumentGenerationService documentGenerationService,
+ jo.accountant.accountingengine.service.AccountingEngineService accountingEngineService) {
  this.service = service;
  this.roleChecker = roleChecker;
  this.documentGenerationService = documentGenerationService;
+ this.accountingEngineService = accountingEngineService;
  }
 
  @Operation(summary = "Générer le bilan à une date donnée",
@@ -111,13 +116,24 @@ public class FinancialStatementsController {
  public BalanceSheet getBalanceSheet(@PathVariable UUID companyId,
  @CurrentUser UUID userId,
  @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate asOf,
+ @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId,
  @RequestParam(required = false) String presentationCurrency,
  @RequestParam(required = false) BigDecimal closingRate) {
  roleChecker.ensureRole(companyId, "VIEWER");
+ // v9.4 fix — Si fiscalYearId fourni, résoudre l'exercice et utiliser sa endDate comme asOf.
+ // Permet de consulter le bilan d'un exercice clôturé sans connaître sa date de fin exacte.
+ LocalDate effectiveAsOf = asOf;
+ if (fiscalYearId != null) {
+ java.util.Optional<jo.accountant.accountingengine.entity.FiscalYear> fy =
+ accountingEngineService.resolveFiscalYear(companyId, fiscalYearId);
+ if (fy.isPresent()) {
+ effectiveAsOf = fy.get().getEndDate();
+ }
+ }
  PresentationCurrencyRequest pcr = (presentationCurrency != null)
- ? new PresentationCurrencyRequest(presentationCurrency, asOf, closingRate, null)
+ ? new PresentationCurrencyRequest(presentationCurrency, effectiveAsOf, closingRate, null)
  : null;
- return service.getBalanceSheet(companyId, asOf, pcr);
+ return service.getBalanceSheet(companyId, effectiveAsOf, pcr);
  }
 
  @Operation(summary = "Générer le compte de résultat sur une plage de dates",
@@ -137,13 +153,25 @@ public class FinancialStatementsController {
  @CurrentUser UUID userId,
  @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
  @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to,
+ @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId,
  @RequestParam(required = false) String presentationCurrency,
  @RequestParam(required = false) BigDecimal averageRate) {
  roleChecker.ensureRole(companyId, "VIEWER");
+ // v9.4 fix — Si fiscalYearId fourni, résoudre l'exercice et utiliser ses bornes comme from/to.
+ LocalDate effectiveFrom = from;
+ LocalDate effectiveTo = to;
+ if (fiscalYearId != null) {
+ java.util.Optional<jo.accountant.accountingengine.entity.FiscalYear> fy =
+ accountingEngineService.resolveFiscalYear(companyId, fiscalYearId);
+ if (fy.isPresent()) {
+ effectiveFrom = fy.get().getStartDate();
+ effectiveTo = fy.get().getEndDate();
+ }
+ }
  PresentationCurrencyRequest pcr = (presentationCurrency != null)
  ? new PresentationCurrencyRequest(presentationCurrency, null, null, averageRate)
  : null;
- return service.getIncomeStatement(companyId, from, to, pcr);
+ return service.getIncomeStatement(companyId, effectiveFrom, effectiveTo, pcr);
  }
 
  @Operation(summary = "Générer le tableau de flux de trésorerie (IAS 7 / SYSCOHADA TAFIRE)",
@@ -197,13 +225,25 @@ public class FinancialStatementsController {
  @CurrentUser UUID userId,
  @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate from,
  @org.springframework.web.bind.annotation.RequestParam(required = false) LocalDate to,
+ @org.springframework.web.bind.annotation.RequestParam(required = false) UUID fiscalYearId,
  @RequestParam(required = false) String presentationCurrency,
  @RequestParam(required = false) BigDecimal averageRate) {
  roleChecker.ensureRole(companyId, "VIEWER");
+ // v9.4 fix — Si fiscalYearId fourni, résoudre l'exercice et utiliser ses bornes comme from/to.
+ LocalDate effectiveFrom = from;
+ LocalDate effectiveTo = to;
+ if (fiscalYearId != null) {
+ java.util.Optional<jo.accountant.accountingengine.entity.FiscalYear> fy =
+ accountingEngineService.resolveFiscalYear(companyId, fiscalYearId);
+ if (fy.isPresent()) {
+ effectiveFrom = fy.get().getStartDate();
+ effectiveTo = fy.get().getEndDate();
+ }
+ }
  PresentationCurrencyRequest pcr = (presentationCurrency != null)
  ? new PresentationCurrencyRequest(presentationCurrency, null, null, averageRate)
  : null;
- return service.getCashFlowStatement(companyId, from, to, pcr);
+ return service.getCashFlowStatement(companyId, effectiveFrom, effectiveTo, pcr);
  }
 
  @Operation(summary = "Créer un snapshot figé",

@@ -173,6 +173,10 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
   private final DonationReceiptRepository donationReceiptRepository;
   private final FxOperationsService fxOperationsService;
   private final ExchangeRateService exchangeRateService;
+  // v9.4 fix — Injecté pour créer les comptes FX_GAIN/FX_LOSS via SQL direct
+  // (contourne le @Version optimistic locking d'Account qui provoque
+  // ObjectOptimisticLockingFailureException sur accountRepository.save()).
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   /**
    * rls-proper-fix — Self-injection via le proxy Spring.
@@ -209,7 +213,8 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
       FundsGrantsService fundsGrantsService,
       DonationReceiptRepository donationReceiptRepository,
       FxOperationsService fxOperationsService,
-      ExchangeRateService exchangeRateService) {
+      ExchangeRateService exchangeRateService,
+      org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.companyRepository = companyRepository;
     this.userRepository = userRepository;
     this.userCompanyRoleRepository = userCompanyRoleRepository;
@@ -230,6 +235,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     this.donationReceiptRepository = donationReceiptRepository;
     this.fxOperationsService = fxOperationsService;
     this.exchangeRateService = exchangeRateService;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   @Override
@@ -292,12 +298,12 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     LOG.info("V9 — User owner créé/résolu (id={}, email={})", ownerId, OWNER_EMAIL);
 
     // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
-    // La transaction @Transactional est ouverte par self.seedBusinessData() via le proxy Spring,
-    // APRÈS que DemoTenantContext.of() ait positionné le ThreadLocal. Le
-    // TenantRlsConnectionCustomizer intercepte setAutoCommit(false) au début de cette méthode
-    // et applique SET LOCAL app.current_tenant = companyId.
+    // v9.4 fix — La méthode seedBusinessData n'est PLUS @Transactional. Avant ce fix,
+    // les nombreux catch (RuntimeException) à l'intérieur de la méthode @Transactional
+    // marquaient la transaction comme rollback-only → UnexpectedRollbackException à la sortie.
+    // Sans @Transactional, chaque service métier appelé ouvre sa PROPRE transaction.
     try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
-      return self.seedBusinessData(companyId, ownerId);
+      return seedBusinessData(companyId, ownerId);
     } catch (RuntimeException ex) {
       // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
       // On logue ERROR mais on ne propage pas l'exception pour ne pas casser le démarrage.
@@ -326,7 +332,7 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
    * utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
    * @return nombre d'enregistrements créés
    */
-  @Transactional
+  // v9.4 fix — @Transactional retiré (voir commentaire dans seed()).
   public int seedBusinessData(UUID companyId, UUID ownerId) {
     // a, b, c — bootstraps (COA + journaux/exercices + séquences)
     coaBootstrap.bootstrap(companyId, PCN_HAITI_FRAMEWORK_ID, AccountFixture.all());
@@ -342,6 +348,10 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     // pour que FundsGrantsService le resolve comme compte de produit de don (au lieu du
     // fallback sur le premier compte PRODUITS — qui serait 701000 Ventes de marchandises).
     tagDonationRevenueAccount(companyId);
+    // v9.4 fix — Créer + tagger les comptes 776 (Gains de change) et 676 (Pertes de change)
+    // avec taxMappingCode=FX_GAIN et FX_LOSS. Sans ces comptes, FxOperationsService.create()
+    // échoue avec "Aucun compte de gain/perte de change trouvé" sur toutes les opérations FX.
+    ensureFxGainLossAccounts(companyId);
     // Pré-charger les UUIDs des comptes PCN utilisés par les opérations mensuelles
     AccountRefs refs = AccountRefs.load(companyId, accountRepository);
 
@@ -544,6 +554,67 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
     LOG.info(
         "V9 — Compte 740000 tagué DONATION_REVENUE pour companyId={} (FundsGrantsService)",
         companyId);
+  }
+
+  /**
+   * v9.4 fix — Crée + tag les comptes 776 (Gains de change) et 676 (Pertes de change) avec
+   * les taxMappingCodes FX_GAIN et FX_LOSS. Sans ces comptes, FxOperationsService.create()
+   * échoue avec "Aucun compte de gain/perte de change trouvé" sur toutes les opérations FX
+   * (BUY/SELL avec gain ou perte de change).
+   *
+   * <p>Le PCN_HAITI par défaut (AccountFixture) n'inclut pas ces comptes — on les crée manuellement
+   * sous la classe 7 (PRODUITS) pour 776 et classe 6 (CHARGES) pour 676.
+   *
+   * <p>Idempotent : si les comptes existent déjà (par code), ne fait rien.
+   */
+  private void ensureFxGainLossAccounts(UUID companyId) {
+    ensureFxAccountViaJdbc(companyId, "776000", "Gains de change", "PRODUITS", "CREDIT", "FX_GAIN");
+    ensureFxAccountViaJdbc(companyId, "676000", "Pertes de change", "CHARGES", "DEBIT", "FX_LOSS");
+  }
+
+  /**
+   * v9.4 fix — Crée ou met à jour un compte FX via JdbcTemplate (SQL direct).
+   *
+   * <p>On évite accountRepository.save() car l'entité Account a un @Version (optimistic locking)
+   * qui provoque ObjectOptimisticLockingFailureException quand l'entité lue devient stale
+   * après la transaction du COA bootstrap. Le SQL direct contourne Hibernate et est idempotent
+   * (ON CONFLICT DO UPDATE).
+   */
+  private void ensureFxAccountViaJdbc(UUID companyId, String code, String label,
+      String reportingClass, String normalBalance, String taxMappingCode) {
+    try {
+      // Vérifier si le compte existe (table = "account" au singulier, cf. @Table(name="account"))
+      Integer count = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM account WHERE company_id = ? AND code = ?",
+          Integer.class, companyId, code);
+      if (count != null && count > 0) {
+        // Le compte existe — juste tagger le taxMappingCode
+        jdbcTemplate.update(
+            "UPDATE account SET tax_mapping_code = ? WHERE company_id = ? AND code = ?",
+            taxMappingCode, companyId, code);
+        LOG.info("V9 — Compte {} tagué {} pour companyId={}", code, taxMappingCode, companyId);
+        return;
+      }
+      // Trouver le parent (compte root de la même reportingClass)
+      UUID parentId = null;
+      var parentResults = jdbcTemplate.query(
+          "SELECT id FROM account WHERE company_id = ? AND reporting_class = ? AND parent_id IS NULL LIMIT 1",
+          (rs, rowNum) -> rs.getObject("id", UUID.class),
+          companyId, reportingClass);
+      if (!parentResults.isEmpty()) {
+        parentId = parentResults.get(0);
+      }
+      // Insérer le compte
+      jdbcTemplate.update(
+          "INSERT INTO account (id, company_id, code, label, reporting_class, normal_balance, " +
+          "tax_mapping_code, active, locked, is_collective, parent_id, level, path, created_at, updated_at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, true, false, false, ?, 4, ?, now(), now())",
+          UUID.randomUUID(), companyId, code, label, reportingClass, normalBalance,
+          taxMappingCode, parentId, code); // path = code (le compte est au niveau 4, path = code suffisant)
+      LOG.info("V9 — Compte {} ({}) créé + tagué {} pour companyId={}", code, label, taxMappingCode, companyId);
+    } catch (Exception e) {
+      LOG.warn("V9 — Échec création compte {} pour companyId={} : {}", code, companyId, e.getMessage());
+    }
   }
 
   // ══Bailleurs (4 DONOR) ══
@@ -1002,12 +1073,11 @@ public class NgoHumanitarianSeeder implements CompanySeeder {
               companyId,
               new CreateDonationReceiptRequest(
                   grant.id(), donor.id(), amount, receiptDate, description));
-      // Patch post-création : setter donationType=IN_KIND sur l'entité persistée.
-      // L'écriture comptable générée par le service reste celle d'un don cash (D 521 / C 740) —
-      // limitation documentée car le DTO ne porte pas donationType. Le tag IN_KIND est toutefois
-      // utile pour les exports bailleurs V8-5 (distinction cash vs nature dans les rapports).
-      receipt.setDonationType(DonationType.IN_KIND);
-      donationReceiptRepository.save(receipt);
+      // v9.4 fix — Utiliser une requête JPQL UPDATE au lieu de save() pour éviter
+      // le bug "Row was updated or deleted by another transaction". L'entité retournée
+      // par createDonationReceipt est stale (déjà persistée + flushée dans la transaction
+      // du service). Le save() lançait StaleObjectStateException.
+      donationReceiptRepository.updateDonationType(receipt.getId(), DonationType.IN_KIND);
       return true;
     } catch (ConflictException ex) {
       LOG.debug("V9 — Don en nature déjà existant pour {} seq={} — skip", month, seq);

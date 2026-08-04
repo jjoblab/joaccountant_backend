@@ -321,12 +321,23 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
     LOG.info("V9 — User owner créé/résolu (id={}, email={})", ownerId, OWNER_EMAIL);
 
     // ── 5. Bootstraps + données métier (try-with-resources pour le contexte tenant) ──
-    // La transaction @Transactional est ouverte par self.seedBusinessData() via le proxy Spring,
-    // APRÈS que DemoTenantContext.of() ait positionné le ThreadLocal. Le
-    // TenantRlsConnectionCustomizer intercepte setAutoCommit(false) au début de cette méthode
-    // et applique SET LOCAL app.current_tenant = companyId.
+    // v9.4 fix — La méthode seedBusinessData n'est PLUS @Transactional. Avant ce fix,
+    // les nombreux catch (RuntimeException) à l'intérieur de la méthode @Transactional
+    // marquaient la transaction comme rollback-only (SpringTransactionInterceptor le fait
+    // automatiquement dès qu'une RuntimeException est levée, MÊME si elle est catchée
+    // dans le corps de la méthode). À la sortie de la méthode, Spring refusait de commiter
+    // → UnexpectedRollbackException : "Transaction silently rolled back because it has been
+    // marked as rollback-only". Tous les 4 seeders demo (FreeZone, Ngo, ProfessionalServices,
+    // RetailCommerce) étaient affectés.
+    //
+    // Sans @Transactional sur seedBusinessData, chaque service métier appelé
+    // (invoicingService.createInvoice, expensesService.create, etc.) ouvre sa PROPRE
+    // transaction (ils sont tous @Transactional eux-mêmes), applique RLS via
+    // TenantRlsConnectionCustomizer, et peut échouer/réussir indépendamment. C'est
+    // exactement le comportement souhaité pour un seeder (créer le maximum de données,
+    // logger les erreurs, continuer).
     try (DemoTenantContext ctx = DemoTenantContext.of(companyId, ownerId)) {
-      return self.seedBusinessData(companyId, ownerId);
+      return seedBusinessData(companyId, ownerId);
     } catch (RuntimeException ex) {
       // Le try-with-resources garantit que TenantContext.clear() est appelé même sur exception.
       // On logue ERROR mais on ne propage pas l'exception pour ne pas casser le démarrage.
@@ -359,7 +370,8 @@ public class FreeZoneIndustrySeeder implements CompanySeeder {
    * utilisé directement dans le corps car les services métier utilisent le ThreadLocal)
    * @return nombre d'enregistrements créés
    */
-  @Transactional
+  // v9.4 fix — @Transactional retiré (voir commentaire dans seed()).
+  // Chaque service métier appelé est lui-même @Transactional et gère sa propre transaction.
   public int seedBusinessData(UUID companyId, UUID ownerId) {
     // a, b, c — bootstraps (COA + journaux/exercices + séquences)
     // Pour IFRS_FULL (numbering_mode=FREE), coaService.initialize exige un

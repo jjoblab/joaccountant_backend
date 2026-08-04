@@ -109,6 +109,44 @@ public class TaxService {
  return saved;
  }
 
+ /**
+ * v9.4 fix — Met à jour une règle fiscale existante.
+ *
+ * <p>Sémantique PATCH : seuls les champs non-null de {@code req} sont mis à jour.
+ * Permet au mobile de modifier le taux, le libellé, les comptes, les dates d'application
+ * ou le mode de TVA (DEBIT/ENCAISSEMENT) d'une règle existante.
+ *
+ * @param companyId identifiant de l'entreprise (vérifié pour isolation tenant)
+ * @param ruleId identifiant de la règle à modifier
+ * @param req payload de mise à jour (champs non-null sont appliqués)
+ * @return la règle mise à jour
+ * @throws jo.accountant.core.exception.NotFoundException si la règle n'existe pas ou
+ *         n'appartient pas à cette entreprise
+ */
+ @Transactional
+ public TaxRule updateTaxRule(UUID companyId, UUID ruleId, CreateTaxRuleRequest req) {
+ TaxRule rule = taxRuleRepository.findById(ruleId)
+ .orElseThrow(() -> new jo.accountant.core.exception.NotFoundException("TaxRule", ruleId));
+ // Defense-in-depth : vérifier que la règle appartient bien à cette entreprise
+ // (les règles globales companyId=null ne sont pas modifiables via cette API).
+ if (rule.getCompanyId() == null || !rule.getCompanyId().equals(companyId)) {
+ throw new jo.accountant.core.exception.NotFoundException("TaxRule", ruleId);
+ }
+ // PATCH : ne mettre à jour que les champs non-null
+ if (req.code() != null && !req.code().isBlank()) rule.setCode(req.code().trim());
+ if (req.label() != null && !req.label().isBlank()) rule.setLabel(req.label().trim());
+ if (req.rate() != null) rule.setRate(req.rate());
+ if (req.payableAccountId() != null) rule.setPayableAccountId(req.payableAccountId());
+ if (req.receivableAccountId() != null) rule.setReceivableAccountId(req.receivableAccountId());
+ if (req.applicableFrom() != null) rule.setApplicableFrom(req.applicableFrom());
+ if (req.applicableTo() != null) rule.setApplicableTo(req.applicableTo());
+ if (req.vatMode() != null) rule.setVatMode(req.vatMode());
+ TaxRule saved = taxRuleRepository.save(rule);
+ LOG.info("Règle fiscale mise à jour : id={} code={} rate={}% vatMode={}",
+ saved.getId(), saved.getCode(), saved.getRate(), saved.getVatMode());
+ return saved;
+ }
+
  @Transactional(readOnly = true)
  public List<TaxRule> listTaxRules(UUID companyId) {
  return taxRuleRepository.findByCompanyIdOrCompanyIdIsNull(companyId);

@@ -137,6 +137,39 @@ public class TaxController {
  return ResponseEntity.status(HttpStatus.CREATED).body(service.createTaxRule(companyId, req));
  }
 
+ /**
+ * v9.4 fix — Met à jour une règle fiscale existante.
+ *
+ * <p>Backend : {@code PUT /api/v1/companies/{companyId}/tax/rules/{ruleId}}
+ * → modifie la règle (PATCH sémantique : seuls les champs non-null sont appliqués).
+ *
+ * <p>Avant ce fix, l'endpoint n'existait pas → le mobile recevait un 405 Method Not Allowed
+ * lors de la tentative de modification d'une règle de TVA.
+ */
+ @io.swagger.v3.oas.annotations.Operation(summary = "Mettre jour une règle fiscale",
+ description = "Modifie une règle de TVA existante. Sémantique PATCH : seuls les champs " +
+ "non-null du corps sont appliqués. La règle doit appartenir à l'entreprise (les règles " +
+ "globales companyId=null ne sont pas modifiables via cette API).")
+ @ApiResponses({
+ @ApiResponse(responseCode = "200",
+ content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+ schema = @Schema(implementation = TaxRule.class))),
+ @ApiResponse(responseCode = "403", description = "Rôle insuffisant (ADMIN requis)",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+ @ApiResponse(responseCode = "404", description = "Règle introuvable ou hors tenant",
+ content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+ })
+ @org.springframework.web.bind.annotation.PutMapping(value = "/rules/{ruleId}",
+ consumes = MediaType.APPLICATION_JSON_VALUE)
+ public ResponseEntity<TaxRule> updateTaxRule(@PathVariable UUID companyId,
+ @PathVariable UUID ruleId,
+ @CurrentUser UUID userId,
+ @Valid @RequestBody CreateTaxRuleRequest req) {
+ roleChecker.ensureRole(companyId, "ADMIN");
+ moduleAccessGuard.ensureEnabled(companyId, ModuleCode.TAX);
+ return ResponseEntity.ok(service.updateTaxRule(companyId, ruleId, req));
+ }
+
  @Operation(summary = "Lister les règles de TVA",
  description = "Retourne les règles de TVA actives de l'entreprise (et les règles globales par pays).")
  @ApiResponses({

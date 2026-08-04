@@ -6,13 +6,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import jo.accountant.accountingengine.dto.CreateFiscalYearRequest;
+import jo.accountant.accountingengine.entity.FiscalPeriod;
+import jo.accountant.accountingengine.entity.FiscalPeriodStatus;
 import jo.accountant.accountingengine.entity.FiscalYear;
+import jo.accountant.accountingengine.entity.FiscalYearStatus;
 import jo.accountant.accountingengine.entity.Journal;
+import jo.accountant.accountingengine.repository.FiscalPeriodRepository;
+import jo.accountant.accountingengine.repository.FiscalYearRepository;
 import jo.accountant.accountingengine.repository.JournalRepository;
 import jo.accountant.accountingengine.service.AccountingEngineService;
 import jo.accountant.core.exception.ConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
@@ -115,11 +121,21 @@ public class FiscalYearBootstrap {
 
   private final AccountingEngineService accountingEngineService;
   private final JournalRepository journalRepository;
+  private final FiscalYearRepository fiscalYearRepository;
+  private final FiscalPeriodRepository fiscalPeriodRepository;
+  private final JdbcTemplate jdbcTemplate;
 
   public FiscalYearBootstrap(
-      AccountingEngineService accountingEngineService, JournalRepository journalRepository) {
+      AccountingEngineService accountingEngineService,
+      JournalRepository journalRepository,
+      FiscalYearRepository fiscalYearRepository,
+      FiscalPeriodRepository fiscalPeriodRepository,
+      JdbcTemplate jdbcTemplate) {
     this.accountingEngineService = accountingEngineService;
     this.journalRepository = journalRepository;
+    this.fiscalYearRepository = fiscalYearRepository;
+    this.fiscalPeriodRepository = fiscalPeriodRepository;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   /**
@@ -193,6 +209,13 @@ public class FiscalYearBootstrap {
    * l'idempotence.
    */
   private void bootstrapFiscalYears(UUID companyId) {
+    // v9.4 fix (V29_001) — La contrainte "1 exercice OPEN max" a été supprimée.
+    // On crée maintenant les 2 exercices (FY2024-2025 + FY2025-2026) normalement,
+    // sans avoir besoin de fermer le premier. Le dernier exercice créé (FY2025-2026)
+    // sera auto-activé par createFiscalYear (si aucun exercice actif n'est défini).
+    // L'utilisateur peut clôturer FY2024-2025 plus tard via closeFiscalYear, ce qui
+    // générera les écritures de clôture + d'ouverture (à-nouveau).
+
     // Index des exercices existants par clé "startDate|endDate"
     List<FiscalYear> existingFy = accountingEngineService.listFiscalYears(companyId);
     Set<String> existingKeys = new HashSet<>(existingFy.size() * 2);
@@ -241,11 +264,63 @@ public class FiscalYearBootstrap {
             ex);
       }
     }
+
+    // v9.4 fix — S'assurer que le dernier exercice (FY2025-2026) est l'exercice actif.
+    // createFiscalYear auto-active le premier exercice, mais si FY2024-2025 a été créé
+    // en premier, c'est lui qui est actif. On bascule vers FY2025-2026 (le plus récent).
+    List<FiscalYear> allFy = fiscalYearRepository.findByCompanyIdOrderByStartDateAsc(companyId);
+    if (!allFy.isEmpty()) {
+      FiscalYear latestOpen = null;
+      for (int i = allFy.size() - 1; i >= 0; i--) {
+        if (allFy.get(i).getStatus() == FiscalYearStatus.OPEN) {
+          latestOpen = allFy.get(i);
+          break;
+        }
+      }
+      if (latestOpen != null) {
+        UUID currentActive = readActiveFiscalYearId(companyId);
+        if (currentActive == null || !currentActive.equals(latestOpen.getId())) {
+          setActiveFiscalYearId(companyId, latestOpen.getId());
+          LOG.info(
+              "V9 — Exercice actif basculé vers {} ({} → {}) pour companyId={}",
+              latestOpen.getLabel(),
+              latestOpen.getStartDate(),
+              latestOpen.getEndDate(),
+              companyId);
+        }
+      }
+    }
+
     LOG.info(
         "V9 — Bootstrap exercices fiscaux terminé pour companyId={} : {} créés, {} skippés",
         companyId,
         created,
         skipped);
+  }
+
+  /** Lit l'ID de l'exercice fiscal actif pour cette entreprise. */
+  private UUID readActiveFiscalYearId(UUID companyId) {
+    try {
+      var results = jdbcTemplate.queryForList(
+          "SELECT active_fiscal_year_id FROM companies WHERE id = ?",
+          UUID.class,
+          companyId);
+      return results.isEmpty() ? null : results.get(0);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /** Définit l'exercice fiscal actif pour cette entreprise. */
+  private void setActiveFiscalYearId(UUID companyId, UUID fiscalYearId) {
+    try {
+      jdbcTemplate.update(
+          "UPDATE companies SET active_fiscal_year_id = ? WHERE id = ?",
+          fiscalYearId,
+          companyId);
+    } catch (Exception e) {
+      LOG.warn("V9 — Impossible de définir l'exercice actif : {}", e.getMessage());
+    }
   }
 
   /** Construit la clé d'unicité d'un exercice (startDate + endDate). */
