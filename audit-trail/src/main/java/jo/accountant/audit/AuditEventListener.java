@@ -67,6 +67,13 @@ public class AuditEventListener {
  row.setNewValueJson(jo.accountant.core.audit.PiiMasker.maskPiiInJson(event.newValueJson()));
  row.setOccurredAt(event.occurredAt());
  row.setCorrelationId(event.correlationId());
+ // v9.4 fix — Capturer l'IP, le user-agent et le contexte d'exécution depuis l'AuditEvent
+ // lui-même (capturés au moment de la publication par AuditEvent.of() sur le thread HTTP).
+ // NE PAS utiliser TenantContext ici car ce listener est @Async + @TransactionalEventListener
+ // → tourne sur un thread différent → TenantContext ThreadLocal est vide.
+ row.setIpAddress(event.ipAddress());
+ row.setUserAgent(event.userAgent());
+ row.setExecutionContext(event.executionContext());
  repository.save(row);
  } catch (Exception ex) {
  //§9 — échec silencieux devrait déclencher un compteur Micrometer

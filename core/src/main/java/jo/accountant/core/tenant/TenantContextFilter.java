@@ -41,6 +41,32 @@ public class TenantContextFilter extends OncePerRequestFilter {
         MDC.put("correlationId", correlationId); // PR1-bis fix
         response.setHeader(CORRELATION_HEADER, correlationId);
 
+        // v9.4 fix — Capturer l'IP et le User-Agent pour l'audit trail forensique.
+        // X-Forwarded-For : proxy/load-balancer → IP réelle du client (premier élément).
+        // X-Real-IP : alternative nginx. Fallback : request.getRemoteAddr().
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress != null && !ipAddress.isBlank()) {
+            // X-Forwarded-For peut contenir une liste "client, proxy1, proxy2" — on prend le premier.
+            ipAddress = ipAddress.split(",")[0].trim();
+        }
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = request.getHeader("X-Real-IP");
+        }
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = request.getRemoteAddr();
+        }
+        TenantContext.setIpAddress(ipAddress);
+
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null && userAgent.length() > 500) {
+            userAgent = userAgent.substring(0, 500); // tronquer pour tenir dans la colonne VARCHAR(500)
+        }
+        TenantContext.setUserAgent(userAgent);
+
+        // v9.4 — Execution context : "api" pour toutes les requêtes REST.
+        // Les jobs cron / imports CSV / workflows peuvent override via setExecutionContext().
+        TenantContext.setExecutionContext("api");
+
         try {
             filterChain.doFilter(request, response);
         } finally {

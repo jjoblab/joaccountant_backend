@@ -52,7 +52,11 @@ public record SecurityAuditEvent(
  UUID companyId,
  Map<String, Object> metadata,
  Instant occurredAt,
- String correlationId
+ String correlationId,
+ // v9.4 fix — Champs forensiques capturés au moment de la publication (thread HTTP)
+ String ipAddress,
+ String userAgent,
+ String executionContext
 ) {
 
  /**
@@ -67,7 +71,12 @@ public record SecurityAuditEvent(
  companyId,
  metadata != null ? metadata : Map.of(),
  Instant.now(),
- correlationId != null ? correlationId : UUID.randomUUID().toString()
+ correlationId != null ? correlationId : UUID.randomUUID().toString(),
+ // v9.4 — Capturer les champs forensiques depuis TenantContext au moment de la
+ // création de l'événement (thread HTTP courant).
+ jo.accountant.core.tenant.TenantContext.getIpAddress(),
+ jo.accountant.core.tenant.TenantContext.getUserAgent(),
+ jo.accountant.core.tenant.TenantContext.getExecutionContext()
  );
  }
 

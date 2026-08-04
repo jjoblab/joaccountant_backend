@@ -160,14 +160,20 @@ public class AuditTrailController {
  String oldValueJson,
  String newValueJson,
  Instant occurredAt,
- String correlationId
+ String correlationId,
+ // v9.4 — Nouveaux champs alignés sur les standards NetSuite/Sage Intacct
+ String executionContext,
+ String ipAddress,
+ String userAgent,
+ String fieldName
  ) {
  public static AuditLogResponse from(AuditLog a) {
  return new AuditLogResponse(
  a.getId(), a.getCompanyId(), a.getActorUserId(),
  a.getEntityType(), a.getEntityId(), a.getAction(),
  a.getOldValueJson(), a.getNewValueJson(),
- a.getOccurredAt(), a.getCorrelationId()
+ a.getOccurredAt(), a.getCorrelationId(),
+ a.getExecutionContext(), a.getIpAddress(), a.getUserAgent(), a.getFieldName()
  );
  }
  }

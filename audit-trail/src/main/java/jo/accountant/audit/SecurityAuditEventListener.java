@@ -95,6 +95,12 @@ public class SecurityAuditEventListener {
  );
  row.setOccurredAt(event.occurredAt());
  row.setCorrelationId(event.correlationId());
+ // v9.4 fix — Capturer l'IP, le user-agent et le contexte d'exécution depuis l'événement
+ // lui-même (capturés au moment de la publication par SecurityAuditEvent.of() sur le thread HTTP).
+ // NE PAS utiliser TenantContext ici car ce listener est @Async → thread différent.
+ row.setIpAddress(event.ipAddress());
+ row.setUserAgent(event.userAgent());
+ row.setExecutionContext(event.executionContext());
  repository.save(row);
  } catch (Exception ex) {
  LOG.error("Failed to persist security audit event [type={}, correlationId={}, userId={}]",
