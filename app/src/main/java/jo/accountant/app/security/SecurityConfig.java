@@ -14,9 +14,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 // BearerTokenAuthenticationFilter déprécié en Spring Security 6.x.
 // On utilise l'interface de base (qui reste stable) pour le positioning des filtres.
 // import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
@@ -132,23 +138,74 @@ public class SecurityConfig {
                     "/api/v1/demos",
                     "/api/v1/demos/**").permitAll()
                 // V9 — Login démo en un clic (POST /api/v1/demos/login/{demoCode}).
-                // Public pour permettre la connexion sans saisir email/password — le user obtient
-                // un vrai JWT utilisable sur tous les endpoints protégés.
-                // ⚠️ À DÉSACTIVER en production réelle (supprimer ce bloc + DemoLoginController).
+                // FIX v9.4.1 (audit T1.2) — remplacé permitAll par HTTP Basic auth
+                // pour restreindre l'émission de vrais JWT démo. Le mobile doit envoyer
+                // l'en-tête Authorization: Basic <base64(user:pass)> en plus de la
+                // requête POST. Les credentials sont configurés via :
+                //   app.demo.basic-auth.username (défaut: demo)
+                //   app.demo.basic-auth.password (défaut: demo-secret-2026)
+                // Sans Basic auth valide → 401 Unauthorized. Empêche l'extraction
+                // arbitraire de JWT par un attaquant qui connaîtrait l'URL.
                 .requestMatchers(HttpMethod.POST,
-                    "/api/v1/demos/login/**").permitAll()
-                // Re-seed manuel démo (POST /api/v1/demos/seed). Public pour
-                // permettre de déclencher le seed sans JWT (utile si le seed auto a échoué
-                // et qu'aucun user démo n'existe encore en DB).
-                // ⚠️ À DÉSACTIVER en production réelle.
+                    "/api/v1/demos/login/**").hasRole("DEMO")
+                // Re-seed manuel démo (POST /api/v1/demos/seed). Idem basic auth.
                 .requestMatchers(HttpMethod.POST,
-                    "/api/v1/demos/seed").permitAll()
+                    "/api/v1/demos/seed").hasRole("DEMO")
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(jwtDecoder)))
             .addFilterBefore(rateLimitFilter, AnonymousAuthenticationFilter.class)
             .addFilterBefore(tenantContextFilter, AnonymousAuthenticationFilter.class)
-            .addFilterAfter(new TenantClaimFilter(), AnonymousAuthenticationFilter.class);
+            .addFilterAfter(new TenantClaimFilter(), AnonymousAuthenticationFilter.class)
+            // FIX v9.4.1 (audit T1.2) — active HTTP Basic auth pour les endpoints démo
+            // POST /api/v1/demos/login/** et /api/v1/demos/seed. Les credentials sont
+            // fournis par demoUserDetailsService() (configurables via propriétés).
+            .httpBasic(basic -> basic.realmName("JoAccountant Demo"));
         return http.build();
+    }
+
+    /**
+     * FIX v9.4.1 (audit T1.2) — UserDetailsService en mémoire pour les endpoints démo.
+     *
+     * <p>Crée un utilisateur unique avec le rôle {@code DEMO} et les credentials configurés
+     * via {@code app.demo.basic-auth.username} (défaut: {@code demo}) et
+     * {@code app.demo.basic-auth.password} (défaut: {@code demo-secret-2026}).
+     *
+     * <p>Le mot de passe est en clair (NoOpPasswordEncoder) car il s'agit d'un secret partagé
+     * pour la démo publique — l'objectif est de limiter l'émission de JWT démo, pas de
+     * protéger un véritable compte utilisateur. En production réelle, ce bean doit être
+     * supprimé et les endpoints /demos/login/** + /demos/seed désactivés.
+     *
+     * @param username nom d'utilisateur basic auth démo
+     * @param password mot de passe basic auth démo
+     * @return InMemoryUserDetailsManager avec un utilisateur {username, password, ROLE_DEMO}
+     */
+    @Bean
+    public UserDetailsService demoUserDetailsService(
+            @Value("${app.demo.basic-auth.username:demo}") String username,
+            @Value("${app.demo.basic-auth.password:demo-secret-2026}") String password) {
+        UserDetails demoUser = User.withUsername(username)
+            .password(password)
+            .roles("DEMO")
+            .build();
+        LOG.info("Demo Basic auth configuré — username='{}' (rôle DEMO pour endpoints POST /demos/**)", username);
+        return new InMemoryUserDetailsManager(demoUser);
+    }
+
+    /**
+     * FIX v9.4.1 (audit T1.2) — PasswordEncoder no-op pour le UserDetailsService démo.
+     *
+     * <p>Les credentials démo sont stockés en clair (secret partagé), on n'a donc pas besoin
+     * de BCrypt. <strong>Attention</strong> : ce bean est global et peut affecter d'autres
+     * composants Spring Security. C'est volontaire — l'app n'utilise pas Spring Security pour
+     * la gestion des passwords métier (elle a son propre AuthService + BCrypt dans :auth).
+     */
+    @Bean
+    public static PasswordEncoder demoPasswordEncoder() {
+        // NoOpPasswordEncoder est déprécié car non-sécurisé pour des mots de passe utilisateur.
+        // Ici on l'utilise volontairement car le secret est partagé et public (démo).
+        @SuppressWarnings("deprecation")
+        PasswordEncoder encoder = NoOpPasswordEncoder.getInstance();
+        return encoder;
     }
 
     @Bean

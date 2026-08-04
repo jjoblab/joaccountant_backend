@@ -174,6 +174,72 @@ public class AuthService {
  user.getFullName(), companiesClaim);
  }
 
+ /**
+ * FIX v9.4.1 (audit T2.6) — Variante de {@link #login(String, String)} qui émet un JWT avec
+ * le claim {@code demo=true} pour distinguer les sessions démo.
+ *
+ * <p>Les credentials sont vérifiés de la même manière que {@link #login(String, String)}, mais
+ * le token d'accès émis contient un claim additionnel {@code demo: true} qui permet à
+ * l'audit trail et aux filtres de sécurité de tracer/restreindre les actions démo.
+ *
+ * <p>Utilisé par {@link jo.accountant.demo.controller.DemoLoginController#demoLogin} pour
+ * connecter les 4 entreprises démo (BOUTIK_LAKAY, MOISE_ASSOCIES, ESPWA_POU_AYITI,
+ * CARIBBEAN_TEXTILES) sans saisir d'email/password.
+ *
+ * @param email    email du user OWNER démo (ex: owner@boutik-lakay.demo)
+ * @param password mot de passe démo partagé (DemoCredentials.DEMO_PASSWORD)
+ * @return LoginResult avec un accessToken contenant le claim demo=true
+ * @throws jo.accountant.core.exception.ForbiddenException si les credentials sont invalides
+ */
+ @Transactional
+ public LoginResult loginDemo(String email, String password) {
+ String safeEmail = email == null ? "" : email.trim().toLowerCase();
+ String correlationId = TenantContext.getCorrelationId();
+
+ User user = userRepository.findByEmailIgnoreCase(safeEmail)
+ .orElse(null);
+
+ if (user == null) {
+ events.publishEvent(SecurityAuditEvent.of(
+ SecurityAuditEvent.Types.LOGIN_FAILED, null, null,
+ Map.of("reason", "UNKNOWN_EMAIL", "email", safeEmail, "context", "DEMO"),
+ correlationId));
+ throw new ForbiddenException("INVALID_CREDENTIALS", "Invalid email or password");
+ }
+
+ if (!user.isActive()) {
+ events.publishEvent(SecurityAuditEvent.of(
+ SecurityAuditEvent.Types.LOGIN_FAILED, user.getId(), null,
+ Map.of("reason", "ACCOUNT_DISABLED", "email", safeEmail, "context", "DEMO"),
+ correlationId));
+ throw new ForbiddenException("ACCOUNT_DISABLED", "Account is disabled");
+ }
+
+ if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+ events.publishEvent(SecurityAuditEvent.of(
+ SecurityAuditEvent.Types.LOGIN_FAILED, user.getId(), null,
+ Map.of("reason", "INVALID_PASSWORD", "email", safeEmail, "context", "DEMO"),
+ correlationId));
+ throw new ForbiddenException("INVALID_CREDENTIALS", "Invalid email or password");
+ }
+
+ List<Map<String, Object>> companiesClaim = buildCompaniesClaim(user.getId());
+ // FIX v9.4.1 (audit T2.6) — émet un JWT avec le claim demo=true pour distinguer
+ // les sessions démo des sessions réelles dans l'audit trail et permettre la
+ // révocation en masse via DemoSessionFilter (à implémenter).
+ String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail(), companiesClaim, true);
+ String rawRefreshToken = issueRefreshToken(user.getId());
+
+ TenantContext.setUserId(user.getId());
+
+ events.publishEvent(SecurityAuditEvent.of(
+ SecurityAuditEvent.Types.LOGIN_SUCCESS, user.getId(), null,
+ Map.of("email", safeEmail, "context", "DEMO"), correlationId));
+
+ return new LoginResult(accessToken, rawRefreshToken, user.getId(), user.getEmail(),
+ user.getFullName(), companiesClaim);
+ }
+
  @Transactional
  public LoginResult refresh(String rawRefreshToken) {
  String correlationId = TenantContext.getCorrelationId();

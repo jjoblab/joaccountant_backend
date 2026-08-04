@@ -275,6 +275,33 @@ public class JwtService {
  }
 
  public String issueAccessToken(UUID userId, String email, List<Map<String, Object>> companies) {
+ return issueAccessToken(userId, email, companies, false);
+ }
+
+ /**
+ * FIX v9.4.1 (audit T2.6) — Overload avec flag {@code demo} pour distinguer les sessions démo.
+ *
+ * <p>Quand {@code demo=true}, un claim additionnel {@code demo: true} est ajouté au JWT. Ce
+ * claim permet :
+ * <ul>
+ *   <li>à l'audit trail de tracer spécifiquement les actions effectuées depuis une session démo ;</li>
+ *   <li>à un futur filtre de sécurité ({@code DemoSessionFilter}) de restreindre les permissions
+ *       d'un user démo (ex: interdire la suppression en masse, l'export de la table users, etc.) ;</li>
+ *   <li>à un scheduler de TTL ({@code DemoResetScheduler}) de cibler uniquement les données
+ *       créées depuis une session démo pour le reset périodique ;</li>
+ *   <li>au front-end (mobile/web) d'afficher un badge "Mode démo" persistant.</li>
+ * </ul>
+ *
+ * <p>Le claim {@code demo} est <strong>booléen</strong> (pas String) pour faciliter la
+ * vérification côté backend : {@code Boolean.TRUE.equals(jwt.getClaim("demo"))}.
+ *
+ * @param userId    UUID de l'utilisateur
+ * @param email     email de l'utilisateur
+ * @param companies claim companies standard
+ * @param demo      true si la session est une session démo (DemoLoginController.demoLogin)
+ */
+ public String issueAccessToken(UUID userId, String email, List<Map<String, Object>> companies,
+                                 boolean demo) {
  Instant now = Instant.now();
  //— ajout des claims iss + aud pour anti-rejeu cross-environnement
  JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
@@ -283,6 +310,12 @@ public class JwtService {
  .audience(audience)
  .claim("email", email)
  .claim("companies", companies)
+ // FIX v9.4.1 (audit T2.6) — claim demo pour distinguer les sessions démo.
+ // Sans ce claim, le JWT émis par DemoLoginController.demoLogin est identique en
+ // tout point à un JWT production — impossible de distinguer les sessions démo
+ // des sessions réelles dans l'audit trail, et de révoquer en masse les sessions
+ // démo en cas de fuite.
+ .claim("demo", demo)
  .issueTime(Date.from(now))
  .expirationTime(Date.from(now.plusSeconds(accessTokenTtlSeconds)))
  .jwtID(UUID.randomUUID().toString());

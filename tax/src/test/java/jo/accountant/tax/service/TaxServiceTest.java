@@ -62,13 +62,23 @@ class TaxServiceTest {
     private TaxService taxService;
     private CorporateTaxRuleRepository corporateTaxRuleRepository;
     private FinancialStatementsService financialStatementsService;
+    // FIX v9.4.1 (audit T1.1 #5) — les mocks companyRepository et invoiceRepository
+    // étaient déclarés en variables locales dans setUp(), donc inaccessibles depuis les
+    // méthodes @Test (lignes 201, 215, 243 de l'ancienne version). Promotion en champs
+    // de classe pour que les tests projectCorporateTax_ht_* et projectCorporateTax_fr_*
+    // puissent stubber companyRepository.findById(...) et
+    // invoiceRepository.sumTotalAmountByCompanyIdAndIssueDateBetweenAndStatusIn(...).
+    private CompanyRepository companyRepository;
+    private InvoiceRepository invoiceRepository;
 
     @BeforeEach
     void setUp() {
         // Mocks secondaires (non utilisés par projectCorporateTax mais requis par le constructeur)
         TaxRuleRepository taxRuleRepository = mock(TaxRuleRepository.class);
         WithholdingRuleRepository withholdingRuleRepository = mock(WithholdingRuleRepository.class);
-        InvoiceRepository invoiceRepository = mock(InvoiceRepository.class);
+        // FIX v9.4.1 (audit T1.1 #5) — promotion en champ de classe pour stubbing
+        // depuis les tests projectCorporateTax_ht_* qui vérifient les acomptes 1%.
+        invoiceRepository = mock(InvoiceRepository.class);
         InvoiceLineRepository invoiceLineRepository = mock(InvoiceLineRepository.class);
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -82,7 +92,10 @@ class TaxServiceTest {
         // signature étendue par Lot B R-23)
         corporateTaxRuleRepository = mock(CorporateTaxRuleRepository.class);
         financialStatementsService = mock(FinancialStatementsService.class);
-        CompanyRepository companyRepository = mock(CompanyRepository.class);
+        // FIX v9.4.1 (audit T1.1 #5) — promotion en champ de classe pour stubbing
+        // depuis les tests projectCorporateTax_ht_* et projectCorporateTax_fr_* qui
+        // vérifient le behavior par pays (HT vs FR).
+        companyRepository = mock(CompanyRepository.class);
         HaitianTaxDeclarationSchedule haitianSchedule = mock(HaitianTaxDeclarationSchedule.class);
         TaxCreditCarriedForwardRepository taxCreditRepository = mock(TaxCreditCarriedForwardRepository.class);
         taxService.setCorporateTaxDependencies(

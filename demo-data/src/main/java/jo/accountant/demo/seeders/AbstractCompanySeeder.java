@@ -5,6 +5,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import jakarta.persistence.EntityManager;
 import jo.accountant.accountingengine.entity.JournalEntry;
 import jo.accountant.accountingengine.entity.JournalEntrySourceModule;
 import jo.accountant.accountingengine.entity.JournalEntryStatus;
@@ -38,6 +40,40 @@ import jo.accountant.payroll.repository.PayslipRepository;
 */
 public abstract class AbstractCompanySeeder implements CompanySeeder {
 
+    /**
+     * FIX v9.4.1 (audit T3.7) — Seuil de flush + clear du PersistenceContext.
+     *
+     * <p>Au-delà de ce nombre d'entités persistées dans la transaction courante, on
+     * appelle {@code entityManager.flush()} (pour vider le buffer SQL vers la DB) puis
+     * {@code entityManager.clear()} (pour détacher toutes les entités du PersistenceContext
+     * et libérer la mémoire heap).
+     *
+     * <p>Sans ce mécanisme, le seed des 4 entreprises démo × 2 exercices fiscaux × données
+     * business complètes (COA + journaux + factures + paie + écritures) génère ~50 000
+     * objets JPA persistés que Hibernate garde en session. La heap grossit à ~800 MB,
+     * ce qui provoque un OOM kill sur Render free tier (512 MB RAM).
+     *
+     * <p>Avec flush+clear tous les 1000 inserts, la heap reste sous 200 MB pendant tout
+     * le seed. La contrepartie est que les entités détachées ne sont plus accessibles
+     * via {@code entityManager.find()} après le clear — il faut donc re-fetch si besoin.
+     */
+    private static final int FLUSH_CLEAR_BATCH_SIZE = 1000;
+
+    /**
+     * FIX v9.4.1 (audit T3.7) — Compteur d'inserts dans la transaction courante.
+     * Incrémenté à chaque {@code .save()} puis reset après flush+clear.
+     */
+    private final AtomicInteger insertCounter = new AtomicInteger(0);
+
+    /**
+     * FIX v9.4.1 (audit T3.7) — EntityManager injecté pour le flush+clear périodique.
+     *
+     * <p>Nullable car certains tests peuvent construire un AbstractCompanySeeder sans
+     * EntityManager (ex: tests unitaires qui mockent les repositories). Dans ce cas,
+     * le compteur est incrémenté mais le flush+clear est skip (best-effort).
+     */
+    protected final EntityManager entityManager;
+
     protected final PayrollRunRepository payrollRunRepository;
     protected final PayslipRepository payslipRepository;
     protected final JournalEntryRepository journalEntryRepository;
@@ -49,11 +85,49 @@ public abstract class AbstractCompanySeeder implements CompanySeeder {
                                      JournalEntryRepository journalEntryRepository,
                                      JournalLineRepository journalLineRepository,
                                      DemoDataContext dataContext) {
+        this(null, payrollRunRepository, payslipRepository, journalEntryRepository,
+             journalLineRepository, dataContext);
+    }
+
+    /**
+     * FIX v9.4.1 (audit T3.7) — Constructeur étendu avec EntityManager.
+     *
+     * <p>Les 4 seeders concrets (RetailCommerceSeeder, ProfessionalServicesSeeder,
+     * NgoHumanitarianSeeder, FreeZoneIndustrySeeder) doivent appeler ce constructeur
+     * pour bénéficier du flush+clear périodique. Le constructeur 5-args ci-dessus
+     * est conservé pour rétro-compatibilité (tests unitaires).
+     */
+    protected AbstractCompanySeeder(EntityManager entityManager,
+                                     PayrollRunRepository payrollRunRepository,
+                                     PayslipRepository payslipRepository,
+                                     JournalEntryRepository journalEntryRepository,
+                                     JournalLineRepository journalLineRepository,
+                                     DemoDataContext dataContext) {
+        this.entityManager = entityManager;
         this.payrollRunRepository = payrollRunRepository;
         this.payslipRepository = payslipRepository;
         this.journalEntryRepository = journalEntryRepository;
         this.journalLineRepository = journalLineRepository;
         this.dataContext = dataContext;
+    }
+
+    /**
+     * FIX v9.4.1 (audit T3.7) — Incrémente le compteur d'inserts et déclenche flush+clear
+     * si le seuil est atteint.
+     *
+     * <p>À appeler après chaque {@code repository.save(entity)} dans les seeders concrets.
+     * Le nom "track" rappelle qu'il s'agit d'un suivi mémoire, pas d'un vrai persist.
+     *
+     * <p>Si {@link #entityManager} est null (test unitaire), la méthode est no-op
+     * (le compteur est incrémenté mais aucun flush+clear n'est effectué).
+     */
+    protected void trackInsert() {
+        int count = insertCounter.incrementAndGet();
+        if (count >= FLUSH_CLEAR_BATCH_SIZE && entityManager != null) {
+            entityManager.flush();
+            entityManager.clear();
+            insertCounter.set(0);
+        }
     }
 
     /**
@@ -75,6 +149,7 @@ public abstract class AbstractCompanySeeder implements CompanySeeder {
             .sourceModule(JournalEntrySourceModule.MANUAL)
             .build();
         entry = journalEntryRepository.save(entry);
+        trackInsert();
 
         int lineNumber = 1;
         for (Object[] lineSpec : lines) {
@@ -93,6 +168,7 @@ public abstract class AbstractCompanySeeder implements CompanySeeder {
             line.setLineNumber(lineNumber++);
             line.setDescription(description);
             journalLineRepository.save(line);
+            trackInsert();
         }
         return 1 + lines.length;
     }
@@ -124,12 +200,14 @@ public abstract class AbstractCompanySeeder implements CompanySeeder {
                 .payslipNumber(prefix + "-PAY-" + month.getYear() + "-" + String.format("%02d", month.getMonthValue()) + "-" + emp.getEmployeeNumber())
                 .build();
             payslipRepository.save(payslip);
+            trackInsert();
             totalGross = totalGross.add(gross);
             totalNet = totalNet.add(net);
         }
         run.setTotalGross(totalGross);
         run.setTotalNet(totalNet);
         payrollRunRepository.save(run);
+        trackInsert();
 
         if (ctx.journalOD != null && ctx.payrollAccount != null && ctx.employeeCollectiveAccount != null) {
             createJournalEntry(companyId, ctx, ctx.journalOD.getId(), month.withDayOfMonth(month.lengthOfMonth()),
@@ -170,12 +248,14 @@ public abstract class AbstractCompanySeeder implements CompanySeeder {
                 .payslipNumber(prefix + "-13M-" + year + "-" + emp.getEmployeeNumber())
                 .build();
             payslipRepository.save(payslip);
+            trackInsert();
             totalGross = totalGross.add(gross);
             totalNet = totalNet.add(net);
         }
         run.setTotalGross(totalGross);
         run.setTotalNet(totalNet);
         payrollRunRepository.save(run);
+        trackInsert();
 
         if (ctx.journalOD != null && ctx.payrollAccount != null && ctx.employeeCollectiveAccount != null) {
             createJournalEntry(companyId, ctx, ctx.journalOD.getId(), LocalDate.of(year, 12, 31),

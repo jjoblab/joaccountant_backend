@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * V9 — Endpoint de connexion rapide pour les entreprises démo.
@@ -141,9 +142,19 @@ public class DemoLoginController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   @PostMapping(value = "/login/{demoCode}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<?> demoLogin(@PathVariable String demoCode) {
+  public ResponseEntity<?> demoLogin(@PathVariable String demoCode,
+                                      HttpServletRequest httpRequest) {
+    // FIX v9.4.1 (audit T1.4) — Logging systématique des appels démo avec IP + User-Agent.
+    // Ces logs permettent d'auditer qui utilise les endpoints démo publics et de détecter
+    // un abus (DoS sur Render free tier, extraction massive de JWT, etc.).
+    String clientIp = extractClientIp(httpRequest);
+    String userAgent = httpRequest.getHeader("User-Agent");
+    LOG.info("Demo login attempt — demoCode='{}' ip='{}' userAgent='{}'",
+        demoCode, clientIp, userAgent);
     var company = demoService.findDemoCompany(demoCode);
     if (company.isEmpty()) {
+      LOG.warn("Demo login failed (company not found) — demoCode='{}' ip='{}' userAgent='{}'",
+          demoCode, clientIp, userAgent);
       // message explicite : la company démo n'existe pas en DB.
       // Le seeder n'a probablement pas tourné → appeler POST /api/v1/demos/seed.
       ProblemDetail problem =
@@ -160,7 +171,10 @@ public class DemoLoginController {
     // Email démo prédictible : owner@<domain>.demo
     String email = DemoCredentials.ownerEmail(demoCode);
     try {
-      var loginResult = authService.login(email, DEMO_PASSWORD);
+      // FIX v9.4.1 (audit T2.6) — utilise loginDemo() au lieu de login() pour émettre
+      // un JWT avec le claim demo=true. Permet de distinguer les sessions démo des
+      // sessions réelles dans l'audit trail et de révoquer en masse si nécessaire.
+      var loginResult = authService.loginDemo(email, DEMO_PASSWORD);
       // LoginResponse sans MFA (les users démo n'ont pas de MFA activée)
       LoginResponse response =
           new LoginResponse(
@@ -174,11 +188,14 @@ public class DemoLoginController {
               loginResult.companies(),
               false,
               null);
+      LOG.info("Demo login success — demoCode='{}' userId='{}' ip='{}' userAgent='{}'",
+          demoCode, loginResult.userId(), clientIp, userAgent);
       return ResponseEntity.ok(response);
     } catch (jo.accountant.core.exception.ForbiddenException e) {
       // 403 avec détail au lieu de 500 générique. Cause probable :
       // user démo non créé (seeder incomplet) ou password mismatch.
-      LOG.warn("Login démo échoué pour {} (email={}) : {}", demoCode, email, e.getMessage());
+      LOG.warn("Demo login forbidden — demoCode='{}' email='{}' ip='{}' userAgent='{}' error='{}'",
+          demoCode, email, clientIp, userAgent, e.getMessage());
       ProblemDetail problem =
           ProblemDetail.forStatusAndDetail(
               HttpStatus.FORBIDDEN,
@@ -194,7 +211,8 @@ public class DemoLoginController {
       problem.setProperty("hint", "POST /api/v1/demos/seed");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
     } catch (Exception e) {
-      LOG.error("Login démo erreur inattendue pour {} (email={})", demoCode, email, e);
+      LOG.error("Demo login error — demoCode='{}' email='{}' ip='{}' userAgent='{}'",
+          demoCode, email, clientIp, userAgent, e);
       ProblemDetail problem =
           ProblemDetail.forStatusAndDetail(
               HttpStatus.INTERNAL_SERVER_ERROR,
@@ -204,5 +222,28 @@ public class DemoLoginController {
       problem.setProperty("email", email);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
+  }
+
+  /**
+   * FIX v9.4.1 (audit T1.4) — Extrait l'IP réelle du client depuis la requête HTTP.
+   *
+   * <p>Tient compte des headers X-Forwarded-For et X-Real-IP posés par les proxies
+   * (Render, Cloudflare, nginx). Si plusieurs IPs sont présentes dans X-Forwarded-For
+   * (chaîne "client, proxy1, proxy2"), on prend la première (= le client original).
+   *
+   * @param request la requête HTTP entrante
+   * @return l'IP du client, ou "unknown" si impossible à déterminer
+   */
+  private static String extractClientIp(HttpServletRequest request) {
+    String xff = request.getHeader("X-Forwarded-For");
+    if (xff != null && !xff.isBlank()) {
+      // X-Forwarded-For peut contenir plusieurs IPs séparées par virgule — on prend la 1ère.
+      return xff.split(",")[0].trim();
+    }
+    String xRealIp = request.getHeader("X-Real-IP");
+    if (xRealIp != null && !xRealIp.isBlank()) {
+      return xRealIp.trim();
+    }
+    return request.getRemoteAddr();
   }
 }

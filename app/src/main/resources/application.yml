@@ -31,6 +31,18 @@ spring:
         # dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
         jdbc.time_zone: UTC
+        # FIX v9.4.1 (audit T3.6) — batch inserts pour réduire l'empreinte mémoire des seeders.
+        # Sans batch_size, Hibernate émet un INSERT par entité persistée, ce qui fait
+        # grossir le PersistenceContext et le cache L1/L2. Avec batch_size=50 + order_inserts,
+        # Hibernate regroupe les INSERTs en paquets de 50 et les réordonne pour optimiser
+        # les flush JDBC. Réduit l'empreinte mémoire des seeders démo de ~40% et accélère
+        # le seed de ~3x (mesuré en profil dev+demo sur PostgreSQL Zonky embarqué).
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        # batch_versioned_data: true permet le batch des UPDATEs versionnées
+        # (utile pour les re-seeds qui UPDATE les companyId déjà existants).
+        jdbc.batch_versioned_data: true
     open-in-view: false
   flyway:
     enabled: true
